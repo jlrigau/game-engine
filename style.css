@@ -15,10 +15,11 @@
   --text: #dfe7ff;
   --muted: #93a0cf;
   --shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
-  /* Top has a soft purple glow; the bottom is FLAT --deep (#0e1430) so it matches the
-     iOS home-indicator strip (filled with the flat manifest background_color) — no band. */
+  /* Top has a soft purple glow; the bottom is FLAT #1b2545 (the panel colour) so it
+     matches BOTH the bottom panel in-game AND the iOS home-indicator strip, which is
+     filled with the manifest background_color (also set to #1b2545) — no band anywhere. */
   --app-bg: radial-gradient(1200px 900px at 28% -12%, #251c55 0%, rgba(37,28,85,0) 60%),
-            linear-gradient(180deg, #16113c 0%, #0e1430 70%);
+            linear-gradient(180deg, #16113c 0%, #1b2545 72%);
 }
 
 * { box-sizing: border-box; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
