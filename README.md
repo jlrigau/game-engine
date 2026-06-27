@@ -156,6 +156,13 @@ want).
    Because `main` is the default branch from creation, the first deploy succeeds right
    away (no environment quirk to fix).
 
+> **⚠️ Start the Claude Code session on `main`.** When you open the new repo in Claude
+> Code (web), make sure it **develops on `main`** — by default a session can spin up a
+> separate working branch. If the game gets pushed to another branch, GitHub Pages won't
+> publish it (Pages deploys the **default branch**), and the `github-pages` environment
+> can get pinned to that wrong branch — exactly the snag that breaks the first deploy.
+> Working on `main` keeps every push a one-click deploy.
+
 You keep evolving the engine repo freely afterward — the template flag changes nothing
 else. Note that “Use this template” copies the engine **at that moment**: later engine
 improvements don't auto-flow into already-created game repos. To pull an update into a
