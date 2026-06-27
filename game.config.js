@@ -26,7 +26,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v1",
+    assetVersion: "v2",
     theme: { home: "#171036", play: "#0e1430" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -99,13 +99,17 @@ window.GAME = {
     ],
     actions: [
       { id: "feed", label: "Feed", icon: "🔋",
-        effects: { fuel: 35, joy: 8 }, anim: "eat", stat: "feed",
+        effects: { fuel: 35, joy: 8 }, stat: "feed",
+        // themed particles: little cyan energy sparks float up as it recharges
+        anim: { motion: "nod", particle: "spark", colors: ["#9fe8ff", "#6fb7e8", "#ffffff"], count: 6, y0: 38 },
         message: "{name} recharged happily! 🔋" },
       { id: "play", label: "Play", icon: "🎮",
-        effects: { joy: 22, fuel: -6 }, anim: "cheer", stat: "play",
+        effects: { joy: 22, fuel: -6 }, stat: "play",
+        // themed particles: a burst of STARS instead of hearts
+        anim: { motion: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff", "#ff5db1"], count: 7 },
         message: "{name} had fun! 🎮", celebrateMessage: "{name} glows with joy! ✨" },
     ],
-    celebrate: { mode: "hop" },
+    celebrate: { mode: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff"], count: 7 },
     names: ["Zib", "Quor", "Lumi", "Vex", "Orbit", "Pulse", "Nova", "Echo", "Bly", "Pixl"],
     startCount: 3,
     startCreatures: [{ name: "Zib" }, { name: "Lumi" }, { name: "Pulse" }],

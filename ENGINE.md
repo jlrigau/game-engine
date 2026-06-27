@@ -77,7 +77,7 @@ characters: [ { id, name, sheet, thumb } ]   // sheet=64×64 walkcycle, thumb in
 
 ### `creature` (optional system)
 ```
-label, icon, sheet, origin:{x,y}, walk:{start,end,frameRate},
+label, icon, sheet, origin:{x,y}, walk:{start,end,frameRate}, moodIcon,  // moodIcon = particle shape of the floating mood indicator (default "heart")
 youngLabel, adultLabel, variantLabel, customizeTitle, customizedMessage,
 moodNeed: "joy",                       // the need that drives celebration & day-mood
 moodFrom: ["food","energy","clean","joy"],   // needs averaged into the mood heart
@@ -87,13 +87,30 @@ variants: [ { id, name, color, tint? , sheet? } ],
 actions: [ {
   id, label, icon,
   cost:{resource,amount}?, require:{need:min}?, effects:{need:+/-}?, reward?,
-  anim: "eat"|"cheer"|"sparkle"?, stat?, message?, celebrateMessage?,
+  anim?, stat?, message?, celebrateMessage?,
   type: "ride"|"jump"|"customize"?,   // special actions (omit for a normal care action)
 } ],
 customize: { rename, variant },
 ride: { adultsOnly, minEnergy, fatigueNeed, sitY, nameY, onMount:{...}, *Message,
         jump:{ distance, cost, minEnergy, tooTired } },
-celebrate: { mode:"hop"|"rear", adultsOnly, message },
+celebrate: { mode:"hop"|"rear", adultsOnly, message, particle, colors:[hex], count },
+```
+
+### Theme-driven animations (`action.anim`)
+The engine owns the animation **system**; the theme picks the **look** per action.
+`anim` is either a legacy preset string (`"eat"`, `"cheer"`, `"sparkle"`) or an object:
+```
+anim: {
+  motion: "nod" | "hop" | "bounce" | "none",   // body movement
+  particle: "star" | "heart" | "spark" | "bubble" | "diamond" | "dot",  // built-in shapes
+  colors: ["#fff2a8", "#ffd24a", ...],          // tints cycled across particles
+  count, fall, spread, y0, riseMin, riseMax, scaleMin, scaleMax,        // all optional
+}
+```
+Particle textures are generated procedurally (white, then tinted), so no assets are
+needed. Example: `{ motion:"hop", particle:"star", colors:["#fff2a8","#a8e6ff"], count:7 }`
+emits a burst of stars. `celebrate` (mood-maxed) and `moodIcon` use the same shapes.
+```
 aging: { adultAge, scaleBaby, scaleAdult },
 breeding: { enabled, minMood, cooldown, message },
 names: [...], startCount, startCreatures:[{name,variant}],

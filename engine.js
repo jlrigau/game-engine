@@ -42,6 +42,7 @@ const ECON = G.economy || {};
 const LEVELS = (G.objectives && G.objectives.levels) || [];
 const ENV = G.environment || null;
 const MOOD_NEED = (CREATURE && CREATURE.moodNeed) || null;
+const MOOD_SHAPE = (CREATURE && CREATURE.moodIcon) || "heart";  // particle shape of the mood indicator
 
 // Primary playable zone where creatures roam (first zone flagged home, else first).
 const HOME_ZONE = ZONES.find((z) => z.home) || ZONES[0] || null;
@@ -433,16 +434,6 @@ function buildAnims() {
   }
 }
 
-// Small heart (mood indicator), drawn once then tinted by mood.
-function buildHeart() {
-  if (sc.textures.exists("heart")) return;
-  const g = sc.make.graphics({ x: 0, y: 0, add: false });
-  g.fillStyle(0xffffff, 1);
-  g.fillCircle(6, 7, 6); g.fillCircle(16, 7, 6);
-  g.fillTriangle(0, 9, 22, 9, 11, 23);
-  g.generateTexture("heart", 22, 24); g.destroy();
-}
-
 /* ===================== Fences & zones ===================== */
 
 // Picket fence around a rectangle, with a gate. opts.gates = "both" | "left" | "right".
@@ -603,7 +594,6 @@ function sceneCreate() {
   this.cameras.main.setBounds(-700, -700, WORLD.w + 1400, WORLD.h + 1400);
   this.cameras.main.setBackgroundColor((G.world && G.world.bg) || "#6fae4f");
   buildAnims();
-  buildHeart();
   buildWorld();
   cursors = this.input.keyboard.createCursorKeys();
   // Support both QWERTY (WASD) and AZERTY (ZQSD) without capturing keys from inputs.
@@ -716,7 +706,7 @@ function buildCreatureObj(c) {
   const body = sc.add.sprite(0, 0, creatureTexture(c)).setOrigin(orig.x, orig.y).setScale(scale);
   body.play("creature-walk");
   applyVariantTint(body, c);
-  const heart = sc.add.image(0, heartY(c), "heart").setOrigin(0.5).setScale(0.95).setTint(0x6fcf5f);
+  const heart = sc.add.image(0, heartY(c), ensureShape(MOOD_SHAPE)).setOrigin(0.5).setScale(0.95).setTint(0x6fcf5f);
   const nameT = sc.add.text(0, 22, c.name, { fontSize: "16px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 4 }).setOrigin(0.5);
   const cont = sc.add.container(c.x, c.y, [shadow, body, heart, nameT]);
   c.obj = cont; c.bodyT = body; c.heartT = heart; c.nameT = nameT; c.shadowT = shadow;
@@ -1083,11 +1073,95 @@ function dismount(c, exhausted) {
 
 /* ===================== Animations / effects ===================== */
 
-// Celebration: a happy hop (or rear) + a burst of rising hearts.
+// --- Procedural particle textures (drawn white so they tint to any colour) ---
+function starPoints(cx, cy, R, r, n) {
+  const pts = [];
+  for (let i = 0; i < n * 2; i++) {
+    const rad = (i % 2) ? r : R, a = -Math.PI / 2 + i * Math.PI / n;
+    pts.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad });
+  }
+  return pts;
+}
+// Built-in particle shapes. A theme can ask for any of these per action; an
+// unknown name falls back to a soft dot. Cached once per shape.
+function ensureShape(shape) {
+  const key = "pt_" + shape;
+  if (sc.textures.exists(key)) return key;
+  const g = sc.make.graphics({ x: 0, y: 0, add: false });
+  g.fillStyle(0xffffff, 1);
+  const S = 24, c = 12;
+  if (shape === "heart") {
+    g.fillCircle(7, 8, 6); g.fillCircle(17, 8, 6); g.fillTriangle(1, 10, 23, 10, 12, 24);
+  } else if (shape === "star") {
+    g.fillPoints(starPoints(c, c, 11, 4.6, 5), true);
+  } else if (shape === "spark") {
+    g.fillPoints([{ x: c, y: 0 }, { x: c + 4, y: c }, { x: c, y: S }, { x: c - 4, y: c }], true);
+    g.fillPoints([{ x: 0, y: c }, { x: c, y: c - 4 }, { x: S, y: c }, { x: c, y: c + 4 }], true);
+  } else if (shape === "diamond") {
+    g.fillPoints([{ x: c, y: 1 }, { x: S - 1, y: c }, { x: c, y: S - 1 }, { x: 1, y: c }], true);
+  } else if (shape === "bubble" || shape === "ring") {
+    g.lineStyle(3, 0xffffff, 1); g.strokeCircle(c, c, 9); g.fillCircle(c - 3, c - 3, 2);
+  } else { // dot / default
+    g.fillCircle(c, c, 5);
+  }
+  g.generateTexture(key, S, S); g.destroy();
+  return key;
+}
+
+// Emit a burst of particles. spec: {shape, colors:[hex], count, fall, spread, y0, riseMin/Max, scaleMin/Max}.
+function emitBurst(x, y, spec) {
+  if (!sc) return;
+  spec = spec || {};
+  const key = ensureShape(spec.shape || "dot");
+  const colors = (spec.colors && spec.colors.length ? spec.colors : ["#ffffff"]).map((v) => typeof v === "string" ? hexInt(v) : v);
+  const n = spec.count || 5, fall = !!spec.fall;
+  const spread = spec.spread || 24, y0 = spec.y0 != null ? spec.y0 : 46;
+  const sMin = spec.scaleMin || 0.7, sMax = spec.scaleMax || 1.1;
+  for (let i = 0; i < n; i++) {
+    const p = sc.add.image(x + randInt(-spread, spread), y - y0, key)
+      .setDepth(99998).setScale(randInt(Math.round(sMin * 10), Math.round(sMax * 10)) / 10).setTint(colors[i % colors.length]);
+    const dy = fall ? randInt(16, 30) : -randInt(spec.riseMin || 46, spec.riseMax || 82);
+    sc.tweens.add({ targets: p, y: p.y + dy, alpha: 0, duration: randInt(spec.durMin || 500, spec.durMax || 880),
+      ease: fall ? "Quad.easeIn" : "Sine.easeOut", onComplete: () => p.destroy() });
+  }
+}
+
+// Body motion presets used by action animations.
+function applyMotion(c, motion) {
+  if (!c.bodyT || !sc || motion === "none") return;
+  const m = motion || "bounce";
+  if (m === "nod") sc.tweens.add({ targets: c.bodyT, y: 7, duration: 120, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
+  else if (m === "hop") sc.tweens.add({ targets: c.bodyT, y: -24, duration: 210, yoyo: true, ease: "Quad.easeOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
+  else sc.tweens.add({ targets: c.bodyT, y: -12, duration: 130, yoyo: true, ease: "Quad.easeOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
+}
+
+// Legacy string presets (back-compat) for action.anim.
+const ANIM_PRESETS = {
+  eat: { motion: "nod", shape: "dot", colors: ["#e8b34a", "#c98a2e"], count: 5, fall: true, y0: 36 },
+  cheer: { motion: "hop", shape: "heart", colors: ["#ff7eb6", "#7fd06f", "#ffd24a"], count: 5 },
+  sparkle: { motion: "bounce", shape: "spark", colors: ["#ffffff", "#fff2a8", "#a8e6ff"], count: 5 },
+};
+
+// THEME-DRIVEN action animation. `anim` is a preset string OR an object:
+//   { motion:"nod"|"hop"|"bounce"|"none", particle:"star"|"heart"|"spark"|"bubble"|"diamond"|"dot",
+//     colors:[hex...], count, fall, spread, y0 }
+function actionAnim(c, anim) {
+  if (!c.obj || !c.bodyT || !sc) return;
+  const spec = (typeof anim === "string") ? (ANIM_PRESETS[anim] || { motion: "bounce" }) : (anim || {});
+  applyMotion(c, spec.motion);
+  const shape = spec.shape || spec.particle;
+  if (shape || (spec.colors && spec.colors.length)) {
+    emitBurst(c.x, c.y, { shape, colors: spec.colors, count: spec.count, fall: spec.fall, y0: spec.y0,
+      spread: spec.spread, riseMin: spec.riseMin, riseMax: spec.riseMax, scaleMin: spec.scaleMin, scaleMax: spec.scaleMax });
+  }
+}
+
+// Celebration: a happy hop (or rear) + a configurable particle burst.
 function celebrate(c) {
   if (!c.bodyT || !sc || c.celebrating) return;
   c.celebrating = true;
-  const mode = (CREATURE.celebrate && CREATURE.celebrate.mode) || "hop";
+  const cel = CREATURE.celebrate || {};
+  const mode = cel.mode || "hop";
   const t = c.bodyT;
   if (mode === "rear") {
     const orig = CREATURE.origin || { x: 0.46, y: 0.734 };
@@ -1105,52 +1179,8 @@ function celebrate(c) {
       onComplete: () => { if (t) t.y = 0; c.celebrating = false; },
     });
   }
-  burstHearts(c.x, c.y);
-  if (CREATURE.celebrate && CREATURE.celebrate.message) message(CREATURE.celebrate.message.replace("{name}", c.name));
-}
-
-function burstHearts(x, y) {
-  const tints = [0xff7eb6, 0x7fd06f, 0xffd24a];
-  for (let i = 0; i < 4; i++) {
-    const h = sc.add.image(x + randInt(-24, 24), y - 50, "heart").setDepth(99998).setScale(randInt(7, 11) / 10).setTint(tints[i % tints.length]);
-    sc.tweens.add({ targets: h, y: h.y - randInt(48, 84), alpha: 0, duration: randInt(650, 950), ease: "Sine.easeOut", onComplete: () => h.destroy() });
-  }
-}
-
-function bounce(c) {
-  if (c.bodyT && sc) sc.tweens.add({ targets: c.bodyT, y: -12, duration: 130, yoyo: true, ease: "Quad.easeOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
-}
-
-function ensureCrumb() {
-  if (!sc || sc.textures.exists("crumb")) return;
-  const g = sc.add.graphics();
-  g.fillStyle(0xe8b34a, 1); g.fillCircle(5, 5, 5);
-  g.fillStyle(0xc98a2e, 1); g.fillCircle(5, 5, 2.4);
-  g.generateTexture("crumb", 10, 10); g.destroy();
-}
-
-// Per-type action animation: "eat" (nod + crumbs), "cheer" (hop + hearts), "sparkle".
-function actionAnim(c, type) {
-  if (!c.obj || !c.bodyT || !sc) return;
-  const x = c.x, y = c.y;
-  if (type === "eat") {
-    sc.tweens.add({ targets: c.bodyT, y: 7, duration: 120, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
-    ensureCrumb();
-    for (let i = 0; i < 5; i++) {
-      const p = sc.add.image(x + randInt(-20, 20), y - 36, "crumb").setDepth(99998).setScale(randInt(7, 12) / 10);
-      sc.tweens.add({ targets: p, y: p.y + randInt(16, 30), alpha: 0, duration: randInt(420, 700), ease: "Quad.easeIn", onComplete: () => p.destroy() });
-    }
-  } else if (type === "cheer") {
-    sc.tweens.add({ targets: c.bodyT, y: -24, duration: 210, yoyo: true, ease: "Quad.easeOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
-    burstHearts(x, y);
-  } else if (type === "sparkle") {
-    bounce(c);
-    const tints = [0xffffff, 0xfff2a8, 0xa8e6ff];
-    for (let i = 0; i < 5; i++) {
-      const s = sc.add.image(x + randInt(-22, 22), y - 30, "heart").setDepth(99998).setScale(randInt(5, 8) / 10).setTint(tints[i % tints.length]);
-      sc.tweens.add({ targets: s, y: s.y - randInt(30, 60), alpha: 0, duration: randInt(420, 700), ease: "Sine.easeOut", onComplete: () => s.destroy() });
-    }
-  } else { bounce(c); }
+  emitBurst(c.x, c.y, { shape: cel.particle || "heart", colors: cel.colors || ["#ff7eb6", "#7fd06f", "#ffd24a"], count: cel.count || 5, y0: 50, riseMin: 48, riseMax: 84 });
+  if (cel.message) message(cel.message.replace("{name}", c.name));
 }
 
 /* ===================== Day cycle ===================== */
