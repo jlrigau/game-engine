@@ -194,13 +194,6 @@ assets/ (img · sheet · ui · CREDITS.md) · vendor/phaser.min.js
 .claude/skills/ (+ _shared/ tooling) · .github/workflows/deploy.yml
 ```
 
-### Why a template (not a fork)?
-A fork stays linked upstream and you can only fork a repo once per account — awkward for
-many independent games. A template gives **clean, independent copies**. Trade-off: a
-template copies the engine **as it is now**, so later engine improvements don't auto-flow
-into games already created — to pull one in, copy the newer `engine.js` over (it's a
-single generic file). Use a fork instead only if you want `git pull`-able engine updates.
-
 ---
 
 ## 🎨 Credits
