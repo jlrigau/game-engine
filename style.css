@@ -56,8 +56,15 @@ body {
 #screen-home, #screen-create {
   position: fixed; inset: 0; height: auto;
   align-items: center; justify-content: center;
-  background-color: var(--deep); background-image: var(--app-bg); background-attachment: fixed;
+  background-color: var(--deep); background-image: var(--app-bg);
   padding: calc(8px + env(safe-area-inset-top)) 12px calc(8px + env(safe-area-inset-bottom));
+}
+/* Explicitly paint the bottom home-indicator strip (iOS standalone) with the base
+   colour — background-attachment:fixed is unreliable on iOS, so we don't rely on it. */
+#screen-home::after, #screen-create::after {
+  content: ""; position: fixed; left: 0; right: 0; bottom: 0;
+  height: env(safe-area-inset-bottom); background: var(--deep);
+  z-index: 0; pointer-events: none;
 }
 .box-home, .box-create {
   background: var(--panel); border: 2px solid var(--neon); border-radius: 22px;
