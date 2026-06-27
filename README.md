@@ -8,8 +8,6 @@ answer a few questions.
 It ships with a working demo, **Nebula Nursery** (a keeper robot tends glowing alien
 critters in a space nursery), so a new game starts from something that already runs.
 
-👉 **Start here: [Create a new game](#-create-a-new-game).**
-
 ---
 
 ## 🆕 Create a new game
