@@ -1,4 +1,4 @@
-# 🎮 2D Game Engine — a template for making top-down games
+# 🎮 Game Engine
 
 A **template repository** for building small top-down 2D games (Phaser 3, 100% static,
 no build). The engine is generic: you don't code a game, you **describe** it in one
