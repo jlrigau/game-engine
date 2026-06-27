@@ -3,7 +3,8 @@
 The engine (`engine.js`) is **data-driven** and contains no game content. A game is a
 single global object `window.GAME` defined in `game.config.js`, plus its assets. This
 file documents every field and the engine capabilities they drive. Use `game.config.js`
-(the "Critter Cove" demo) as a working template.
+(the minimal "Nebula Nursery" demo) as a working template. The demo only uses a subset
+of the fields below — every system is optional, so start small and add as you iterate.
 
 > Load order in `index.html`: `vendor/phaser.min.js` → `game.config.js` → `engine.js`.
 
@@ -45,6 +46,7 @@ can override only what you want).
 title, titleIcon, shortName, tagline, saveKey, assetVersion: "vN",
 audience: { minAge, notes },          // used by the asset skills' content policy
 theme: { home, play },                 // iOS theme-color per screen
+showCoins,                             // false → hide the coins HUD (no economy)
 coinIcon, namePrompt:{label,placeholder}, startName, namePromptYou, avatarPrompt,
 createTitle, createOkLabel, startLabel, continueLabel, continueHint, helpTitle,
 ageUnit, and, nightMessage, restBlockedHint, neglectMessage, morningMessage,

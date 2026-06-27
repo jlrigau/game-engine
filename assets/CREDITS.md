@@ -1,29 +1,29 @@
 # Asset credits
 
-This engine ships a demo game ("Critter Cove"). Its assets come from two places.
+The engine ships a minimal demo game, **Nebula Nursery**. **All of its textures are
+generated procedurally** and original to this repo — nothing is reused from any other
+game's art. They are dedicated to the public domain (**CC0**).
 
-## Generated (original, CC0)
-- **Creatures** (`assets/sheet/critter.png`) — abstract "critter" companions, generated
-  procedurally (Pillow). Recoloured at runtime by tint for each variant.
-- **Icons** (`assets/favicon.png`, `assets/apple-touch-icon.png`) — generated.
+| Asset | File | Notes |
+| --- | --- | --- |
+| Metal/starfield ground | `assets/img/ground.png` | tileable |
+| Neon energy floor | `assets/img/energy.png` | tileable path/patch |
+| Keeper robot (2 colours) | `assets/sheet/keeper.png`, `keeper_amber.png` | 64×64 walkcycle (hovering) |
+| Keeper thumbnails | `assets/ui/keeper_thumb.png`, `keeper_amber_thumb.png` | menu portraits |
+| Alien critter | `assets/sheet/critter.png` | 64×64, 4-frame bob; recoloured by tint if variants are added |
+| Energy barrier | `assets/sheet/fence.png` | 32×32 glowing posts |
+| Recharge pod | `assets/img/pod_rest.png` | sci-fi building |
+| Crystal, alien plant | `assets/img/crystal.png`, `alienplant.png` | scenery |
+| App icons | `assets/favicon.png`, `assets/apple-touch-icon.png` | generated |
 
-These are original to this repo and dedicated to the public domain (**CC0**).
-
-## Reused pixel-art (LPC — free, attribution required)
-Environment, characters and fences reuse pixel-art from the **LPC (Liberated Pixel
-Cup)** universe, free under **CC-BY / CC-BY-SA**. Attribution below is **required**.
-
-| Asset (in the demo) | Source | Author(s) | License |
-| --- | --- | --- | --- |
-| Player characters (animated body) | [\[LPC\] Children walk animation](https://opengameart.org/content/lpc-children-walk-animation) | Nila122, kheftel, Makrohn | CC-BY-SA 3.0 / GPL 3.0 / OGA-BY 3.0 |
-| Character clothes & hair | [\[LPC\] Clothes for children](https://opengameart.org/content/lpc-clothes-for-children) | Nila122 | CC-BY-SA 3.0 / GPL 3.0 / OGA-BY 3.0 |
-| Ground (grass, dirt), trees, bushes | [LPC Base Assets](https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles) | Lanea Zimmerman (Sharm), Stephen Challener (Redshrike) and contributors | CC-BY-SA 3.0 / CC-BY 3.0 / GPL 3.0 |
-| Buildings (cabins), water trough | [\[LPC\] Farm](https://opengameart.org/content/lpc-farm) | bluecarrot16, Wolthera van Hövell tot Westerflier (TheraHedwig), Ivan Voirol | CC-BY 4.0 |
-| Fences, hedge/obstacle, logs | [\[LPC\] Medieval Village Decorations](https://opengameart.org/content/lpc-medieval-village-decorations) | bluecarrot16, Lanea Zimmerman (Sharm), Tuomo Untinen (Reemax) and contributors | CC-BY-SA 3.0 / CC-BY-SA 4.0 |
-
-The sprites in `assets/img/` and `assets/ui/` are **crops** of the sheets above, with no
-change of style. Spritesheets used at runtime live in `assets/sheet/`.
+Generation script: Pillow (see commit history / the `new-game` skill for how the demo's
+textures and icons are produced).
 
 ## Engine dependency
 - **Phaser 3** (v3.80.1) is vendored at `vendor/phaser.min.js` — MIT license,
   © Phaser Studio / Richard Davey.
+
+## Making your own game
+When you build a different game on this engine, source or generate your own textures
+(see the **asset-search** / **asset-add** skills) and credit any third-party assets
+here with their author + license.

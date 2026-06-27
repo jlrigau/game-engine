@@ -9,6 +9,15 @@ Turn the engine into a specific game **without touching `engine.js`**. A game =
 `game.config.js` (the whole definition) + assets + CSS theme. This skill authors them
 from a short interview.
 
+## ⭐ Start MINIMAL
+A new game should ship **small**: the core loop and little else. Features get added by
+**iterating** afterwards (that's the whole point). A good seed is roughly: one world
+zone, one or two characters, a creature with **1–2 needs** and **2 care actions**, maybe
+one station and a tiny objectives set — and **nothing more**. Leave variants, shop,
+riding/obstacles, breeding, decorations, trail loops OFF until the user asks. Use
+`meta.showCoins:false` when there's no economy; omit `objectives` to hide goals. The
+engine stays fully capable — you're choosing what to enable, not removing anything.
+
 ## Step 1 — Interview (AskUserQuestion)
 Ask only what changes the output. Bundle into 1–2 `AskUserQuestion` calls:
 - **Theme / subject**: what is the game about? (e.g. space pets, plant garden, robot
@@ -22,10 +31,11 @@ Ask only what changes the output. Bundle into 1–2 `AskUserQuestion` calls:
   **actions** (feed/clean/play/ride… or theme equivalents). Keep it close to the
   engine's supported systems (see `ENGINE.md` for the full list of capabilities).
 - **Optional systems**: variants, customization, riding+obstacles, breeding, aging,
-  shop, decorations, objectives/levels, trail loop. Default = include the common ones.
+  shop, decorations, objectives/levels, trail loop. **Default = OFF.** Only enable one
+  if the user explicitly wants it in the first version.
 
 If an answer is obvious from the theme, pick a sensible default and say so — don't
-over-ask.
+over-ask. Bias toward the smallest playable game.
 
 ## Step 2 — Author `game.config.js`
 Write a new `game.config.js` (the **whole** game) following the schema in **`ENGINE.md`**.

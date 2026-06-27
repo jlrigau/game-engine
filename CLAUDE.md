@@ -8,7 +8,10 @@ engine code holds **no game content**; a game is fully described by `game.config
 (`window.GAME`) + assets. Swap config + assets (or run the **new-game** skill) to make a
 different game from the same engine and skills.
 
-Ships a neutral demo: **Critter Cove** (care for cute abstract critters in a meadow).
+Ships a **minimal** neutral demo: **Nebula Nursery** — a keeper robot tends a few
+glowing alien critters in a tiny space nursery (feed/play + mood, one rest station,
+3 simple goals). Deliberately small: richer features (variants, shop, riding, breeding,
+trail loops…) are added by **iterating** on the config, not shipped in the demo.
 
 ## 2. Golden rule
 - **`engine.js` is generic — never put game content in it.** All game data, strings,
@@ -63,3 +66,8 @@ ios-pwa-check, release-deploy. Shared tooling in `_shared/`.
 - Engine, config and skills are in **English**. Clear commit messages.
 - Keep `game.config.js` the single source of game content; auto-save stays in place.
 - Set `GAME.meta.audience` honestly — the asset skills rely on it for content safety.
+- **New games start MINIMAL.** A demo/seed should have few features; you grow it by
+  iterating. The engine stays fully capable — features are config-gated, not removed.
+- Demo textures are **generated** and specific to the game's universe (no reuse from a
+  different game's art). `meta.showCoins:false` hides the economy; the goals button
+  auto-hides when there are no objective levels.

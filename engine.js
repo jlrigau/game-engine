@@ -111,7 +111,7 @@ function newCreature(o = {}) {
   const c = {
     id: idCounter++,
     name: o.name || freeName(),
-    variant: o.variant || pick(VARIANTS).id,
+    variant: o.variant || (VARIANTS.length ? pick(VARIANTS).id : null),
     age: o.age != null ? o.age : randInt((CREATURE.aging && CREATURE.aging.adultAge) || 5, ((CREATURE.aging && CREATURE.aging.adultAge) || 5) + 4),
     x: 0, y: 0, tx: 0, ty: 0, nextStep: 0, obj: null,
   };
@@ -264,7 +264,10 @@ function startGame() {
 // Build the resource bar from config (coins, each resource, day, capacity, level).
 function buildHud() {
   const bar = $("hud-resources"); if (!bar) return;
-  let html = `<span class="resource" title="Coins">${META.coinIcon || "💰"} <b id="hud-coins">0</b></span>`;
+  // The goals button only makes sense when objective levels exist.
+  const gb = $("btn-goals"); if (gb) gb.classList.toggle("hidden", !LEVELS.length);
+  let html = META.showCoins === false ? ""
+    : `<span class="resource" title="Coins">${META.coinIcon || "💰"} <b id="hud-coins">0</b></span>`;
   (SHOP.resources || []).forEach((r) => {
     html += `<span class="resource" title="${r.name}">${r.icon || "📦"} <b id="hud-res-${r.id}">0</b></span>`;
   });
@@ -276,7 +279,7 @@ function buildHud() {
 
 function refreshHud() {
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-  set("hud-coins", state.coins);
+  if (META.showCoins !== false) set("hud-coins", state.coins);
   (SHOP.resources || []).forEach((r) => set("hud-res-" + r.id, (state.resources[r.id] || 0)));
   set("hud-day", state.day);
   if (CREATURE) set("hud-cap", state.creatures.length + "/" + state.capacity);
@@ -570,13 +573,14 @@ function buildEnvironment() {
   }
 }
 
-// Fixed interior scenery: [x, y, sprite, scale].
+// Fixed interior scenery: [x, y, sprite, scale, collision?] where collision is a
+// box {dx,dy,w,h}, or false for none, or omitted for a default base footprint.
 function buildScenery() {
-  (G.scenery || []).forEach(([x, y, sprite, scale]) => {
+  (G.scenery || []).forEach(([x, y, sprite, scale, box]) => {
     sc.add.image(x, y, sprite).setOrigin(0.5, 0.95).setScale(scale).setDepth(y);
-    const meta = (G.assets && G.assets.images && G.assets.images[sprite]) ? sprite : null;
-    if (sprite === (ENV && ENV.forest && ENV.forest.tree) || sprite === "tree") COLLISIONS.push({ x: x - 15, y: y - 22, w: 30, h: 24 });
-    else COLLISIONS.push({ x: x - 26 * scale, y: y - 16, w: 52 * scale, h: 20 });
+    if (box === false) return;
+    if (box) COLLISIONS.push({ x: x + box.dx, y: y + box.dy, w: box.w, h: box.h });
+    else COLLISIONS.push({ x: x - 16 * scale, y: y - 16, w: 32 * scale, h: 20 });
   });
 }
 
