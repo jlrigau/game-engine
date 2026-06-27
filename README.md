@@ -136,6 +136,35 @@ All optional and config-gated (see ENGINE.md):
 
 ## 🆕 Make a new game
 
+### Keep the engine, spin each game into its own repo (recommended)
+
+This repo is the **engine** (+ a demo). Don't build your game *in* it — give each game
+its **own repository** so the engine stays clean and reusable. The simplest way is a
+GitHub **template repository** (not a fork — a fork stays linked upstream and you can
+only fork once per account; a template gives clean, independent copies, as many as you
+want).
+
+1. **One-time — mark the engine as a template:** on this repo, **Settings → General →**
+   tick **“Template repository”** (saves instantly). A green **“Use this template”**
+   button now appears on the repo home.
+2. **For each new game:** **“Use this template” → “Create a new repository”**, name it
+   (e.g. `my-space-game`). You get a fresh, independent repo with the whole engine + demo.
+3. **Make it your game:** open the new repo in Claude Code and run **`/new-game`** (or
+   *“create a game about …”*) — it rewrites `game.config.js` + assets + theme **without
+   touching `engine.js`**.
+4. **Publish it:** in the new repo, **Settings → Pages → Source: “GitHub Actions”**.
+   Because `main` is the default branch from creation, the first deploy succeeds right
+   away (no environment quirk to fix).
+
+You keep evolving the engine repo freely afterward — the template flag changes nothing
+else. Note that “Use this template” copies the engine **at that moment**: later engine
+improvements don't auto-flow into already-created game repos. To pull an update into a
+game, copy the newer `engine.js` over (it's a single generic file — that's the point of
+the engine/config split), or use a **fork** instead of a template if you want
+`git pull`-able updates.
+
+### Inside a game repo
+
 **The easy way — the `new-game` skill.** In Claude Code, ask to *“create a new game”*
 (or `/new-game`). It interviews you for the **theme, target audience/age, art style,
 language and core loop**, then writes a fresh `game.config.js`, sources/generates the
