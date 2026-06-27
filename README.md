@@ -8,6 +8,8 @@ answer a few questions.
 It ships with a working demo, **Nebula Nursery** (a keeper robot tends glowing alien
 critters in a space nursery), so a new game starts from something that already runs.
 
+▶ **[Play the live demo](https://jlrigau.github.io/game-engine/)**
+
 ---
 
 ## 🆕 Create a new game
