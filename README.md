@@ -111,23 +111,83 @@ pushes, and confirms the deploy went green.
 
 ---
 
-## 🧩 Under the hood (engine reference)
+## 🧩 How the game works with the engine
 
-You usually don't touch this, but for the curious or for advanced edits:
+You don't need this to make a game (the steps above do), but it explains what's actually
+happening, and it's what you'll edit for advanced changes.
 
-- A game = **engine + config + assets**. `index.html` loads
-  `vendor/phaser.min.js → game.config.js → engine.js`. The engine reads the global
-  `window.GAME` and runs every system; it holds **no game content**.
-- `game.config.js` is the whole game (data + asset refs); `style.css` is the theme
-  (CSS variables at the top).
-- The engine can do (all optional, switched on from config): tiled world + camera/zoom ·
-  walkcycle avatars + create screen · creatures with needs/actions/variants/customize/
-  aging/breeding · ride + hop-over obstacles · stations (rest/shop) · economy + shop +
-  placeable decor · AABB collisions · arena + trail-loop environment · day/night ·
-  objectives/levels · theme-driven particle effects · localStorage save · PWA/iOS.
-- **The full config schema and capability list live in [ENGINE.md](ENGINE.md).**
-- Golden rule: **never put game content in `engine.js`.** If the engine truly lacks a
-  capability, add it there as a generic, config-gated feature and document it in ENGINE.md.
+**The model — a game is `engine + config + assets`.** At load, `index.html` runs three
+scripts **in order**:
+
+```
+vendor/phaser.min.js   →   game.config.js   →   engine.js
+                            (window.GAME)        (reads window.GAME)
+```
+
+- `engine.js` is the **generic engine**: it implements every system (movement, rendering,
+  collisions, UI, day cycle, save…) but contains **no game content**. You don't edit it.
+- `game.config.js` is your **whole game**: all data, strings, world geometry, the
+  creature and its needs/actions, economy, objectives, and references to assets — set on
+  the global `window.GAME`.
+- `style.css` is the **theme** (CSS variables at the top). `assets/` holds the art.
+
+**Anatomy of `game.config.js`.** It assigns one object whose top-level keys are the
+game's building blocks:
+
+```js
+window.GAME = {
+  meta,            // title, icons, save key, theme colours, audience, UI strings
+  world, camera,   // size, ground tile, background, zoom
+  assets, fence,   // images + spritesheets to load
+  player, characters,   // avatar(s) and the create screen
+  creature,        // the creature system (needs, actions, variants, ride, breeding…)
+  zones, stations, // the pen; buildings (rest / shop / custom)
+  economy, shop, decor,      // coins, shop, placeable decorations
+  environment, scenery,      // arena + trail loop + scattered props
+  objectives, help,          // gamification levels; help screen
+};
+```
+
+For example, the demo's creature is described — not coded — like this:
+
+```js
+creature: {
+  label: "critters", sheet: "critter", scale: 1.0,
+  moodNeed: "joy", moodFrom: ["fuel", "joy"],
+  needs: [ { id: "fuel", icon: "🔋", start: 70, perDay: -22 }, { id: "joy", icon: "😊", start: 80 } ],
+  actions: [
+    { id: "feed", label: "Feed", icon: "🔋", effects: { fuel: 35, joy: 8 },
+      anim: { motion: "nod", particle: "spark", colors: ["#9fe8ff", "#ffffff"] }, message: "{name} recharged! 🔋" },
+    { id: "play", label: "Play", icon: "🎮", effects: { joy: 22, fuel: -6 },
+      anim: { motion: "hop", particle: "star", colors: ["#fff2a8", "#a8e6ff"] }, message: "{name} had fun! 🎮" },
+  ],
+  names: ["Zib", "Lumi", "Pulse"], startCount: 3,
+},
+```
+
+Handy to know:
+- **Every UI string** has an engine fallback — override only what you want in `meta`.
+  Strings interpolate `{name}`, `{day}`, `{names}`, `{item}`.
+- **Actions** are data: needs they change, a coin reward, a cost, and a **theme-driven
+  animation** (`motion` + a particle `shape` + `colors`). Stars, sparks, hearts… are
+  chosen here, not hard-coded.
+- **Objectives** use a `check(state)` function, so a goal can test anything in the game
+  state (`state.coins`, `state.creatures`, `state.stats`, …).
+- **Variants** can be a colour **tint** of one sheet (no extra art) or a dedicated sheet.
+- **Whole systems turn off by omission** (`ride`, `breeding`, `aging`, `shop`, `decor`,
+  `environment`, `objectives`); `meta.showCoins:false` hides the economy.
+
+**Everything the engine can do** (all optional, switched on from config): tiled world +
+camera/zoom · walkcycle avatars + create screen · creatures with
+needs/actions/variants/customize/aging/breeding · ride + hop-over obstacles · stations
+(rest/shop) · economy + shop + placeable decor · AABB collisions · arena + trail-loop
+environment · day/night · objectives/levels · theme-driven particle effects ·
+localStorage save · PWA/iOS. **The full field-by-field schema is in
+[ENGINE.md](ENGINE.md).**
+
+> **Golden rule:** never put game content in `engine.js`. If the engine truly lacks a
+> capability, add it there as a *generic, config-gated* feature and document it in
+> ENGINE.md — so every game can use it.
 
 ```
 index.html · style.css · engine.js · game.config.js   the site
