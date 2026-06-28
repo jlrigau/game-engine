@@ -26,7 +26,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v16",
+    assetVersion: "v17",
     theme: { home: "#171036", play: "#0e1430" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -39,7 +39,7 @@ window.GAME = {
     continueLabel: "📂 Continue",
     continueHint: "A saved game exists: tap “Continue”. 👾",
     helpTitle: "❓ How to play",
-    ageUnit: "", and: "and",
+    ageUnit: "c", and: "and",
     nightMessage: "🌙 The lights dim…",
     restBlockedHint: "You just woke up! Look after a critter first. 👾",
     neglectMessage: "🌅 Cycle {day}. Look after {names}!",
@@ -90,13 +90,16 @@ window.GAME = {
     { id: "amber", name: "Sol", sheet: "keeper_amber", thumb: "keeper_amber_thumb" },
   ],
 
-  /* ---- Creature system (3 needs, 3 care actions + colour customization) ---- */
+  /* ---- Creature system (3 needs, 3 actions, antenna variants, aging) ---- */
   creature: {
     label: "critters", icon: "👾",
     sheet: "critter",
     scale: 1.0,
     origin: { x: 0.5, y: 0.78 },
     walk: { start: 0, end: 3, frameRate: 6 },
+    // Critters hatch tiny and grow to full size over a few cycles.
+    aging: { adultAge: 4, scaleBaby: 0.55, scaleAdult: 1.0 },
+    youngLabel: "🐣 Hatchling", adultLabel: "🌟 Grown",
     // Mood = average of the three needs (the coloured heart above each critter).
     // joy is the MOOD_NEED: maxing it (via Play) triggers the little celebration,
     // and it gently drifts each cycle depending on how well the other needs are kept up.
@@ -157,8 +160,8 @@ window.GAME = {
     celebrate: { mode: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff"], count: 7 },
     names: ["Zib", "Quor", "Lumi", "Vex", "Orbit", "Pulse", "Nova", "Echo", "Bly", "Pixl"],
     startCount: 3,
-    startCreatures: [{ name: "Zib", variant: "aqua" }, { name: "Lumi", variant: "rose" }, { name: "Pulse", variant: "lime" }],
-    // (variant ids above map to the recoloured antenna sheets)
+    // A mix to show off growth: two grown critters and one fresh hatchling (grows over ~4 cycles).
+    startCreatures: [{ name: "Zib", variant: "aqua", age: 6 }, { name: "Lumi", variant: "rose", age: 5 }, { name: "Pulse", variant: "lime", age: 0 }],
   },
 
   /* ---- Zone (the nursery pen where critters roam) ---- */
@@ -204,6 +207,7 @@ window.GAME = {
     "<b>👾 Three needs:</b> 🔋 Energy (Feed), 🎮 Fun (Play) and ✨ Sparkle (Polish). The heart over each critter shows its mood — keep it green!",
     "<b>✨ Polish:</b> when a critter gathers cosmic dust it pops a ✨ bubble. Tap it to zoom right in and rub the dust off with your finger until it sparkles!",
     "<b>🎨 Style:</b> tap a critter then 🎨 Style to rename it or change its antenna colour.",
+    "<b>🐣 Growing up:</b> hatchlings start tiny and grow to full size over a few cycles — look after them as they grow!",
     "<b>🌙 Recharge Pod:</b> rest to reach the next cycle. Send everyone to sleep happy for a glowing send-off! ✨",
     "<b>🤖 (top):</b> change your keeper. 💾 The game saves automatically.",
   ],
