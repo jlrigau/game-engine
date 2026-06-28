@@ -26,7 +26,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v22",
+    assetVersion: "v23",
     theme: { home: "#171036", play: "#0e1430" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -64,6 +64,11 @@ window.GAME = {
       pod_rest: "assets/img/pod_rest.png",
       critter_closeup: "assets/img/critter_closeup.png", dust: "assets/img/dust.png", cloth: "assets/img/cloth.png",
       want_dust: "assets/img/want_dust.png",
+      // per-variant close-up backdrops (antennae recoloured to match each critter's glow)
+      critter_closeup_amber: "assets/img/critter_closeup_amber.png",
+      critter_closeup_aqua: "assets/img/critter_closeup_aqua.png",
+      critter_closeup_lime: "assets/img/critter_closeup_lime.png",
+      critter_closeup_violet: "assets/img/critter_closeup_violet.png",
     },
     sheets: {
       keeper: { path: "assets/sheet/keeper.png", frameWidth: 64, frameHeight: 64 },
@@ -123,12 +128,13 @@ window.GAME = {
     // Variants in SHEET mode: only the ANTENNA TIPS are recoloured (body stays the
     // same) — a tasteful detail rather than tinting the whole creature. "rose" is the
     // base sheet; the others are antenna-recoloured copies. New critters get a random one.
+    // sheet = recoloured antenna spritesheet (in-world); closeupBg = matching zoom backdrop
     variants: [
       { id: "rose", name: "Rose", color: "#ff5db1" },
-      { id: "amber", name: "Amber", color: "#ffc24a", sheet: "critter_amber" },
-      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua" },
-      { id: "lime", name: "Lime", color: "#8df06b", sheet: "critter_lime" },
-      { id: "violet", name: "Violet", color: "#b58bff", sheet: "critter_violet" },
+      { id: "amber", name: "Amber", color: "#ffc24a", sheet: "critter_amber", closeupBg: "critter_closeup_amber" },
+      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua", closeupBg: "critter_closeup_aqua" },
+      { id: "lime", name: "Lime", color: "#8df06b", sheet: "critter_lime", closeupBg: "critter_closeup_lime" },
+      { id: "violet", name: "Violet", color: "#b58bff", sheet: "critter_violet", closeupBg: "critter_closeup_violet" },
     ],
     variantLabel: "Antennae",
     customize: { rename: true, variant: true },

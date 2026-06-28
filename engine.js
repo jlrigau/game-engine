@@ -1725,6 +1725,11 @@ function cuEmoji(left, top, glyphs, burst) {
 
 function cuFinish() {
   const { c, a } = cuState;
+  // Release the pointer capture NOW (stage still visible) rather than 950ms later when the
+  // overlay hides — on iOS a finger still down when a captured element is removed/hidden
+  // leaves the capture stuck and freezes later taps. Releasing early avoids that.
+  if (cuState) cuState.pressed = false;
+  cuReleaseCapture();
   const parts = (a.closeup && a.closeup.finishParticles) || ["⭐", "💖", "✨", "🌟"];
   for (let i = 0; i < 16; i++) cuEmoji((10 + Math.random() * 80) + "%", (18 + Math.random() * 55) + "%", [parts[i % parts.length]], true);
   setTimeout(() => { closeCloseup(); cuApply(c, a); }, 950);
@@ -1760,7 +1765,11 @@ function closeCloseup() {
   moveTarget = null; pendingInteract = null; followCreature = null;
   running = false; jumpRunning = false;
   themeColor((META.theme && META.theme.play) || TINT_PLAY);
-  if (sc && sc.input && sc.input.keyboard) { sc.input.keyboard.enabled = true; sc.input.keyboard.resetKeys(); }
+  if (sc && sc.input) {                                  // re-assert pointer + keyboard input
+    sc.input.enabled = true;
+    if (sc.input.manager) sc.input.manager.enabled = true;
+    if (sc.input.keyboard) { sc.input.keyboard.enabled = true; sc.input.keyboard.resetKeys(); }
+  }
   if (sc && player) sc.cameras.main.startFollow(player, true, 0.5, 0.5);
 }
 
