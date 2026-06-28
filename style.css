@@ -26,6 +26,7 @@ html, body { height: 100%; touch-action: manipulation; -webkit-text-size-adjust:
 input[type="text"], textarea { -webkit-user-select: text; user-select: text; }
 button, .btn, input, select, textarea { touch-action: manipulation; }
 html { background: var(--deep); }
+.app-version { margin-top: 8px; font-size: 0.8rem; color: var(--muted); opacity: 0.7; letter-spacing: 0.5px; }
 body {
   margin: 0; color: var(--text);
   background-color: var(--deep);

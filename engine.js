@@ -255,6 +255,7 @@ function applyStaticText() {
   const inp = $("place-name-input"); if (inp && META.namePrompt) inp.placeholder = META.namePrompt.placeholder || "";
   set("btn-start", META.startLabel || "▶ New game");
   set("btn-continue", META.continueLabel || "📂 Continue");
+  set("app-version", "build " + ASSET_VER);   // visible build tag (helps confirm the cache is fresh)
   set("create-title", META.createTitle || "🎨 Choose your character");
   set("btn-create-ok", META.createOkLabel || "✅ Let's go!");
 }
