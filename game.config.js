@@ -26,7 +26,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v13",
+    assetVersion: "v14",
     theme: { home: "#171036", play: "#0e1430" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -169,7 +169,7 @@ window.GAME = {
       { name: "Caretaker", goals: [
         { id: "feed1", name: "First charge", desc: "Feed a critter", check: (s) => s.stats.feed >= 1 },
         { id: "play1", name: "Playtime", desc: "Play with a critter", check: (s) => s.stats.play >= 1 },
-        { id: "polish1", name: "Sparkle clean", desc: "Polish a critter (zoom in!)", check: (s) => s.stats.polish >= 1 },
+        { id: "polish1", name: "Sparkle clean", desc: "Polish a critter", check: (s) => s.stats.polish >= 1 },
         { id: "happy", name: "All aglow", desc: "Get a critter's mood fully up", check: (s) => s.creatures.some((c) => (c.fuel + c.shine + c.joy) / 3 >= 85) },
       ] },
     ],
