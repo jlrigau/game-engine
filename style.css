@@ -15,36 +15,25 @@
   --text: #dfe7ff;
   --muted: #93a0cf;
   --shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
-  /* Top has a soft purple glow; the bottom is FLAT #1b2545 (the panel colour) so it
-     matches BOTH the bottom panel in-game AND the iOS home-indicator strip, which is
-     filled with the manifest background_color (also set to #1b2545) — no band anywhere. */
-  --app-bg: radial-gradient(1200px 900px at 28% -12%, #251c55 0%, rgba(37,28,85,0) 60%),
-            linear-gradient(180deg, #16113c 0%, #1b2545 72%);
 }
 
 * { box-sizing: border-box; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
 html, body { height: 100%; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
 button, .btn, input, select, textarea { touch-action: manipulation; }
-/* The app background lives on <html>: it's the one layer iOS standalone reliably
-   paints across the WHOLE screen, including the top notch and bottom home-indicator
-   safe areas. Keep body and the menu screens transparent so it shows through with no
-   bands. (The game screen draws its own opaque background over it.) */
-html { background-color: var(--deep); background-image: var(--app-bg); }
+html { background: var(--deep); }
 body {
   margin: 0; color: var(--text);
+  background-color: var(--deep);
+  background-image: radial-gradient(1200px 800px at 30% -10%, #221a4d 0%, rgba(34,26,77,0) 60%),
+                    radial-gradient(1000px 700px at 100% 110%, #102a4a 0%, rgba(16,42,74,0) 55%),
+                    linear-gradient(180deg, #141038 0%, #0e1430 100%);
+  background-attachment: fixed;
   overflow: hidden;
 }
 .screen { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 .hidden { display: none !important; }
 #night-veil { position: fixed; inset: 0; background: #02030c; opacity: 0; pointer-events: none; z-index: 40; }
 #screen-game { background: var(--deep); position: fixed; inset: 0; height: auto; }
-/* iOS standalone (home-screen shortcut): paint the bottom home-indicator strip with
-   the panel colour, so there's no dark band below the bottom panel. */
-#screen-game::after {
-  content: ""; position: fixed; left: 0; right: 0; bottom: 0;
-  height: env(safe-area-inset-bottom); background: var(--panel);
-  z-index: 4; pointer-events: none;
-}
 
 .btn-refresh {
   margin-top: 14px; background: transparent; border: 2px dashed var(--border);
@@ -54,13 +43,7 @@ body {
 .btn-refresh:active { transform: translateY(2px); }
 
 /* ===== Home & creation ===== */
-/* Full-bleed like the game screen, so the iOS safe areas (notch + home indicator)
-   carry the app background instead of showing bars on the home/create screens. */
-#screen-home, #screen-create {
-  position: fixed; inset: 0; height: auto;
-  align-items: center; justify-content: center;
-  padding: calc(8px + env(safe-area-inset-top)) 12px calc(8px + env(safe-area-inset-bottom));
-}
+#screen-home, #screen-create { align-items: center; justify-content: center; }
 .box-home, .box-create {
   background: var(--panel); border: 2px solid var(--neon); border-radius: 22px;
   padding: 28px 24px; width: min(440px, 94vw); text-align: center;
@@ -139,7 +122,7 @@ input[type="text"]::placeholder { color: #6a78aa; }
 .btn-action:active { transform: translateY(3px); }
 
 /* ===== Panel ===== */
-.panel { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; border-top: 1px solid var(--border); padding: 8px 14px calc(6px + env(safe-area-inset-bottom)); min-height: 40px; max-height: 42vh; overflow-y: auto; box-shadow: 0 -4px 18px rgba(0,0,0,0.4); z-index: 5; }
+.panel { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(27, 37, 69, 0.96); border-radius: 18px 18px 0 0; border-top: 1px solid var(--border); padding: 8px 14px calc(6px + env(safe-area-inset-bottom)); min-height: 40px; max-height: 42vh; overflow-y: auto; box-shadow: 0 -4px 18px rgba(0,0,0,0.4); z-index: 5; }
 .panel-hint { text-align: center; margin: 4px 0; color: var(--muted); font-weight: bold; }
 .pc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .pc-head b { color: #fff; }
