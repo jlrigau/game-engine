@@ -219,11 +219,15 @@ the close-up**, and reuse the pattern for any new drag-over-touch interaction:
   and hit-tested **by geometry** (`cuRub`), the pointer is captured on the **stable stage**
   (`setPointerCapture` on `#closeup-stage`) and **released** on close / `pointerup` /
   `pointercancel` (`cuReleaseCapture`). Never capture on an element you may delete.
-- **Blue text-selection.** A tap-drag starts a selection that hijacks subsequent touches.
-  Fix: `user-select:none` + `-webkit-touch-callout:none` + `-webkit-user-drag:none` on the
-  overlay, `touch-action:none`, and a global `selectstart` `preventDefault` (skipping
-  inputs/textareas). These bugs **do not reproduce in headless Chromium** — see the
-  `--engine webkit` mode of `playtest.cjs` and the **test-debug** / **ios-pwa-check** skills.
+- **Blue text-selection.** A tap-drag starts a selection that hijacks subsequent touches —
+  not just in the close-up but **anywhere in the world** (selecting a creature name / panel
+  text freezes the player: "the panel stays and I can't move"). Fix: `user-select:none` +
+  `-webkit-touch-callout:none` on **`html, body`** (re-enable on `input[type=text]`/`textarea`),
+  plus `-webkit-user-drag:none` + `touch-action:none` on the overlay and a global
+  `selectstart` `preventDefault` (skipping inputs/textareas). The global body rule is the
+  important one — the overlay-only guard is not enough. These bugs **do not reproduce in
+  headless Chromium OR Playwright WebKit** (no real text-selection) — only on a real iPhone;
+  test with `--engine webkit` of `playtest.cjs` and the **test-debug** / **ios-pwa-check** skills.
 
 ### `zones` / `stations`
 ```

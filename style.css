@@ -18,7 +18,12 @@
 }
 
 * { box-sizing: border-box; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
-html, body { height: 100%; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+/* Disable text selection / iOS callout globally: on Safari a tap-drag in the game
+   starts a text selection that hijacks subsequent touches (the player stops moving).
+   Text inputs re-enable selection just below. */
+html, body { height: 100%; touch-action: manipulation; -webkit-text-size-adjust: 100%;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input[type="text"], textarea { -webkit-user-select: text; user-select: text; }
 button, .btn, input, select, textarea { touch-action: manipulation; }
 html { background: var(--deep); }
 body {
