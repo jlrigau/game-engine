@@ -26,7 +26,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v15",
+    assetVersion: "v16",
     theme: { home: "#171036", play: "#0e1430" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -69,6 +69,11 @@ window.GAME = {
       keeper: { path: "assets/sheet/keeper.png", frameWidth: 64, frameHeight: 64 },
       keeper_amber: { path: "assets/sheet/keeper_amber.png", frameWidth: 64, frameHeight: 64 },
       critter: { path: "assets/sheet/critter.png", frameWidth: 64, frameHeight: 64 },
+      // antenna-tip recolours of the base critter (body identical, only the tips differ)
+      critter_amber: { path: "assets/sheet/critter_amber.png", frameWidth: 64, frameHeight: 64 },
+      critter_aqua: { path: "assets/sheet/critter_aqua.png", frameWidth: 64, frameHeight: 64 },
+      critter_lime: { path: "assets/sheet/critter_lime.png", frameWidth: 64, frameHeight: 64 },
+      critter_violet: { path: "assets/sheet/critter_violet.png", frameWidth: 64, frameHeight: 64 },
       fence: { path: "assets/sheet/fence.png", frameWidth: 32, frameHeight: 32 },
     },
   },
@@ -111,16 +116,17 @@ window.GAME = {
       intermittent: true, scale: 0.6, lift: 30, showFor: 2.6, hideMin: 5, hideMax: 10 },
     // Rest with EVERYONE happy → a synchronized send-off and a special morning line.
     allHappy: { mood: 75, message: "🌟 Cycle {day}: every critter is glowing — what a wonderful day! ✨" },
-    // Colour variants (tint mode — recolours the base sprite, no extra assets).
-    // New critters get a random glow; you can recolour/rename any of them (🎨 Style).
+    // Variants in SHEET mode: only the ANTENNA TIPS are recoloured (body stays the
+    // same) — a tasteful detail rather than tinting the whole creature. "rose" is the
+    // base sheet; the others are antenna-recoloured copies. New critters get a random one.
     variants: [
-      { id: "aqua", name: "Aqua", color: "#74e0ff", tint: "#74e0ff" },
-      { id: "rose", name: "Rose", color: "#ff8fc8", tint: "#ff8fc8" },
-      { id: "lime", name: "Lime", color: "#9cf08a", tint: "#9cf08a" },
-      { id: "gold", name: "Gold", color: "#ffd56b", tint: "#ffd56b" },
-      { id: "violet", name: "Violet", color: "#b89bff", tint: "#b89bff" },
+      { id: "rose", name: "Rose", color: "#ff5db1" },
+      { id: "amber", name: "Amber", color: "#ffc24a", sheet: "critter_amber" },
+      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua" },
+      { id: "lime", name: "Lime", color: "#8df06b", sheet: "critter_lime" },
+      { id: "violet", name: "Violet", color: "#b58bff", sheet: "critter_violet" },
     ],
-    variantLabel: "Glow",
+    variantLabel: "Antennae",
     customize: { rename: true, variant: true },
     customizeTitle: "🎨 Customize",
     customizedMessage: "{name} looks great! ✨",
@@ -152,6 +158,7 @@ window.GAME = {
     names: ["Zib", "Quor", "Lumi", "Vex", "Orbit", "Pulse", "Nova", "Echo", "Bly", "Pixl"],
     startCount: 3,
     startCreatures: [{ name: "Zib", variant: "aqua" }, { name: "Lumi", variant: "rose" }, { name: "Pulse", variant: "lime" }],
+    // (variant ids above map to the recoloured antenna sheets)
   },
 
   /* ---- Zone (the nursery pen where critters roam) ---- */
@@ -196,7 +203,7 @@ window.GAME = {
     "<b>🚀 Move:</b> tap where you want to go (your keeper floats there). You can also tap a critter directly. (Keyboard: arrows or WASD/ZQSD.)",
     "<b>👾 Three needs:</b> 🔋 Energy (Feed), 🎮 Fun (Play) and ✨ Sparkle (Polish). The heart over each critter shows its mood — keep it green!",
     "<b>✨ Polish:</b> when a critter gathers cosmic dust it pops a ✨ bubble. Tap it to zoom right in and rub the dust off with your finger until it sparkles!",
-    "<b>🎨 Style:</b> tap a critter then 🎨 Style to rename it or change its glow colour.",
+    "<b>🎨 Style:</b> tap a critter then 🎨 Style to rename it or change its antenna colour.",
     "<b>🌙 Recharge Pod:</b> rest to reach the next cycle. Send everyone to sleep happy for a glowing send-off! ✨",
     "<b>🤖 (top):</b> change your keeper. 💾 The game saves automatically.",
   ],
