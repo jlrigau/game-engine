@@ -43,6 +43,7 @@ const LEVELS = (G.objectives && G.objectives.levels) || [];
 const ENV = G.environment || null;
 const MOOD_NEED = (CREATURE && CREATURE.moodNeed) || null;
 const MOOD_SHAPE = (CREATURE && CREATURE.moodIcon) || "heart";  // particle shape of the mood indicator
+const WANT = (CREATURE && CREATURE.wantBubble) || null;         // optional "needs care" bubble (image) replacing the mood shape
 
 // Primary playable zone where creatures roam (first zone flagged home, else first).
 const HOME_ZONE = ZONES.find((z) => z.home) || ZONES[0] || null;
@@ -178,6 +179,37 @@ function init() {
     else if (btn.dataset.place) placeDecor();
     else if (btn.dataset.cancelPlace) cancelPlacement();
   });
+
+  // Close-up mini-scene: scrub/tap spots (pointer works for both mouse & touch).
+  const cuStage = $("closeup-stage");
+  if (cuStage) {
+    cuStage.addEventListener("pointerdown", (e) => {
+      if (!closeupOpen || !cuState) return;
+      e.preventDefault(); cuState.pressed = true; cuPid = e.pointerId;
+      // Capture on the STAGE (a stable element that's never removed) so a continuous
+      // scrub keeps working AND the pointer never ends up captured by a spot we delete
+      // mid-drag (which on iOS leaves the pointer stuck and freezes later taps).
+      try { cuStage.setPointerCapture(e.pointerId); } catch (_) {}
+      cuMoveBrush(e); cuRub(e);
+    });
+    cuStage.addEventListener("pointermove", (e) => { if (!closeupOpen) return; e.preventDefault(); cuMoveBrush(e); if (cuState && cuState.pressed) cuRub(e); });
+    const cuRelease = () => { if (cuState) cuState.pressed = false; cuReleaseCapture(); };
+    window.addEventListener("pointerup", cuRelease);
+    window.addEventListener("pointercancel", cuRelease);
+  }
+  const cuClose = $("closeup-close");
+  if (cuClose) {
+    if (G.meta && G.meta.closeLabel) cuClose.setAttribute("aria-label", G.meta.closeLabel);  // localise the generic shell
+    cuClose.addEventListener("click", () => closeCloseup());
+  }
+  window.addEventListener("resize", () => { if (closeupOpen) cuPlaceSpots(); });
+  // Never start a text selection / iOS callout from a tap-drag in the game world —
+  // a stray selection hijacks subsequent touches (e.g. the player stops responding).
+  document.addEventListener("selectstart", (e) => {
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+    e.preventDefault();
+  });
 }
 
 // Inject configured labels/titles into the static HTML shell.
@@ -186,6 +218,7 @@ function applyStaticText() {
   const setHTML = (id, html) => { const el = $(id); if (el != null && html != null) el.innerHTML = html; };
   document.title = META.title || "Game";
   setHTML("home-title", (META.titleIcon ? META.titleIcon + " " : "") + (META.title || "Game"));
+  set("place-icon", META.titleIcon || "");                 // in-game HUD clinic icon (generic shell)
   set("home-tagline", META.tagline || "");
   set("home-name-label", (META.namePrompt && META.namePrompt.label) || "Name your place:");
   const inp = $("place-name-input"); if (inp && META.namePrompt) inp.placeholder = META.namePrompt.placeholder || "";
@@ -272,8 +305,8 @@ function buildHud() {
   (SHOP.resources || []).forEach((r) => {
     html += `<span class="resource" title="${r.name}">${r.icon || "📦"} <b id="hud-res-${r.id}">0</b></span>`;
   });
-  html += `<span class="resource" title="Day">📅 <b id="hud-day">1</b></span>`;
-  if (CREATURE) html += `<span class="resource" title="${CREATURE.label || "creatures"}">${CREATURE.icon || "🐾"} <b id="hud-cap">0/0</b></span>`;
+  if (META.showDay !== false) html += `<span class="resource" title="Day">📅 <b id="hud-day">1</b></span>`;
+  if (CREATURE && META.showCreatureCount !== false) html += `<span class="resource" title="${CREATURE.label || "creatures"}">${CREATURE.icon || "🐾"} <b id="hud-cap">0/0</b></span>`;
   if (LEVELS.length) html += `<span class="resource" title="Level">⭐ <b id="hud-level">1</b></span>`;
   bar.innerHTML = html;
 }
@@ -366,6 +399,11 @@ let rideFatigueAcc = 0;
 let jumpRunning = false;
 const jumpAnim = { h: 0 };
 let activeTarget = null, panelId = null, mounted = null;
+// Sentinel meaning "panel is stale, rebuild on the next refreshInteraction" — distinct
+// from a real panel id AND from null (which is a valid id: "nothing selected"). Using
+// null to invalidate hid a bug: deselecting to null left the panel showing the old target.
+const PANEL_DIRTY = " dirty";
+let closeupOpen = false, cuState = null, cuPid = null;   // generic close-up mini-scene
 let selRing = null;
 let decorObjs = [];
 let COLLISIONS = [];
@@ -426,10 +464,17 @@ function buildAnims() {
   });
   if (CREATURE) {
     const w = CREATURE.walk || { start: 0, end: 3, frameRate: 6 };
-    const key = "creature-walk";
-    if (!sc.anims.exists(key)) sc.anims.create({
-      key, frames: sc.anims.generateFrameNumbers(CREATURE.sheet, { start: w.start, end: w.end }),
-      frameRate: w.frameRate || 6, repeat: -1,
+    // One walk anim per distinct sheet (base + any variant with its own sheet), so
+    // variants that ship a dedicated spritesheet animate instead of snapping back
+    // to the base sheet's frames.
+    const sheets = new Set([CREATURE.sheet]);
+    VARIANTS.forEach((v) => { if (v.sheet) sheets.add(v.sheet); });
+    sheets.forEach((sheet) => {
+      const key = "creature-walk-" + sheet;
+      if (!sc.anims.exists(key)) sc.anims.create({
+        key, frames: sc.anims.generateFrameNumbers(sheet, { start: w.start, end: w.end }),
+        frameRate: w.frameRate || 6, repeat: -1,
+      });
     });
   }
 }
@@ -657,6 +702,9 @@ function buildWorld() {
   });
 
   buildDecors();
+  // clear any transient mid-action flags from a save taken during a cure/celebration,
+  // so a reloaded creature can never get stranded (unselectable / never departs).
+  state.creatures.forEach((c) => { c.departing = false; c.celebrating = false; c.leaving = false; });
   state.creatures.forEach(buildCreatureObj);
 
   // Player
@@ -698,15 +746,18 @@ function creatureTexture(c) {
   const v = variantDef(variantId(c));
   return (v && v.sheet) ? v.sheet : CREATURE.sheet;
 }
+function creatureWalkKey(c) { return "creature-walk-" + creatureTexture(c); }
 
 function buildCreatureObj(c) {
   const scale = creatureScale(c);
   const orig = CREATURE.origin || { x: 0.5, y: 0.85 };
   const shadow = sc.add.ellipse(0, 0, 58, 16, 0x000000, 0.25).setScale(scale);
   const body = sc.add.sprite(0, 0, creatureTexture(c)).setOrigin(orig.x, orig.y).setScale(scale);
-  body.play("creature-walk");
+  body.play(creatureWalkKey(c));
   applyVariantTint(body, c);
-  const heart = sc.add.image(0, heartY(c), ensureShape(MOOD_SHAPE)).setOrigin(0.5).setScale(0.95).setTint(0x6fcf5f);
+  const heart = WANT
+    ? sc.add.image(0, heartY(c) - (WANT.lift || 6), WANT.sprite).setOrigin(0.5, 1).setScale(WANT.scale || 1).setVisible(!WANT.intermittent)
+    : sc.add.image(0, heartY(c), ensureShape(MOOD_SHAPE)).setOrigin(0.5).setScale(0.95).setTint(0x6fcf5f);
   const nameT = sc.add.text(0, 22, c.name, { fontSize: "16px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 4 }).setOrigin(0.5);
   const cont = sc.add.container(c.x, c.y, [shadow, body, heart, nameT]);
   c.obj = cont; c.bodyT = body; c.heartT = heart; c.nameT = nameT; c.shadowT = shadow;
@@ -716,11 +767,11 @@ function refreshCreatureVisual(c) {
   if (!c.obj) return;
   const scale = creatureScale(c);
   c.bodyT.setTexture(creatureTexture(c));
-  c.bodyT.play("creature-walk");
+  c.bodyT.play(creatureWalkKey(c));
   applyVariantTint(c.bodyT, c);
   c.bodyT.setScale(scale);
   if (c.shadowT) c.shadowT.setScale(scale);
-  c.heartT.y = heartY(c);
+  c.heartT.y = heartY(c) - (WANT ? (WANT.lift || 6) : 0);
   c.nameT.setText(c.name);
 }
 
@@ -767,7 +818,7 @@ function animatePlayer(mvx, mvy) {
 function sceneUpdate(time, delta) {
   if (!player) return;
   const dt = Math.min(delta / 1000, 0.05);
-  const modalOpen = !$("modal").classList.contains("hidden") || nightRunning;
+  const modalOpen = !$("modal").classList.contains("hidden") || nightRunning || closeupOpen;
 
   let vx = 0, vy = 0;
   if (!modalOpen) {
@@ -844,8 +895,22 @@ function sceneUpdate(time, delta) {
 
   // creature wandering + mood
   const now = time;
+  const departed = [];
   state.creatures.forEach((c) => {
     if (!c.obj) return;
+    if (c.departing) {                                    // cured → walk OUT of the room, then fade out
+      const dp = (CREATURE && CREATURE.depart) || {};
+      const sp = dp.speed || 110;
+      const dx = c.exitX - c.x, dy = c.exitY - c.y, d = Math.hypot(dx, dy) || 1;
+      if (d > 6) { c.x += (dx / d) * sp * dt; c.y += (dy / d) * sp * dt; if (c.bodyT) c.bodyT.setFlipX(dx > 0); }
+      c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
+      c.departT = (c.departT || 0) + dt;
+      // don't start fading until the child has actually walked out of the clinic (home zone),
+      // so they never vanish mid-room; once outside they fade quickly and are removed.
+      if (leftHome(c)) c.obj.alpha = Math.max(0, c.obj.alpha - dt * 1.6);
+      if (d < 10 || c.obj.alpha <= 0.03 || c.departT > 10) departed.push(c);
+      return;
+    }
     if (c !== mounted) {
       if (c.celebrating) {
         c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
@@ -867,11 +932,89 @@ function sceneUpdate(time, delta) {
     } else {
       c.bodyT.setFlipX(playerFacing === "right");
     }
-    const m = needAverage(c);
-    c.heartT.setTint(m > 60 ? 0x6fcf5f : m > 35 ? 0xf4b942 : 0xe05656);
+    if (WANT) {
+      // a "needs care" bubble: shown while the child still wants the treatment, hidden once cured / leaving
+      const nv = WANT.need ? (c[WANT.need] || 0) : needAverage(c);
+      const wants = nv < (WANT.below != null ? WANT.below : 100) && !c.departing && !c.celebrating;
+      const lift = WANT.lift || 6, base = WANT.scale || 1;
+      if (!wants) {
+        c.heartT.setVisible(false); c.wantUntil = null;       // cured/leaving → no bubble
+      } else if (WANT.intermittent) {
+        // pop up for a moment, then hide for a random gap (desynced per child) — they "pipe up" now and then
+        if (c.wantUntil == null) {                            // first eligibility: stay quiet a random while
+          c.wantPhase = "hide"; c.wantUntil = now + randInt(300, (WANT.hideMax || 9) * 1000);
+        }
+        if (now >= c.wantUntil) {
+          if (c.wantPhase === "show") { c.wantPhase = "hide"; c.wantUntil = now + randInt((WANT.hideMin || 5) * 1000, (WANT.hideMax || 11) * 1000); }
+          else { c.wantPhase = "show"; c.wantShownAt = now; c.wantUntil = now + (WANT.showFor || 2.5) * 1000; }
+        }
+        const showing = c.wantPhase === "show";
+        c.heartT.setVisible(showing);
+        if (showing) {
+          const e = Math.min(1, (now - c.wantShownAt) / 180); // quick pop-in
+          c.heartT.setScale(base * (0.55 + 0.45 * e * (2 - e)));
+          c.heartT.y = heartY(c) - lift + Math.sin(now / 300 + c.x) * 3;
+        }
+      } else {
+        c.heartT.setVisible(true);
+        c.heartT.y = heartY(c) - lift + Math.sin(now / 320 + c.x) * 3;  // gentle bob
+      }
+    } else {
+      const m = needAverage(c);
+      c.heartT.setTint(m > 60 ? 0x6fcf5f : m > 35 ? 0xf4b942 : 0xe05656);
+    }
   });
+  if (departed.length) {
+    departed.forEach(removeCreature);
+    refreshHud(); panelId = PANEL_DIRTY;
+    const dp = CREATURE && CREATURE.depart;
+    if (dp && dp.emptyMessage && !state.creatures.some((c) => !c.departing)) message(dp.emptyMessage);
+  }
 
   refreshInteraction();
+}
+
+// True once a departing creature has crossed outside the home zone (so fading can begin).
+function leftHome(c) {
+  const z = HOME_ZONE && HOME_ZONE.rect;
+  if (!z) return (c.departT || 0) > 0.4;
+  const m = 8;
+  return c.x < z.x - m || c.x > z.x + z.w + m || c.y < z.y - m || c.y > z.y + z.h + m;
+}
+// A cured creature walks off to an exit and is removed (generic; see creature.depart).
+function departCreature(c) {
+  if (!CREATURE || !CREATURE.depart || c.departing) return;
+  const to = CREATURE.depart.to || { x: (G.player && G.player.spawn && G.player.spawn.x) || c.x, y: WORLD.h + 80 };
+  c.departing = true; c.departT = 0; c.exitX = to.x; c.exitY = to.y;
+  if (c === activeTarget) { activeTarget = null; panelId = PANEL_DIRTY; }
+}
+function removeCreature(c) {
+  if (c.obj) { c.obj.destroy(); c.obj = null; }
+  const i = state.creatures.indexOf(c);
+  if (i >= 0) state.creatures.splice(i, 1);
+  save();
+}
+
+// A station with action "spawn" brings a random number of fresh creatures (up to a cap).
+function spawnCreatures(st) {
+  const sp = st.spawn || {};
+  const cap = sp.cap || 8;
+  const active = state.creatures.filter((c) => !c.departing).length;
+  const room = cap - active;
+  if (room <= 0) { message(sp.fullMessage || "Full!"); return; }
+  const n = Math.min(randInt(sp.min || 1, sp.max || 3), room);
+  for (let i = 0; i < n; i++) {
+    const c = newCreature({});
+    state.creatures.push(c);
+    if (sc) {
+      buildCreatureObj(c);
+      if (c.obj) { c.obj.alpha = 0; sc.tweens.add({ targets: c.obj, alpha: 1, duration: 350 }); }
+      actionAnim(c, { motion: "hop", particle: "spark", colors: ["#ffffff", "#ffd24a", "#a8e6ff"], count: 4, y0: 30 });
+    }
+  }
+  state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
+  if (sp.message) message(sp.message.replace("{n}", n));
+  refreshHud(); save(); panelId = PANEL_DIRTY; refreshInteraction();
 }
 
 function distPlayer(x, y) { return Math.hypot(player.x - x, player.y - y); }
@@ -888,7 +1031,7 @@ function refreshInteraction() {
   if (mounted) best = mounted;
   else {
     STATIONS.forEach((s) => { const d = distPlayer(s.x, s.y); if (d < 110 && d < dmin) { dmin = d; best = s; } });
-    state.creatures.forEach((c) => { const d = distPlayer(c.x, c.y); if (d < 95 && d < dmin) { dmin = d; best = c; } });
+    state.creatures.forEach((c) => { if (c.departing || c.celebrating || c.leaving) return; const d = distPlayer(c.x, c.y); if (d < 95 && d < dmin) { dmin = d; best = c; } });
   }
   activeTarget = best;
   const id = best ? (best.variant !== undefined && !best.station ? "c" + best.id : "s" + best.type) : null;
@@ -906,7 +1049,7 @@ function isCreature(t) { return t && t.variant !== undefined && !t.station; }
 /* ===================== Pointer ===================== */
 
 function onPointer(p) {
-  if (!$("modal").classList.contains("hidden")) return;
+  if (!$("modal").classList.contains("hidden") || closeupOpen) return;
   const wx = p.worldX, wy = p.worldY;
   const tnow = (typeof performance !== "undefined" ? performance.now() : Date.now());
   running = (tnow - lastTapT) < 350;
@@ -915,7 +1058,7 @@ function onPointer(p) {
   followCreature = null;
   let target = null, dmin = Infinity;
   STATIONS.forEach((s) => { const d = Math.hypot(s.x - wx, s.y - wy); if (d < 70 && d < dmin) { dmin = d; target = s; } });
-  state.creatures.forEach((c) => { if (c === mounted) return; const d = Math.hypot(c.x - wx, c.y - wy); if (d < 55 && d < dmin) { dmin = d; target = c; } });
+  state.creatures.forEach((c) => { if (c === mounted || c.departing || c.celebrating || c.leaving) return; const d = Math.hypot(c.x - wx, c.y - wy); if (d < 55 && d < dmin) { dmin = d; target = c; } });
   if (target && isCreature(target)) {
     followCreature = target; pendingInteract = null;
   } else if (target) {
@@ -949,7 +1092,7 @@ function buildPanel() {
         + `<button class="btn btn-secondary" data-creature="${rideAct.id}">🛑 ${rideAct.dismountLabel || "Get off"}</button>`;
     } else {
       actions = ACTIONS.filter((a) => a.type !== "jump").map((a) => {
-        const cls = a.type === "ride" ? "btn btn-accent" : (a.type === "customize" ? "btn btn-secondary" : "btn");
+        const cls = a.type === "ride" ? "btn btn-accent" : (a.type === "customize" ? "btn btn-secondary" : (a.type === "closeup" ? "btn btn-giant" : "btn"));
         return `<button class="${cls}" data-creature="${a.id}">${a.icon || ""} ${a.label}</button>`;
       }).join("");
     }
@@ -958,7 +1101,7 @@ function buildPanel() {
       : "";
     p.innerHTML = `
       <div class="pc-head"><div><b>${c.name}</b> <span class="pc-sub">${ageTxt}</span></div></div>
-      <div class="pc-bars" id="pc-bars"></div>
+      ${CREATURE.showBars === false ? "" : '<div class="pc-bars" id="pc-bars"></div>'}
       <div class="pc-actions">${actions}</div>`;
     refreshBars(c);
   } else {
@@ -985,6 +1128,7 @@ function interact(target) {
   const st = STATIONS.find((x) => x.type === target.type);
   if (!st) return;
   if (st.action === "nextDay") nextDay();
+  else if (st.action === "spawn") spawnCreatures(st);
   else if (st.action === "openShop") openShop();
   else if (st.action === "custom" && typeof st.onUse === "function") st.onUse(state, { message, refreshHud, save });
 }
@@ -996,6 +1140,7 @@ function creatureAction(actionId) {
   if (a.type === "ride") { toggleRide(c); return; }
   if (a.type === "jump") { doJump(); return; }
   if (a.type === "customize") { openCustomize(c); return; }
+  if (a.type === "closeup") { openCloseup(c, a); return; }
 
   // resource cost
   if (a.cost) {
@@ -1037,7 +1182,7 @@ function toggleRide(c) {
   if (statKeys().includes("ride")) state.stats.ride = (state.stats.ride || 0) + 1;
   rideFatigueAcc = 0;
   message((RIDE.mountMessage || "Riding {name}!").replace("{name}", c.name));
-  panelId = null; refreshInteraction(); refreshHud();
+  panelId = PANEL_DIRTY; refreshInteraction(); refreshHud();
 }
 
 function doJump() {
@@ -1066,7 +1211,7 @@ function dismount(c, exhausted) {
   c.y = clamp(player.y, 40, WORLD.h - 40);
   c.tx = c.x; c.ty = c.y; c.nextStep = 0;
   if (c.obj) { c.obj.x = c.x; c.obj.y = c.y; }
-  panelId = null; refreshInteraction(); refreshHud();
+  panelId = PANEL_DIRTY; refreshInteraction(); refreshHud();
   const RIDE = CREATURE.ride || {};
   message(exhausted ? (RIDE.exhaustedMessage || "{name} is exhausted!").replace("{name}", c.name) : (RIDE.dismountMessage || "You get off {name}.").replace("{name}", c.name));
 }
@@ -1171,12 +1316,12 @@ function celebrate(c) {
     const dir = t.flipX ? -1 : 1;
     sc.tweens.add({
       targets: t, angle: dir * 42, duration: 300, ease: "Back.easeOut", yoyo: true, hold: 420,
-      onComplete: () => { if (t) { t.angle = 0; t.setOrigin(orig.x, orig.y); t.x = 0; t.y = 0; } c.celebrating = false; },
+      onComplete: () => { if (t) { t.angle = 0; t.setOrigin(orig.x, orig.y); t.x = 0; t.y = 0; } c.celebrating = false; if (CREATURE.depart) departCreature(c); },
     });
   } else {
     sc.tweens.add({
       targets: t, y: -34, duration: 230, yoyo: true, repeat: 1, ease: "Quad.easeOut",
-      onComplete: () => { if (t) t.y = 0; c.celebrating = false; },
+      onComplete: () => { if (t) t.y = 0; c.celebrating = false; if (CREATURE.depart) departCreature(c); },
     });
   }
   emitBurst(c.x, c.y, { shape: cel.particle || "heart", colors: cel.colors || ["#ff7eb6", "#7fd06f", "#ffd24a"], count: cel.count || 5, y0: 50, riseMin: 48, riseMax: 84 });
@@ -1324,7 +1469,7 @@ function buyDecor(id) {
     if (ghostDecor) ghostDecor.destroy();
     ghostDecor = sc.add.image(player.x, player.y, d.sprite).setOrigin(0.5, 0.95).setScale(d.scale || 1.2).setAlpha(0.6).setDepth(99999);
   }
-  refreshHud(); panelId = null; refreshInteraction();
+  refreshHud(); panelId = PANEL_DIRTY; refreshInteraction();
   message((META.boughtDecorMessage || "{name} bought! Walk around and tap “Place here”.").replace("{name}", d.name));
 }
 
@@ -1397,10 +1542,190 @@ function openCustomize(c) {
       if (name && nameUsed(name, c)) { message((META.nameTaken || "Another one is already called {name}!").replace("{name}", name)); return; }
       if (name) c.name = name;
     }
-    refreshCreatureVisual(c); save(); closeModal(); panelId = null;
+    refreshCreatureVisual(c); save(); closeModal(); panelId = PANEL_DIRTY;
     message((CREATURE.customizedMessage || "{name} updated! 🎨").replace("{name}", c.name));
   });
   drawPreview();
+}
+
+/* ===================== Close-up mini-scene (generic) ===================== */
+// A creature action of type "closeup" opens a full-screen scene: the player
+// scrubs/taps "spots" off a backdrop image until it's clean, then the action's
+// effects / reward / celebrate are applied (exactly like finishing a normal
+// action). Entirely config-driven via action.closeup — see ENGINE.md.
+function openCloseup(c, a) {
+  const root = $("closeup"); if (!root || !a) return;
+  const cfg = a.closeup || {};
+  const stage = $("closeup-stage"), bg = $("closeup-bg"), brush = $("closeup-brush");
+  const imgPath = (k, def) => av((G.assets.images && G.assets.images[k]) || ("assets/img/" + (k || def) + ".png"));
+  // The backdrop can be overridden per creature variant (e.g. each child's own face).
+  const cv = variantDef(variantId(c));
+  const src = imgPath((cv && cv.closeupBg) || cfg.bg, "closeup");
+  if (bg) bg.src = src;
+  stage.querySelectorAll(".cu-spot, .cu-emoji").forEach((n) => n.remove());
+
+  const sp = cfg.spots || {};
+  const cured = (a.stat && state.stats[a.stat]) || 0;       // ramps difficulty with progress
+  const base = sp.base || 4, grow = sp.growEvery || 0, max = sp.max || 10;
+  const count = clamp(base + (grow ? Math.floor(cured / grow) : 0), 1, max);
+  const rubs = sp.rubs || 3, size = sp.size || 64;
+  // `area` may be one region or several (e.g. upper + lower teeth); spots alternate
+  // between them so every region gets some.
+  const areas = Array.isArray(sp.area) ? sp.area : [sp.area || { x: 0.18, y: 0.42, w: 0.64, h: 0.28 }];
+  for (let i = 0; i < count; i++) {
+    const ar = areas[i % areas.length];
+    const s = document.createElement(cfg.spotSprite ? "img" : "div");
+    s.className = "cu-spot"; s.draggable = false;
+    if (cfg.spotSprite) s.src = imgPath(cfg.spotSprite, "spot");
+    // store the spot's position/size as fractions of the BACKDROP IMAGE; it's mapped
+    // to screen pixels in cuPlaceSpots() so it stays on the teeth under object-fit:cover.
+    s.dataset.fx = (ar.x + Math.random() * ar.w).toFixed(4);
+    s.dataset.fy = (ar.y + Math.random() * ar.h).toFixed(4);
+    s.dataset.sz = String(size);
+    s.style.setProperty("--rot", Math.floor(Math.random() * 360) + "deg");
+    s.dataset.rubs0 = String(rubs); s.dataset.rubs = String(rubs); s.dataset.t = "0";
+    stage.appendChild(s);
+  }
+  if (brush) {
+    if (cfg.brush) {
+      brush.src = imgPath(cfg.brush, "brush"); brush.classList.remove("hidden");
+      brush.style.left = ""; brush.style.top = "";   // reset to the visible CSS start position
+    } else brush.classList.add("hidden");
+  }
+  cuState = { c, a, remaining: count, pressed: false };
+  closeupOpen = true;
+  clearSelection();
+  root.classList.remove("hidden");
+  themeColor((META.theme && META.theme.play) || TINT_PLAY);
+  cuPlaceSpots();
+  if (bg) bg.onload = cuPlaceSpots;        // re-place once natural size is known
+}
+
+// Map each spot's image-fraction (fx,fy) to screen px under object-fit:cover, so the
+// backdrop can fill the whole screen (cropped) while spots stay glued to the teeth.
+function cuCover() {
+  const stage = $("closeup-stage"), bg = $("closeup-bg");
+  const Wc = stage.clientWidth, Hc = stage.clientHeight;
+  const iw = (bg && bg.naturalWidth) || 900, ih = (bg && bg.naturalHeight) || 1160;
+  const s = Math.max(Wc / iw, Hc / ih);
+  return { s, dw: iw * s, dh: ih * s, ox: (Wc - iw * s) / 2, oy: (Hc - ih * s) / 2 };
+}
+function cuPlaceSpots() {
+  const stage = $("closeup-stage"); if (!stage) return;
+  const c = cuCover();
+  stage.querySelectorAll(".cu-spot").forEach((s) => {
+    const px = (parseFloat(s.dataset.sz) || 64) * c.s;
+    s.style.left = (c.ox + parseFloat(s.dataset.fx) * c.dw) + "px";
+    s.style.top = (c.oy + parseFloat(s.dataset.fy) * c.dh) + "px";
+    s.style.width = px + "px"; s.style.height = px + "px";
+  });
+}
+
+function cuMoveBrush(e) {
+  const brush = $("closeup-brush"); if (!brush || brush.classList.contains("hidden")) return;
+  const r = $("closeup-stage").getBoundingClientRect();
+  brush.style.left = (e.clientX - r.left) + "px";
+  brush.style.top = (e.clientY - r.top) + "px";
+}
+
+function cuReleaseCapture() {
+  try {
+    const stage = $("closeup-stage");
+    if (stage && cuPid != null && stage.hasPointerCapture && stage.hasPointerCapture(cuPid)) stage.releasePointerCapture(cuPid);
+  } catch (_) {}
+  cuPid = null;
+}
+
+// Hit-test spots by GEOMETRY (the spots are pointer-events:none, so the pointer target
+// is always the stable stage). This makes a continuous finger-scrub clean every spot it
+// passes over, and never leaves the pointer captured by a removed element.
+function cuRub(e) {
+  if (!cuState) return;
+  // Scrub from the BRUSH HEAD (bristles), not the raw finger position: map a point of the
+  // brush sprite (closeup.brushTip, fractions of the sprite — default its centre) to screen px.
+  let x = e.clientX, y = e.clientY;
+  const brush = $("closeup-brush");
+  const tip = cuState.a && cuState.a.closeup && cuState.a.closeup.brushTip;
+  if (tip && brush && !brush.classList.contains("hidden")) {
+    const br = brush.getBoundingClientRect();
+    x = br.left + (tip.x != null ? tip.x : 0.5) * br.width;
+    y = br.top + (tip.y != null ? tip.y : 0.5) * br.height;
+  }
+  const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const spots = $("closeup-stage").querySelectorAll(".cu-spot");
+  for (let i = 0; i < spots.length; i++) {
+    const t = spots[i], r = t.getBoundingClientRect();
+    if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+    if (now - (parseFloat(t.dataset.t) || 0) < 90) return;   // cooldown so a scrub isn't instant
+    t.dataset.t = String(now);
+    const left = (parseInt(t.dataset.rubs, 10) || 1) - 1;
+    t.dataset.rubs = String(left);
+    const f = Math.max(0, left) / (parseInt(t.dataset.rubs0, 10) || 1);
+    t.style.opacity = (0.25 + 0.75 * f).toFixed(2);
+    t.style.transform = `translate(-50%,-50%) rotate(var(--rot)) scale(${(0.4 + 0.6 * f).toFixed(2)})`;
+    if (left <= 0) cuPop(t);
+    return;
+  }
+}
+
+function cuPop(spot) {
+  cuEmoji(spot.style.left, spot.style.top, ["✨", "⭐"], false);
+  spot.remove();
+  if (!cuState) return;
+  cuState.remaining = Math.max(0, cuState.remaining - 1);
+  if (cuState.remaining === 0) cuFinish();
+}
+
+function cuEmoji(left, top, glyphs, burst) {
+  const stage = $("closeup-stage"); if (!stage) return;
+  glyphs.forEach((g, k) => {
+    const e = document.createElement("div");
+    e.className = "cu-emoji" + (burst ? " cu-burst" : "");
+    e.textContent = g; e.style.left = left; e.style.top = top;
+    e.style.animationDelay = (burst ? Math.floor(Math.random() * 250) : k * 70) + "ms";
+    stage.appendChild(e); setTimeout(() => e.remove(), 1300);
+  });
+}
+
+function cuFinish() {
+  const { c, a } = cuState;
+  const parts = (a.closeup && a.closeup.finishParticles) || ["⭐", "💖", "✨", "🌟"];
+  for (let i = 0; i < 16; i++) cuEmoji((10 + Math.random() * 80) + "%", (18 + Math.random() * 55) + "%", [parts[i % parts.length]], true);
+  setTimeout(() => { closeCloseup(); cuApply(c, a); }, 950);
+}
+
+// Apply the action's outcome — mirrors the tail of creatureAction().
+function cuApply(c, a) {
+  const moodBefore = MOOD_NEED ? (c[MOOD_NEED] || 0) : 0;
+  Object.keys(a.effects || {}).forEach((k) => { c[k] = clamp01((c[k] || 0) + a.effects[k]); });
+  if (a.reward) state.coins += a.reward;
+  state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
+  if (a.stat) state.stats[a.stat] = (state.stats[a.stat] || 0) + 1;
+  let celebrated = false;
+  if (MOOD_NEED && CREATURE.celebrate && (!CREATURE.celebrate.adultsOnly || !isYoung(c)) && moodBefore < 100 && (c[MOOD_NEED] || 0) >= 100) {
+    if (sc) sc.time.delayedCall(250, () => celebrate(c)); celebrated = true;
+    if (CREATURE.depart) c.leaving = true;   // cured & about to leave → stop selecting it (panel clears now, not 250ms later)
+  }
+  if (a.message) message((celebrated && a.celebrateMessage ? a.celebrateMessage : a.message).replace("{name}", c.name));
+  refreshBars(c); refreshHud(); panelId = PANEL_DIRTY; refreshInteraction();
+}
+
+function clearSelection() {
+  try { const s = window.getSelection && window.getSelection(); if (s && s.removeAllRanges) s.removeAllRanges(); } catch (e) {}
+}
+
+function closeCloseup() {
+  cuReleaseCapture();
+  const root = $("closeup"); if (root) { root.classList.add("hidden"); root.style.backgroundImage = ""; }
+  const stage = $("closeup-stage"); if (stage) stage.querySelectorAll(".cu-spot, .cu-emoji").forEach((n) => n.remove());
+  closeupOpen = false; cuState = null; clearSelection();
+  // Make sure the world is fully interactive again (belt-and-braces: clear any
+  // transient input/movement state and re-assert camera follow + keyboard).
+  moveTarget = null; pendingInteract = null; followCreature = null;
+  running = false; jumpRunning = false;
+  themeColor((META.theme && META.theme.play) || TINT_PLAY);
+  if (sc && sc.input && sc.input.keyboard) { sc.input.keyboard.enabled = true; sc.input.keyboard.resetKeys(); }
+  if (sc && player) sc.cameras.main.startFollow(player, true, 0.5, 0.5);
 }
 
 /* ===================== Goals / help ===================== */

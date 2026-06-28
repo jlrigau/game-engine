@@ -23,13 +23,35 @@ Keep the iPhone layout clean (fullscreen, no band, safe areas).
   - `.top-bar`: `padding-top: calc(... + env(safe-area-inset-top))` (notch).
   - `100dvh` (not just `vh`) for the screens.
 
+## Touch interactions (drag / scrub) on iOS
+The close-up scrub and any finger-drag must survive Safari's touch quirks. The engine
+already guards these (see ENGINE.md "iOS / touch robustness") — **don't regress them**:
+- Targets the finger can delete are `pointer-events:none` and **hit-tested by geometry**;
+  the pointer is captured on a **stable** element and **released** on up/cancel/close.
+  (Capturing a removed element → iOS swallows every later touch = player "frozen".)
+- `user-select:none` + `-webkit-touch-callout:none` + `-webkit-user-drag:none` +
+  `touch-action:none` + a global `selectstart` `preventDefault` (skip inputs) → no blue
+  selection hijacking touches.
+- **Verify on the real Safari engine**, not Chromium:
+  `playtest.cjs --engine webkit --device "iPhone 13" --probe ./touch.cjs` (see _shared/README).
+
+## Home-screen icon
+- `apple-touch-icon.png` = **180×180, full-bleed, no transparency** (iOS rounds the corners
+  itself); a transparent/inset icon shows a small image on a white tile.
+- iOS **freezes the icon at the moment it's added** to the home screen — a new deploy does
+  **not** update an existing shortcut. To see a changed icon: delete the shortcut and re-add
+  it from Safari. (The "Add to Home Screen" sheet preview is a small thumbnail — not the
+  final size; judge from the actual home-screen icon.)
+
 ## Procedure
-1. Reproduce in **screenshots** at iPhone size (Playwright viewport ~390×844,
-   `deviceScaleFactor: 2`) via `playtest.cjs --shots` / a probe, then **Read** the PNGs.
-2. Fix in `index.html` / `style.css` / `manifest.webmanifest` per the list.
-3. **Re-test** visually (panel stuck to the bottom, no band, clean top).
-4. **iOS note**: a home-screen shortcut **freezes its name** when added → to update it,
-   delete and re-add it (tell the user).
+1. Reproduce in **screenshots** at iPhone size — prefer `--engine webkit --device "iPhone 13"`
+   (true Safari + touch); else Playwright viewport ~390×844, `deviceScaleFactor: 2` via
+   `playtest.cjs --shots` / a probe, then **Read** the PNGs.
+2. Fix in `index.html` / `style.css` / `manifest.webmanifest` per the lists above.
+3. **Re-test** visually (panel stuck to the bottom, no band, clean top) and, for any
+   drag/scrub fix, **under WebKit**.
+4. **iOS note**: a home-screen shortcut **freezes its name and icon** when added → to update
+   either, delete and re-add it (tell the user).
 5. **Publish**: **release-deploy** (bump `vN` — css/html changed).
 
 ## Guard-rails

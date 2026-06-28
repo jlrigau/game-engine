@@ -47,11 +47,12 @@ title, titleIcon, shortName, tagline, saveKey, assetVersion: "vN",
 audience: { minAge, notes },          // used by the asset skills' content policy
 theme: { home, play },                 // iOS theme-color per screen
 showCoins,                             // false → hide the coins HUD (no economy)
+showDay, showCreatureCount,            // false → hide the 📅 day / creature-count HUD chips (minimal HUD)
 coinIcon, namePrompt:{label,placeholder}, startName, namePromptYou, avatarPrompt,
 createTitle, createOkLabel, startLabel, continueLabel, continueHint, helpTitle,
 ageUnit, and, nightMessage, restBlockedHint, neglectMessage, morningMessage,
 notEnough, idleHint, placeHint, placeHere, cancel, boughtDecorMessage, placedMessage,
-refundMessage, noOnBuilding, noInHome, nameLabel, confirm, nameTaken
+refundMessage, noOnBuilding, noInHome, nameLabel, confirm, nameTaken, closeLabel
 ```
 Strings with `{name}`, `{day}`, `{names}`, `{item}` are interpolated by the engine.
 
@@ -81,15 +82,17 @@ label, icon, sheet, origin:{x,y}, walk:{start,end,frameRate}, moodIcon,  // mood
 youngLabel, adultLabel, variantLabel, customizeTitle, customizedMessage,
 moodNeed: "joy",                       // the need that drives celebration & day-mood
 moodFrom: ["food","energy","clean","joy"],   // needs averaged into the mood heart
+showBars: true,                        // false → hide the per-need bars in the panel (kid-friendly)
 moodDay: { base, lowPenalty, lowAt, highBonus, highAt },   // overnight mood rule
 needs: [ { id, icon, start, perDay } ],      // perDay = overnight delta (0..100 bars)
-variants: [ { id, name, color, tint? , sheet? } ],
+variants: [ { id, name, color, tint? , sheet? } ],   // sheet = a dedicated, animated spritesheet for this variant (else base sheet + optional tint)
 actions: [ {
   id, label, icon,
   cost:{resource,amount}?, require:{need:min}?, effects:{need:+/-}?, reward?,
   anim?, stat?, message?, celebrateMessage?,
-  type: "ride"|"jump"|"customize"?,   // special actions (omit for a normal care action)
+  type: "ride"|"jump"|"customize"|"closeup"?,   // special actions (omit for a normal care action)
 } ],
+wantBubble: { sprite, need?, below?, scale?, lift? },  // see below — replaces the mood shape with a "needs action" image bubble
 customize: { rename, variant },
 ride: { adultsOnly, minEnergy, fatigueNeed, sitY, nameY, onMount:{...}, *Message,
         jump:{ distance, cost, minEnergy, tooTired } },
@@ -117,12 +120,101 @@ names: [...], startCount, startCreatures:[{name,variant}],
 ```
 Omit `ride`/`breeding`/`aging`/`celebrate`/`customize` to disable those systems.
 
+### `creature.wantBubble` (a "needs action" indicator)
+By default each creature floats an abstract mood shape (`moodIcon`) tinted by mood. When a
+game's creatures arrive needy and **leave once satisfied** (e.g. patients), that heart is
+always red and says nothing. `wantBubble` replaces it with a themed **image bubble** that is
+shown only while the creature still wants the action, and hidden the moment it's satisfied —
+a clear "who to go help" cue.
+```
+wantBubble: {
+  sprite: "<image key>",   // the bubble image (e.g. a little dirty tooth)
+  need: "propre",          // which need drives it (omit → mood average)
+  below: 100,              // eligible while need < this (default 100 → until fully satisfied)
+  scale: 0.6, lift: 8,     // size + extra px raised above the head
+  intermittent: true,      // pop up now and then instead of showing permanently
+  showFor: 2.5,            // seconds visible per appearance (intermittent only)
+  hideMin: 5, hideMax: 12, // random gap (s) between appearances — desynced per creature
+}
+```
+It gently bobs (and pops in when `intermittent`), hides during celebration/departure, and
+needs no other wiring. With `intermittent`, each creature shows its bubble on its own random
+cadence, so they don't all appear at once.
+
+### `creature.depart` (leave after being cured)
+```
+depart: { to:{x,y}?, speed?, emptyMessage? }
+```
+When present, a creature that triggers `celebrate` (its mood need hits 100) finishes its
+celebration, then **walks to `to` (default: off the bottom) at `speed` px/s (default 110)
+and is removed**. It stays fully opaque while inside the **home zone** and only begins to
+fade once it has **walked out of that zone**, so it never vanishes mid-room. When the last
+one leaves, `emptyMessage` is shown. Pair with a `spawn` station to refill — the
+"treat → leave → ring for more" loop.
+
+### Close-up mini-scene (`action.type:"closeup"`)
+A creature action of `type:"closeup"` opens a **full-screen scene** zoomed onto a
+backdrop image; the player **scrubs/taps "spots" off it** (works with mouse *and*
+touch) until it's clean, then the action's `effects` / `reward` / `stat` / `celebrate`
+are applied exactly as if a normal action had completed. Generic — use it to clean a
+mouth, wash a pet, polish a gem, wipe a window, etc.
+```
+action = {
+  id, type:"closeup", label, icon,
+  closeup: {
+    bg: "<image key>",            // full-screen backdrop (e.g. a face) — overridable per
+                                  //   creature via `variant.closeupBg` (e.g. each child's own face)
+    spotSprite: "<image key>"?,   // sprite for a spot (omit → a plain CSS blob)
+    brush: "<image key>"?,        // cursor sprite that follows the finger (optional)
+    brushTip: { x, y }?,          // active scrub point as fractions of the brush sprite (e.g. its
+                                  //   bristle head) — spots are removed from HERE, not the raw finger.
+                                  //   Omit → the finger position itself is the active point.
+    spots: {
+      base: 4,                    // spots on the first cure
+      growEvery: 2, max: 12,      // +1 spot every N completions of this action (ramps up), capped
+      rubs: 3,                    // scrubs needed to remove one spot
+      size: 74,                   // spot size in px
+      area: { x, y, w, h },       // spawn region as 0..1 fractions of the BACKDROP IMAGE
+                                  //   (the backdrop fills the screen via object-fit:cover;
+                                  //    spots are placed cover-aware so they stay on the teeth).
+                                  //   May be an ARRAY of regions (e.g. upper + lower teeth) —
+                                  //   spots alternate between them so each region gets some.
+    },
+    finishParticles: ["⭐","💖"], // emojis bursting when the scene is cleared
+  },
+  effects:{ need:+/- }, reward?, stat?, message?, celebrateMessage?,
+}
+```
+Requires the `#closeup` overlay element in `index.html` and the `.closeup*` styles in
+`style.css` (both generic). Difficulty ramps via `state.stats[stat]` (number of past
+completions). The mood need reaching 100 via `effects` triggers `celebrate` in the
+world, so the cured creature visibly rejoices when you return.
+`meta.closeLabel` localises the ✖ button's `aria-label` (default `"Close"`).
+
+#### iOS / touch robustness (why the close-up is built the way it is)
+A finger-scrub over disappearing targets hits two real Safari/iOS bugs. The engine and
+the generic `.closeup*` styles already guard against both — **keep these if you change
+the close-up**, and reuse the pattern for any new drag-over-touch interaction:
+- **Pointer-capture freeze.** When a spot under the finger is removed mid-drag, iOS keeps
+  the pointer *implicitly captured* by the now-gone element, and every later touch is
+  swallowed (the player "can't move" after a cure). Fix: spots are `pointer-events:none`
+  and hit-tested **by geometry** (`cuRub`), the pointer is captured on the **stable stage**
+  (`setPointerCapture` on `#closeup-stage`) and **released** on close / `pointerup` /
+  `pointercancel` (`cuReleaseCapture`). Never capture on an element you may delete.
+- **Blue text-selection.** A tap-drag starts a selection that hijacks subsequent touches.
+  Fix: `user-select:none` + `-webkit-touch-callout:none` + `-webkit-user-drag:none` on the
+  overlay, `touch-action:none`, and a global `selectstart` `preventDefault` (skipping
+  inputs/textareas). These bugs **do not reproduce in headless Chromium** — see the
+  `--engine webkit` mode of `playtest.cjs` and the **test-debug** / **ios-pwa-check** skills.
+
 ### `zones` / `stations`
 ```
 zones: [ { id, home, rect:{x,y,w,h}, fence, gates:"both"|"left"|"right",
            gateA, gateB, tint, tintAlpha, label } ]   // home zone = where creatures roam
 stations: [ { type, x, y, sprite, label, scale?, box?, action, actionLabel,
-              onUse? } ]   // action: "nextDay" | "openShop" | "custom"
+              onUse?, spawn? } ]   // action: "nextDay" | "spawn" | "openShop" | "custom"
+// action:"spawn" → brings a random number of fresh creatures up to a cap:
+//   spawn: { min, max, cap, message?("{n}"), fullMessage? }
 ```
 
 ### `economy` / `shop` / `decor`

@@ -6,13 +6,14 @@
  * (useful in CI / for skills).
  *
  * Portable: Node + Playwright + a static server already running (see serve.sh).
- * Reused by the `test-debug` and `map-verify` skills.
+ * Reused by the `test-debug`, `map-verify` and `ios-pwa-check` skills.
  *
  * Examples:
  *   node playtest.cjs --shots "spawn:560:860:0.9,pen:1210:300:0.8"
  *   node playtest.cjs --walk --out /tmp/engine-shots
  *   node playtest.cjs --eval "state.coins"
  *   node playtest.cjs --probe ./my-asserts.cjs      # module exporting async (page)=>obj
+ *   node playtest.cjs --engine webkit --device "iPhone 13" --probe ./touch.cjs
  *
  * Options:
  *   --port N        static server port (def. 8099)
@@ -21,7 +22,14 @@
  *   --walk          walkability checks of the trail loop (openings + logs)
  *   --eval EXPR     evaluate an expression in the page and print it
  *   --probe FILE    .cjs module exporting async (page)=>result (free assertions)
- *   --viewport WxH  window size (def. 900x900)
+ *   --viewport WxH  window size (def. 900x900; ignored when --device is set)
+ *   --engine NAME   browser engine: chromium (def.) | webkit (real Safari engine) | firefox
+ *   --device NAME   emulate a Playwright device (touch + UA), e.g. "iPhone 13"
+ *
+ * iOS / Safari note: several touch bugs (implicit pointer-capture freeze, blue
+ * text-selection) do NOT reproduce in headless Chromium. Use `--engine webkit`
+ * (optionally with `--device "iPhone 13"`) to drive the actual Safari engine.
+ * Install it once: `npx playwright install webkit` (+ `... install-deps webkit`).
  */
 function loadPlaywright() {
   for (const c of ["playwright", "/opt/node22/lib/node_modules/playwright"]) {
@@ -37,20 +45,52 @@ function arg(name, def) {
 const has = (name) => process.argv.includes(name);
 
 (async () => {
-  const { chromium } = loadPlaywright();
+  const pw = loadPlaywright();
   const port = arg("--port", "8099");
   const out = arg("--out", "/tmp/engine-shots");
   const [vw, vh] = arg("--viewport", "900x900").split("x").map(Number);
   require("node:fs").mkdirSync(out, { recursive: true });
 
-  // The game loads Phaser from a CDN. In sandboxed environments outbound HTTPS
-  // goes through a proxy (HTTPS_PROXY) that re-terminates TLS — point Chromium at
-  // it and ignore cert errors so the CDN can load.
-  const launchArgs = ["--ignore-certificate-errors"];
+  // Browser engine: chromium (default) | webkit (Safari engine) | firefox.
+  const engineName = (arg("--engine", "chromium") || "chromium").toLowerCase();
+  const engine = pw[engineName];
+  if (!engine) throw new Error(`Unknown --engine "${engineName}" (use chromium | webkit | firefox).`);
+  const deviceName = arg("--device", "");
+  const device = deviceName ? pw.devices[deviceName] : null;
+  if (deviceName && !device) throw new Error(`Unknown --device "${deviceName}" (see Playwright's device registry).`);
+
+  // In sandboxed environments outbound HTTPS goes through a proxy (HTTPS_PROXY) that
+  // re-terminates TLS. Chromium takes it as a CLI flag; webkit/firefox via launch.proxy.
   const proxy = process.env.HTTPS_PROXY || process.env.https_proxy;
-  if (proxy) launchArgs.push("--proxy-server=" + proxy, "--proxy-bypass-list=127.0.0.1;localhost;[::1]");
-  const browser = await chromium.launch({ args: launchArgs });
-  const page = await browser.newPage({ viewport: { width: vw, height: vh }, ignoreHTTPSErrors: true });
+  const launchOpts = {};
+  if (engineName === "chromium") {
+    launchOpts.args = ["--ignore-certificate-errors"];
+    if (proxy) launchOpts.args.push("--proxy-server=" + proxy, "--proxy-bypass-list=127.0.0.1;localhost;[::1]");
+  } else if (proxy) {
+    launchOpts.proxy = { server: proxy, bypass: "127.0.0.1,localhost" };
+  }
+
+  let browser;
+  try {
+    browser = await engine.launch(launchOpts);
+  } catch (e) {
+    // Most common cause for webkit/firefox: the browser binary isn't installed.
+    if (engineName !== "chromium") {
+      console.error(
+        `PLAYTEST: could not launch ${engineName}. Install it once, then retry:\n` +
+        `  npx playwright install ${engineName}\n` +
+        `  npx playwright install-deps ${engineName}    # system libraries (Linux)\n` +
+        `Original error: ${e.message}`);
+      process.exit(3);
+    }
+    throw e;
+  }
+
+  const ctxOpts = { ignoreHTTPSErrors: true };
+  if (device) Object.assign(ctxOpts, device);            // viewport + UA + touch from the device
+  else ctxOpts.viewport = { width: vw, height: vh };
+  const context = await browser.newContext(ctxOpts);
+  const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(String(e.message)));
   page.on("console", (m) => { if (m.type() === "error") pageErrors.push("console: " + m.text()); });
@@ -70,7 +110,7 @@ const has = (name) => process.argv.includes(name);
   );
   await page.waitForTimeout(800);
 
-  const report = { shots: [], pageErrors: [] };
+  const report = { engine: engineName, device: deviceName || null, shots: [], pageErrors: [] };
 
   // --- Zone screenshots ---
   const shots = arg("--shots", "");

@@ -42,9 +42,33 @@ Requirements: `python3`, `node` + Playwright.
 6. **Report**: what works / what breaks (exact output & error), the cause, the fix —
    with screenshots + assertion values as **proof**.
 
+## Testing on the real Safari engine (WebKit) — for iOS / touch bugs
+Headless **Chromium does not reproduce some iOS bugs** (touch, pointer capture, text
+selection). When the report is about iPhone/iPad, or any **drag / scrub / multi-touch**
+interaction, re-run the probe on the actual Safari engine:
+```bash
+node .claude/skills/_shared/playtest.cjs --engine webkit --device "iPhone 13" --probe ./touch.cjs
+```
+- One-time install if missing (the harness prints this and exits 3):
+  `npx playwright install webkit` (+ `npx playwright install-deps webkit`).
+- In the probe, drive **real pointer events** so the bug actually fires:
+  ```js
+  module.exports = async (page) => {
+    await page.mouse.move(x0, y0); await page.mouse.down();
+    await page.mouse.move(x1, y1, { steps: 12 }); await page.mouse.up();
+    // then assert game state, e.g. that the player can still move after a close-up:
+    return await page.evaluate(() => ({ canMove: !window.__stuck /* your check */ }));
+  };
+  ```
+- Real iOS pitfalls already guarded in the engine (regress against these): **implicit
+  pointer-capture freeze** (capture a removed element → all later touches swallowed) and
+  **blue text-selection** from a tap-drag. See ENGINE.md "iOS / touch robustness".
+
 ## Guard-rails
 - **Never say "it works" without proof** (screenshot + assertions + 0 pageError).
 - Test the **real player scenario**, not just the absence of a JS error.
+- A touch/iOS bug report is only "fixed" once it's reproduced **and** verified under
+  `--engine webkit` (Chromium-green is not enough).
 - If a functional choice is ambiguous, ask via **AskUserQuestion**.
 
 ## Chaining

@@ -43,11 +43,13 @@ the technical work happens **behind the scenes, silently**.
    - ✨ Visual idea (new element) → **asset-search** (with suitability check) →
      **asset-add** → (**add-decor-item** / **add-creature-variant** / **add-character**
      / **add-collision** / **place-scatter**) → **test-debug** → **map-verify** →
-     **release-deploy**.
+     **capitalize-learnings** → **release-deploy**.
    - ✨ Rule/feature idea (goals, breeding, …) → code → **state-migration** if it
-     saves → **test-debug** → **release-deploy**.
+     saves → **test-debug** → **capitalize-learnings** → **release-deploy**.
    - 🐛 Bug → **test-debug** (repro + cause + fix + regression) → **map-verify** if
-     visual → **release-deploy**.
+     visual → **capitalize-learnings** → **release-deploy**.
+   - In every branch, **capitalize-learnings** runs just before shipping: fold any
+     reusable insight back into the engine/skills/docs and audit the separation.
    - **Keep a trail**: create/update a **GitHub issue** (via GitHub MCP) for the
      maintainer, and commit/push.
 5. **Confirm in plain words** once it's live, e.g.: "Done! ✨ Now when you feed your
