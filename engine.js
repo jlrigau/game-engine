@@ -9,6 +9,28 @@
 
 "use strict";
 
+// Surface any uncaught error on-screen. A thrown error inside Phaser's update loop
+// silently freezes the game (the canvas stops, DOM panels stay) — exactly the kind of
+// device-only "it's stuck" report that's invisible without this. Tap the bar to dismiss.
+(function () {
+  function show(msg) {
+    let el = document.getElementById("err-overlay");
+    if (!el) {
+      el = document.createElement("div"); el.id = "err-overlay";
+      el.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;background:rgba(176,28,40,0.96);color:#fff;font:12px/1.45 ui-monospace,monospace;padding:10px 12px calc(10px + env(safe-area-inset-bottom));white-space:pre-wrap;max-height:45vh;overflow:auto";
+      el.addEventListener("click", function () { el.remove(); });
+      (document.body || document.documentElement).appendChild(el);
+    }
+    el.textContent = "⚠ " + msg + "\n\n(tap to dismiss — please screenshot this)";
+  }
+  window.addEventListener("error", function (e) {
+    show((e.message || "error") + (e.filename ? (" @ " + String(e.filename).split("/").pop() + ":" + e.lineno + ":" + e.colno) : ""));
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    show("promise rejection: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason || "?"));
+  });
+})();
+
 // The whole game definition lives here (set by game.config.js, loaded first).
 const G = window.GAME;
 if (!G) throw new Error("engine.js: window.GAME is missing — load game.config.js before engine.js");
