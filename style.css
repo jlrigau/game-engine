@@ -67,7 +67,7 @@ input[type="text"]::placeholder { color: #6a78aa; }
   display: flex; align-items: center; justify-content: center;
 }
 .create-controls { text-align: left; }
-.avatar-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.avatar-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; padding: 8px 6px; }
 .btn-avatar {
   width: 46px; height: 46px; border-radius: 12px; border: 2px solid var(--border);
   background: #11183a; cursor: pointer; padding: 0; line-height: 1;
@@ -76,7 +76,8 @@ input[type="text"]::placeholder { color: #6a78aa; }
 .group { margin-bottom: 10px; }
 .group-title { font-weight: bold; font-size: 0.9rem; display: block; margin-bottom: 4px; color: var(--muted); }
 .swatch { width: 38px; height: 38px; border-radius: 50%; }
-.swatch.chosen { transform: scale(1.12); }
+/* selected swatch: gentle lift + tight ring (no wide outer glow that would overflow the row) */
+.swatch.chosen { transform: scale(1.06); box-shadow: 0 0 0 3px var(--neon), 0 0 7px rgba(63,224,232,0.5); }
 .variant-blob { width: 90px; height: 90px; border-radius: 46% 46% 50% 50%; border: 3px solid #11183a; box-shadow: 0 0 16px currentColor; }
 
 /* ===== Buttons ===== */
