@@ -52,6 +52,7 @@ const MOOD_NEED = (CREATURE && CREATURE.moodNeed) || null;
 const MOOD_SHAPE = (CREATURE && CREATURE.moodIcon) || "heart";  // particle shape of the mood indicator
 const WANT = (CREATURE && CREATURE.wantBubble) || null;         // optional "needs care" bubble (image) replacing the mood shape
 const ALL_HAPPY = (CREATURE && CREATURE.allHappy) || null;      // optional day-arc reward when every creature is happy at rest
+const PLAYER_NAME_Y = (G.player && G.player.nameY != null) ? G.player.nameY : -80;  // y offset of the player's name label (above the head)
 
 // Primary playable zone where creatures roam (first zone flagged home, else first).
 const HOME_ZONE = ZONES.find((z) => z.home) || ZONES[0] || null;
@@ -720,7 +721,7 @@ function buildWorld() {
   const sheet = charDef(state.player.avatar).sheet;
   playerSprite = sc.add.sprite(0, 0, sheet, 18).setOrigin(0.5, 0.97).setScale((G.player && G.player.scale) || 1.7);
   playerFacing = "down";
-  playerName = sc.add.text(0, -80, state.player.name || "", { fontSize: "15px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 4 }).setOrigin(0.5);
+  playerName = sc.add.text(0, PLAYER_NAME_Y, state.player.name || "", { fontSize: "15px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 4 }).setOrigin(0.5);
   const sp = (G.player && G.player.spawn) || (HOME_ZONE ? { x: HOME_ZONE.rect.x - 240, y: HOME_ZONE.rect.y + HOME_ZONE.rect.h * 0.5 } : { x: 560, y: 700 });
   player = sc.add.container(sp.x, sp.y, [playerShadow, playerSprite, playerName]);
   player.setSize(40, 40);
@@ -904,7 +905,7 @@ function sceneUpdate(time, delta) {
     }
   } else if (!mounted) {
     if (playerSprite.y !== 0) { playerSprite.y = 0; playerShadow.setVisible(true); }
-    if (playerName && playerName.y !== -80) playerName.y = -80;
+    if (playerName && playerName.y !== PLAYER_NAME_Y) playerName.y = PLAYER_NAME_Y;
   }
 
   // Trail-visit stat (marked once when the player steps onto the path).

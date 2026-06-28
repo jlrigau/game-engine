@@ -73,7 +73,7 @@ Everything in `assets` is preloaded automatically (with cache-busting via `av()`
 
 ### `player` / `characters`
 ```
-player: { scale, speed:{walk,run,rideWalk,rideRun}, spawn:{x,y} }
+player: { scale, speed:{walk,run,rideWalk,rideRun}, spawn:{x,y}, nameY }  // nameY = y offset of the name label above the head (default -80)
 characters: [ { id, name, sheet, thumb } ]   // sheet=64×64 walkcycle, thumb in assets/ui/
 ```
 

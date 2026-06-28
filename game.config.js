@@ -26,7 +26,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v21",
+    assetVersion: "v22",
     theme: { home: "#171036", play: "#0e1430" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -84,6 +84,7 @@ window.GAME = {
     scale: 1.7,
     speed: { walk: 210, run: 380 },
     spawn: { x: 440, y: 660 },
+    nameY: -112,                 // keep the name label above the keeper's head
   },
   characters: [
     { id: "aqua", name: "Bolt", sheet: "keeper", thumb: "keeper_thumb" },
