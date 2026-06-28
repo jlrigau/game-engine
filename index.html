@@ -11,10 +11,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Nebula" />
   <title>Nebula Nursery</title>
-  <link rel="manifest" href="manifest.webmanifest?v=v10" />
-  <link rel="icon" type="image/png" href="assets/favicon.png?v=v10" />
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=v10" />
-  <link rel="stylesheet" href="style.css?v=v10" />
+  <link rel="manifest" href="manifest.webmanifest?v=v11" />
+  <link rel="icon" type="image/png" href="assets/favicon.png?v=v11" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=v11" />
+  <link rel="stylesheet" href="style.css?v=v11" />
 </head>
 <body>
   <!-- Home -->
@@ -76,11 +76,20 @@
     </div>
   </div>
 
+  <!-- Close-up mini-scene (generic): zoom onto a backdrop and scrub spots off it -->
+  <div id="closeup" class="closeup hidden">
+    <button id="closeup-close" class="closeup-close" aria-label="Close">✖</button>
+    <div id="closeup-stage" class="closeup-stage">
+      <img id="closeup-bg" class="closeup-bg" alt="" draggable="false" />
+      <img id="closeup-brush" class="closeup-brush hidden" alt="" draggable="false" />
+    </div>
+  </div>
+
   <!-- Night veil ("rest" transition), fullscreen -->
   <div id="night-veil"></div>
 
-  <script src="vendor/phaser.min.js?v=v10"></script>
-  <script src="game.config.js?v=v10"></script>
-  <script src="engine.js?v=v10"></script>
+  <script src="vendor/phaser.min.js?v=v11"></script>
+  <script src="game.config.js?v=v11"></script>
+  <script src="engine.js?v=v11"></script>
 </body>
 </html>

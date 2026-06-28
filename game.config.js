@@ -26,7 +26,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v10",
+    assetVersion: "v11",
     theme: { home: "#171036", play: "#0e1430" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -62,6 +62,7 @@ window.GAME = {
       ground: "assets/img/ground.png", energy: "assets/img/energy.png",
       crystal: "assets/img/crystal.png", alienplant: "assets/img/alienplant.png",
       pod_rest: "assets/img/pod_rest.png",
+      critter_closeup: "assets/img/critter_closeup.png", dust: "assets/img/dust.png", cloth: "assets/img/cloth.png",
     },
     sheets: {
       keeper: { path: "assets/sheet/keeper.png", frameWidth: 64, frameHeight: 64 },
@@ -91,10 +92,11 @@ window.GAME = {
     origin: { x: 0.5, y: 0.78 },
     walk: { start: 0, end: 3, frameRate: 6 },
     moodNeed: "joy",
-    moodFrom: ["fuel", "joy"],
+    moodFrom: ["fuel", "shine", "joy"],
     moodDay: { base: -8, lowPenalty: -8, lowAt: 25, highBonus: 6, highAt: 60 },
     needs: [
       { id: "fuel", icon: "🔋", start: 70, perDay: -22 },
+      { id: "shine", icon: "✨", start: 65, perDay: -18 },
       { id: "joy", icon: "😊", start: 80 },
     ],
     actions: [
@@ -108,6 +110,15 @@ window.GAME = {
         // themed particles: a burst of STARS instead of hearts
         anim: { motion: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff", "#ff5db1"], count: 7 },
         message: "{name} had fun! 🎮", celebrateMessage: "{name} glows with joy! ✨" },
+      // ⭐ flagship CLOSE-UP action: zoom onto the critter and scrub off cosmic dust
+      { id: "polish", type: "closeup", label: "Polish", icon: "✨", stat: "polish",
+        closeup: {
+          bg: "critter_closeup", spotSprite: "dust", brush: "cloth", brushTip: { x: 0.5, y: 0.4 },
+          spots: { base: 4, growEvery: 2, max: 10, rubs: 3, size: 76, area: { x: 0.25, y: 0.32, w: 0.50, h: 0.40 } },
+          finishParticles: ["⭐", "✨", "💫"],
+        },
+        effects: { shine: 100, joy: 8 },
+        message: "{name} is sparkling clean! ✨", celebrateMessage: "{name} shines with joy! 🌟" },
     ],
     celebrate: { mode: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff"], count: 7 },
     names: ["Zib", "Quor", "Lumi", "Vex", "Orbit", "Pulse", "Nova", "Echo", "Bly", "Pixl"],
@@ -145,6 +156,7 @@ window.GAME = {
       { name: "Caretaker", goals: [
         { id: "feed1", name: "First charge", desc: "Feed a critter", check: (s) => s.stats.feed >= 1 },
         { id: "play1", name: "Playtime", desc: "Play with a critter", check: (s) => s.stats.play >= 1 },
+        { id: "polish1", name: "Sparkle clean", desc: "Polish a critter (zoom in!)", check: (s) => s.stats.polish >= 1 },
         { id: "happy", name: "All aglow", desc: "Make a critter fully happy", check: (s) => s.creatures.some((c) => c.joy >= 100) },
       ] },
     ],
@@ -154,7 +166,8 @@ window.GAME = {
   help: [
     "<b>Welcome to your space nursery!</b>",
     "<b>🚀 Move:</b> tap where you want to go (your keeper floats there). You can also tap a critter directly. (Keyboard: arrows or WASD/ZQSD.)",
-    "<b>👾 A critter:</b> float up to it, then 🔋 Feed or 🎮 Play. Keep its mood in the green!",
+    "<b>👾 A critter:</b> float up to it, then 🔋 Feed, 🎮 Play, or ✨ Polish. Keep its mood in the green!",
+    "<b>✨ Polish:</b> zooms right in on your critter — rub the cosmic dust off with your finger until it sparkles!",
     "<b>🌙 Recharge Pod:</b> rest to reach the next cycle (look after a critter first).",
     "<b>🤖 (top):</b> change your keeper. 💾 The game saves automatically.",
   ],

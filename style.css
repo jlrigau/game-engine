@@ -199,3 +199,35 @@ input[type="text"]::placeholder { color: #6a78aa; }
 .goal-txt { flex: 1; display: flex; flex-direction: column; line-height: 1.15; }
 .goal-txt small { color: var(--muted); }
 .goal-done { background: #14253a; border: 1px solid var(--good); border-radius: 12px; padding: 10px; margin: 0 0 10px; text-align: center; font-weight: bold; color: var(--good); }
+
+/* ===== Close-up mini-scene (generic — required by action.type:"closeup") ===== */
+/* Recoloured for the space theme; keep the touch/iOS guards (user-select / drag /
+   touch-action) — they fix real Safari bugs during finger-scrub. See ENGINE.md. */
+.closeup {
+  position: fixed; inset: 0; z-index: 120;
+  background: #0e1430;          /* only seen for a frame before the backdrop loads */
+  touch-action: none; -webkit-user-select: none; user-select: none; overflow: hidden;
+}
+.closeup, .closeup * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
+.closeup-close {
+  position: absolute; top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right));
+  z-index: 10; width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--neon2); color: #fff; font-size: 1.3rem; font-weight: bold;
+  box-shadow: 0 4px 0 #c43f86; line-height: 1;
+}
+.closeup-close:active { transform: translateY(3px); box-shadow: 0 0 0 #c43f86; }
+/* The stage fills the WHOLE screen; the backdrop is shown with object-fit:cover and
+   spots are placed cover-aware so they stay on the subject. */
+.closeup-stage { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; touch-action: none; }
+.closeup-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center center; pointer-events: none; -webkit-user-drag: none; }
+.cu-spot {
+  position: absolute; transform: translate(-50%, -50%) rotate(var(--rot, 0deg)); pointer-events: none;
+  image-rendering: pixelated; -webkit-user-drag: none; touch-action: none;
+  transition: transform .09s ease, opacity .09s ease; will-change: transform, opacity;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+}
+.closeup-brush { position: absolute; left: 50%; top: 82%; width: 104px; height: 104px; transform: translate(-50%, -50%); pointer-events: none; image-rendering: pixelated; z-index: 6; -webkit-user-drag: none; filter: drop-shadow(0 0 8px rgba(63,224,232,0.6)); }
+.cu-emoji { position: absolute; transform: translate(-50%, -50%); font-size: 1.8rem; pointer-events: none; z-index: 7; animation: cuPop .9s ease-out forwards; }
+.cu-emoji.cu-burst { font-size: 2.4rem; animation: cuRise 1.2s ease-out forwards; }
+@keyframes cuPop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.3); } 30% { opacity: 1; transform: translate(-50%,-50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%,-90%) scale(1); } }
+@keyframes cuRise { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.4); } 25% { opacity: 1; transform: translate(-50%,-50%) scale(1.3); } 100% { opacity: 0; transform: translate(-50%,-220%) scale(1); } }
