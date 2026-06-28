@@ -26,7 +26,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v11",
+    assetVersion: "v12",
     theme: { home: "#171036", play: "#0e1430" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -63,6 +63,7 @@ window.GAME = {
       crystal: "assets/img/crystal.png", alienplant: "assets/img/alienplant.png",
       pod_rest: "assets/img/pod_rest.png",
       critter_closeup: "assets/img/critter_closeup.png", dust: "assets/img/dust.png", cloth: "assets/img/cloth.png",
+      want_dust: "assets/img/want_dust.png",
     },
     sheets: {
       keeper: { path: "assets/sheet/keeper.png", frameWidth: 64, frameHeight: 64 },
@@ -91,34 +92,46 @@ window.GAME = {
     scale: 1.0,
     origin: { x: 0.5, y: 0.78 },
     walk: { start: 0, end: 3, frameRate: 6 },
+    // Mood = average of the three needs (the coloured heart above each critter).
+    // joy is the MOOD_NEED: maxing it (via Play) triggers the little celebration,
+    // and it gently drifts each cycle depending on how well the other needs are kept up.
     moodNeed: "joy",
     moodFrom: ["fuel", "shine", "joy"],
     moodDay: { base: -8, lowPenalty: -8, lowAt: 25, highBonus: 6, highAt: 60 },
+    // Three clear needs, each looked after by exactly ONE action:
+    //   🔋 Energy ← Feed   ·   ✨ Sparkle ← Polish (zoom)   ·   🎮 Fun ← Play
     needs: [
       { id: "fuel", icon: "🔋", start: 70, perDay: -22 },
       { id: "shine", icon: "✨", start: 65, perDay: -18 },
-      { id: "joy", icon: "😊", start: 80 },
+      { id: "joy", icon: "🎮", start: 80 },
     ],
+    // A dusty critter intermittently pops a "polish me" bubble (Sparkle low) — it cues
+    // the close-up. The coloured mood heart stays on alongside it (wantBubble.withMood).
+    wantBubble: { sprite: "want_dust", need: "shine", below: 45, withMood: true,
+      intermittent: true, scale: 0.6, lift: 30, showFor: 2.6, hideMin: 5, hideMax: 10 },
+    // Rest with EVERYONE happy → a synchronized send-off and a special morning line.
+    allHappy: { mood: 75, message: "🌟 Cycle {day}: every critter is glowing — what a wonderful day! ✨" },
     actions: [
+      // Quick in-world taps — each tops up one need only.
       { id: "feed", label: "Feed", icon: "🔋",
-        effects: { fuel: 35, joy: 8 }, stat: "feed",
+        effects: { fuel: 38 }, stat: "feed",
         // themed particles: little cyan energy sparks float up as it recharges
         anim: { motion: "nod", particle: "spark", colors: ["#9fe8ff", "#6fb7e8", "#ffffff"], count: 6, y0: 38 },
         message: "{name} recharged happily! 🔋" },
       { id: "play", label: "Play", icon: "🎮",
-        effects: { joy: 22, fuel: -6 }, stat: "play",
+        effects: { joy: 30 }, stat: "play",
         // themed particles: a burst of STARS instead of hearts
         anim: { motion: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff", "#ff5db1"], count: 7 },
         message: "{name} had fun! 🎮", celebrateMessage: "{name} glows with joy! ✨" },
-      // ⭐ flagship CLOSE-UP action: zoom onto the critter and scrub off cosmic dust
+      // ⭐ the signature CLOSE-UP "moment fort": zoom in and scrub off the cosmic dust by hand
       { id: "polish", type: "closeup", label: "Polish", icon: "✨", stat: "polish",
         closeup: {
           bg: "critter_closeup", spotSprite: "dust", brush: "cloth", brushTip: { x: 0.5, y: 0.4 },
           spots: { base: 4, growEvery: 2, max: 10, rubs: 3, size: 76, area: { x: 0.25, y: 0.32, w: 0.50, h: 0.40 } },
           finishParticles: ["⭐", "✨", "💫"],
         },
-        effects: { shine: 100, joy: 8 },
-        message: "{name} is sparkling clean! ✨", celebrateMessage: "{name} shines with joy! 🌟" },
+        effects: { shine: 100 },
+        message: "{name} is sparkling clean! ✨" },
     ],
     celebrate: { mode: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff"], count: 7 },
     names: ["Zib", "Quor", "Lumi", "Vex", "Orbit", "Pulse", "Nova", "Echo", "Bly", "Pixl"],
@@ -157,7 +170,7 @@ window.GAME = {
         { id: "feed1", name: "First charge", desc: "Feed a critter", check: (s) => s.stats.feed >= 1 },
         { id: "play1", name: "Playtime", desc: "Play with a critter", check: (s) => s.stats.play >= 1 },
         { id: "polish1", name: "Sparkle clean", desc: "Polish a critter (zoom in!)", check: (s) => s.stats.polish >= 1 },
-        { id: "happy", name: "All aglow", desc: "Make a critter fully happy", check: (s) => s.creatures.some((c) => c.joy >= 100) },
+        { id: "happy", name: "All aglow", desc: "Get a critter's mood fully up", check: (s) => s.creatures.some((c) => (c.fuel + c.shine + c.joy) / 3 >= 85) },
       ] },
     ],
   },
@@ -166,9 +179,9 @@ window.GAME = {
   help: [
     "<b>Welcome to your space nursery!</b>",
     "<b>🚀 Move:</b> tap where you want to go (your keeper floats there). You can also tap a critter directly. (Keyboard: arrows or WASD/ZQSD.)",
-    "<b>👾 A critter:</b> float up to it, then 🔋 Feed, 🎮 Play, or ✨ Polish. Keep its mood in the green!",
-    "<b>✨ Polish:</b> zooms right in on your critter — rub the cosmic dust off with your finger until it sparkles!",
-    "<b>🌙 Recharge Pod:</b> rest to reach the next cycle (look after a critter first).",
+    "<b>👾 Three needs:</b> 🔋 Energy (Feed), 🎮 Fun (Play) and ✨ Sparkle (Polish). The heart over each critter shows its mood — keep it green!",
+    "<b>✨ Polish:</b> when a critter gathers cosmic dust it pops a ✨ bubble. Tap it to zoom right in and rub the dust off with your finger until it sparkles!",
+    "<b>🌙 Recharge Pod:</b> rest to reach the next cycle. Send everyone to sleep happy for a glowing send-off! ✨",
     "<b>🤖 (top):</b> change your keeper. 💾 The game saves automatically.",
   ],
 };

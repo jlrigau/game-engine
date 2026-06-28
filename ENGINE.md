@@ -92,7 +92,8 @@ actions: [ {
   anim?, stat?, message?, celebrateMessage?,
   type: "ride"|"jump"|"customize"|"closeup"?,   // special actions (omit for a normal care action)
 } ],
-wantBubble: { sprite, need?, below?, scale?, lift? },  // see below — replaces the mood shape with a "needs action" image bubble
+wantBubble: { sprite, need?, below?, withMood?, scale?, lift? },  // see below — "needs action" image bubble (replaces, or with withMood sits beside, the mood shape)
+allHappy: { mood, message, celebrate? },   // day-arc reward: rest with EVERYONE happy → synchronized celebration + special morning line
 customize: { rename, variant },
 ride: { adultsOnly, minEnergy, fatigueNeed, sitY, nameY, onMount:{...}, *Message,
         jump:{ distance, cost, minEnergy, tooTired } },
@@ -135,11 +136,27 @@ wantBubble: {
   intermittent: true,      // pop up now and then instead of showing permanently
   showFor: 2.5,            // seconds visible per appearance (intermittent only)
   hideMin: 5, hideMax: 12, // random gap (s) between appearances — desynced per creature
+  withMood: true,          // keep the coloured mood heart ON and float the bubble in its own slot above it
 }
 ```
 It gently bobs (and pops in when `intermittent`), hides during celebration/departure, and
 needs no other wiring. With `intermittent`, each creature shows its bubble on its own random
-cadence, so they don't all appear at once.
+cadence, so they don't all appear at once. By default the bubble **replaces** the mood shape;
+set `withMood: true` to keep the always-on mood heart as a gauge **and** pop the bubble above
+it (e.g. an overall mood heart + a need-specific "do this action now" cue).
+
+### `creature.allHappy` (day-arc collective reward)
+Gives the day/rest cycle an arc: when the player rests (`station.action:"nextDay"`) with
+**every** creature happy, the engine fires a synchronized celebration before the night and
+shows a special morning line instead of the ordinary `morningMessage`.
+```
+allHappy: {
+  mood: 75,                       // every creature's mood average must be ≥ this at rest
+  message: "🌟 Cycle {day}: ...",  // morning line on a perfect cycle ({day} substituted)
+  celebrate: true,                // default true → each creature does its celebrate() hop, staggered
+}
+```
+Mood is the same average shown by the mood heart (`moodFrom`). Omit the block to disable.
 
 ### `creature.depart` (leave after being cured)
 ```

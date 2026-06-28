@@ -44,6 +44,7 @@ const ENV = G.environment || null;
 const MOOD_NEED = (CREATURE && CREATURE.moodNeed) || null;
 const MOOD_SHAPE = (CREATURE && CREATURE.moodIcon) || "heart";  // particle shape of the mood indicator
 const WANT = (CREATURE && CREATURE.wantBubble) || null;         // optional "needs care" bubble (image) replacing the mood shape
+const ALL_HAPPY = (CREATURE && CREATURE.allHappy) || null;      // optional day-arc reward when every creature is happy at rest
 
 // Primary playable zone where creatures roam (first zone flagged home, else first).
 const HOME_ZONE = ZONES.find((z) => z.home) || ZONES[0] || null;
@@ -755,12 +756,22 @@ function buildCreatureObj(c) {
   const body = sc.add.sprite(0, 0, creatureTexture(c)).setOrigin(orig.x, orig.y).setScale(scale);
   body.play(creatureWalkKey(c));
   applyVariantTint(body, c);
-  const heart = WANT
+  // WANT replaces the mood shape, UNLESS wantBubble.withMood: then both coexist
+  // (mood shape stays as the always-on colour gauge, want bubble pops in above it).
+  const wantOnly = WANT && !WANT.withMood;
+  const heart = wantOnly
     ? sc.add.image(0, heartY(c) - (WANT.lift || 6), WANT.sprite).setOrigin(0.5, 1).setScale(WANT.scale || 1).setVisible(!WANT.intermittent)
     : sc.add.image(0, heartY(c), ensureShape(MOOD_SHAPE)).setOrigin(0.5).setScale(0.95).setTint(0x6fcf5f);
+  const kids = [shadow, body, heart];
+  let wantT = null;
+  if (WANT && WANT.withMood) {
+    wantT = sc.add.image(0, heartY(c) - (WANT.lift || 22), WANT.sprite).setOrigin(0.5, 1).setScale(WANT.scale || 1).setVisible(false);
+    kids.push(wantT);
+  }
   const nameT = sc.add.text(0, 22, c.name, { fontSize: "16px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 4 }).setOrigin(0.5);
-  const cont = sc.add.container(c.x, c.y, [shadow, body, heart, nameT]);
-  c.obj = cont; c.bodyT = body; c.heartT = heart; c.nameT = nameT; c.shadowT = shadow;
+  kids.push(nameT);
+  const cont = sc.add.container(c.x, c.y, kids);
+  c.obj = cont; c.bodyT = body; c.heartT = heart; c.wantT = wantT; c.nameT = nameT; c.shadowT = shadow;
 }
 
 function refreshCreatureVisual(c) {
@@ -771,7 +782,8 @@ function refreshCreatureVisual(c) {
   applyVariantTint(c.bodyT, c);
   c.bodyT.setScale(scale);
   if (c.shadowT) c.shadowT.setScale(scale);
-  c.heartT.y = heartY(c) - (WANT ? (WANT.lift || 6) : 0);
+  c.heartT.y = heartY(c) - ((WANT && !WANT.withMood) ? (WANT.lift || 6) : 0);
+  if (c.wantT) c.wantT.y = heartY(c) - (WANT.lift || 22);
   c.nameT.setText(c.name);
 }
 
@@ -933,31 +945,39 @@ function sceneUpdate(time, delta) {
       c.bodyT.setFlipX(playerFacing === "right");
     }
     if (WANT) {
-      // a "needs care" bubble: shown while the child still wants the treatment, hidden once cured / leaving
+      // a "needs care" bubble: shown while the creature still wants the treatment, hidden once cured / leaving.
+      // withMood → the bubble lives in its own slot (c.wantT) and the mood shape (c.heartT) stays on as a gauge.
+      const wt = WANT.withMood ? c.wantT : c.heartT;
       const nv = WANT.need ? (c[WANT.need] || 0) : needAverage(c);
-      const wants = nv < (WANT.below != null ? WANT.below : 100) && !c.departing && !c.celebrating;
-      const lift = WANT.lift || 6, base = WANT.scale || 1;
-      if (!wants) {
-        c.heartT.setVisible(false); c.wantUntil = null;       // cured/leaving → no bubble
-      } else if (WANT.intermittent) {
-        // pop up for a moment, then hide for a random gap (desynced per child) — they "pipe up" now and then
-        if (c.wantUntil == null) {                            // first eligibility: stay quiet a random while
-          c.wantPhase = "hide"; c.wantUntil = now + randInt(300, (WANT.hideMax || 9) * 1000);
+      const wants = wt && nv < (WANT.below != null ? WANT.below : 100) && !c.departing && !c.celebrating;
+      const lift = WANT.lift || (WANT.withMood ? 22 : 6), base = WANT.scale || 1;
+      if (wt) {
+        if (!wants) {
+          wt.setVisible(false); c.wantUntil = null;             // cured/leaving → no bubble
+        } else if (WANT.intermittent) {
+          // pop up for a moment, then hide for a random gap (desynced per creature) — they "pipe up" now and then
+          if (c.wantUntil == null) {                            // first eligibility: stay quiet a random while
+            c.wantPhase = "hide"; c.wantUntil = now + randInt(300, (WANT.hideMax || 9) * 1000);
+          }
+          if (now >= c.wantUntil) {
+            if (c.wantPhase === "show") { c.wantPhase = "hide"; c.wantUntil = now + randInt((WANT.hideMin || 5) * 1000, (WANT.hideMax || 11) * 1000); }
+            else { c.wantPhase = "show"; c.wantShownAt = now; c.wantUntil = now + (WANT.showFor || 2.5) * 1000; }
+          }
+          const showing = c.wantPhase === "show";
+          wt.setVisible(showing);
+          if (showing) {
+            const e = Math.min(1, (now - c.wantShownAt) / 180); // quick pop-in
+            wt.setScale(base * (0.55 + 0.45 * e * (2 - e)));
+            wt.y = heartY(c) - lift + Math.sin(now / 300 + c.x) * 3;
+          }
+        } else {
+          wt.setVisible(true);
+          wt.y = heartY(c) - lift + Math.sin(now / 320 + c.x) * 3;  // gentle bob
         }
-        if (now >= c.wantUntil) {
-          if (c.wantPhase === "show") { c.wantPhase = "hide"; c.wantUntil = now + randInt((WANT.hideMin || 5) * 1000, (WANT.hideMax || 11) * 1000); }
-          else { c.wantPhase = "show"; c.wantShownAt = now; c.wantUntil = now + (WANT.showFor || 2.5) * 1000; }
-        }
-        const showing = c.wantPhase === "show";
-        c.heartT.setVisible(showing);
-        if (showing) {
-          const e = Math.min(1, (now - c.wantShownAt) / 180); // quick pop-in
-          c.heartT.setScale(base * (0.55 + 0.45 * e * (2 - e)));
-          c.heartT.y = heartY(c) - lift + Math.sin(now / 300 + c.x) * 3;
-        }
-      } else {
-        c.heartT.setVisible(true);
-        c.heartT.y = heartY(c) - lift + Math.sin(now / 320 + c.x) * 3;  // gentle bob
+      }
+      if (WANT.withMood) {                                       // mood shape keeps its colour gauge alongside the bubble
+        const m = needAverage(c);
+        c.heartT.setTint(m > 60 ? 0x6fcf5f : m > 35 ? 0xf4b942 : 0xe05656);
       }
     } else {
       const m = needAverage(c);
@@ -1336,6 +1356,12 @@ function nextDay() {
     message(META.restBlockedHint || "You just woke up! Take care of someone first.");
     return;
   }
+  // Day-arc reward: if every creature is happy at rest, give a synchronized send-off before the night.
+  state.allHappyTonight = !!(ALL_HAPPY && state.creatures.length &&
+    state.creatures.every((c) => needAverage(c) >= (ALL_HAPPY.mood || 75)));
+  if (state.allHappyTonight && ALL_HAPPY.celebrate !== false) {
+    state.creatures.forEach((c, i) => { if (sc) sc.time.delayedCall(i * 140, () => celebrate(c)); });
+  }
   nightRunning = true; moveTarget = null; message(META.nightMessage || "🌙 Night falls…");
   const v = $("night-veil");
   if (v) {
@@ -1373,7 +1399,9 @@ function applyDay() {
   if (playerShadow) playerShadow.setVisible(true);
   const baby = tryBirth();
   refreshHud(); save();
+  const allHappy = state.allHappyTonight; state.allHappyTonight = false;
   if (baby) message((CREATURE.breeding && CREATURE.breeding.message || "🐣 A baby was born: {name}!").replace("{name}", baby.name));
+  else if (allHappy && ALL_HAPPY && ALL_HAPPY.message) message(ALL_HAPPY.message.replace("{day}", state.day));
   else if (neglected.length) message((META.neglectMessage || "🌅 Day {day}. Take care of {names}!").replace("{day}", state.day).replace("{names}", listFr(neglected)));
   else message((META.morningMessage || "🌅 Day {day}: everyone slept well.").replace("{day}", state.day));
 }
