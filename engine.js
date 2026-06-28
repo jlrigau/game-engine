@@ -41,6 +41,13 @@ const SHOP = G.shop || {};
 const ECON = G.economy || {};
 const LEVELS = (G.objectives && G.objectives.levels) || [];
 const ENV = G.environment || null;
+// The "/capacity" suffix on the creature count is only meaningful when the group
+// size can actually change (breeding, a spawn station, or a capacity shop). With
+// none of those it's a fixed cap the player can't act on, so show the bare count.
+// META.showCapacity forces it on/off; otherwise auto-detect.
+const CAP_GROWS = !!((CREATURE && CREATURE.breeding && CREATURE.breeding.enabled) ||
+  STATIONS.some((s) => s.action === "spawn") || SHOP.capacity);
+const SHOW_CAP = META.showCapacity != null ? !!META.showCapacity : CAP_GROWS;
 const MOOD_NEED = (CREATURE && CREATURE.moodNeed) || null;
 const MOOD_SHAPE = (CREATURE && CREATURE.moodIcon) || "heart";  // particle shape of the mood indicator
 const WANT = (CREATURE && CREATURE.wantBubble) || null;         // optional "needs care" bubble (image) replacing the mood shape
@@ -317,7 +324,7 @@ function refreshHud() {
   if (META.showCoins !== false) set("hud-coins", state.coins);
   (SHOP.resources || []).forEach((r) => set("hud-res-" + r.id, (state.resources[r.id] || 0)));
   set("hud-day", state.day);
-  if (CREATURE) set("hud-cap", state.creatures.length + "/" + state.capacity);
+  if (CREATURE) set("hud-cap", SHOW_CAP ? state.creatures.length + "/" + state.capacity : String(state.creatures.length));
   checkGoals();
   if (LEVELS.length) set("hud-level", state.level || 1);
   save();

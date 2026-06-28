@@ -48,6 +48,7 @@ audience: { minAge, notes },          // used by the asset skills' content polic
 theme: { home, play },                 // iOS theme-color per screen
 showCoins,                             // false → hide the coins HUD (no economy)
 showDay, showCreatureCount,            // false → hide the 📅 day / creature-count HUD chips (minimal HUD)
+showCapacity,                          // creature count: show "n/cap" vs bare "n". Default auto: "/cap" only when group size can change (breeding / spawn station / capacity shop)
 coinIcon, namePrompt:{label,placeholder}, startName, namePromptYou, avatarPrompt,
 createTitle, createOkLabel, startLabel, continueLabel, continueHint, helpTitle,
 ageUnit, and, nightMessage, restBlockedHint, neglectMessage, morningMessage,
