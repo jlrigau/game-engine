@@ -136,4 +136,7 @@ like a game made by a studio — not a prototype. Concretely:
   on a FILMSTRIP (`probes/reveal.cjs`), never on a single screenshot.
 - **HUD elements never overlap**, at the worst case (max stars/spots, longest text, short
   screen) — assert with bounding boxes in a probe.
+- **iOS layout is checked in every state** (Safari tab, home-screen app at launch and after
+  iOS corrects the viewport, after a scroll / keyboard): `ios-standalone-check.cjs`. Never
+  claim an iOS layout fix from a single simulated state.
 - New owner feedback → add it to this section (via **capitalize-learnings**).

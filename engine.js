@@ -61,6 +61,37 @@
   window.addEventListener("pageshow", fit);
 })();
 
+// iOS scrolls the DOCUMENT behind our fixed layers (rubber-band, a focused input lifted
+// above the keyboard, a viewport resize) and often leaves it scrolled → every layer shifts
+// and the page background shows as a band. The game never scrolls the document: snap it
+// back whenever it moves (scroll, keyboard closed, viewport change, back to foreground).
+(function () {
+  const reset = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); };
+  const later = () => { reset(); setTimeout(reset, 80); setTimeout(reset, 350); };
+  window.addEventListener("scroll", reset, { passive: true });
+  document.addEventListener("focusout", later);
+  window.addEventListener("orientationchange", later);
+  window.addEventListener("pageshow", later);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", later);
+})();
+
+// Edge colour: whatever iOS shows outside our layers (behind the toolbars, a band while
+// the viewport settles) uses the page background → match it to the screen on display
+// (html[data-screen] + --edge-* theme variables in engine.css / style.css).
+function syncEdge() {
+  const vis = (id) => { const e = document.getElementById(id); return e && !e.classList.contains("hidden"); };
+  const scr = vis("closeup") ? "closeup" : vis("screen-game") ? "game" : vis("screen-create") ? "create" : "home";
+  if (document.documentElement.dataset.screen !== scr) document.documentElement.dataset.screen = scr;
+}
+document.addEventListener("DOMContentLoaded", function () {
+  syncEdge();
+  if (!window.MutationObserver) return;
+  const mo = new MutationObserver(syncEdge);
+  ["screen-home", "screen-create", "screen-game", "closeup"].forEach((id) => {
+    const e = document.getElementById(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ["class"] });
+  });
+});
+
 // The whole game definition lives here (set by game.config.js, loaded first).
 const G = window.GAME;
 if (!G) throw new Error("engine.js: window.GAME is missing — load game.config.js before engine.js");
@@ -68,6 +99,31 @@ if (!G) throw new Error("engine.js: window.GAME is missing — load game.config.
 // Asset cache-busting version (bump when an IMAGE changes, to force reload).
 const ASSET_VER = (G.meta && G.meta.assetVersion) || "v1";
 function av(p) { return p + "?v=" + ASSET_VER; }
+
+// Stale page guard: GitHub Pages serves index.html with max-age=600, so after a deploy
+// iOS can keep running the previous page (and its ?v= files) for up to 10 minutes — the
+// <meta no-cache> tags don't change HTTP caching. Ask the server (no-store) which build
+// is live; if it differs, reload once with a fresh URL. Also re-checked when the app
+// comes back to the foreground. The save is untouched.
+(function () {
+  if (!window.fetch || !/^https?:/.test(location.protocol)) return;
+  let tried = false;
+  try { tried = sessionStorage.getItem("engine-fresh-try") === ASSET_VER; } catch (_) {}
+  function check() {
+    fetch(location.pathname + "?vcheck=" + Date.now(), { cache: "no-store" })
+      .then((r) => (r.ok ? r.text() : ""))
+      .then((t) => {
+        const m = /engine\.js\?v=([\w.-]+)/.exec(t || "");
+        if (!m || m[1] === ASSET_VER || tried) return;
+        tried = true;
+        try { sessionStorage.setItem("engine-fresh-try", ASSET_VER); } catch (_) {}
+        const u = new URL(location.href); u.searchParams.set("fresh", Date.now());
+        location.replace(u.toString());
+      }).catch(() => {});
+  }
+  check();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+})();
 
 // iOS ignores user-scalable=no: block pinch-zoom and double-tap zoom here
 // (otherwise tapping a button zooms the screen). Double-tap to RUN still works

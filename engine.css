@@ -36,8 +36,15 @@ html, body { height: 100%; touch-action: manipulation; -webkit-text-size-adjust:
 input[type="text"], textarea { -webkit-user-select: text; user-select: text; }
 button, .btn, input, select, textarea { touch-action: manipulation; }
 img { -webkit-user-drag: none; }
-html { background: var(--deep); }
-body { margin: 0; color: var(--text); background: var(--deep); overflow: hidden; }
+/* The document never scrolls (iOS would shift every fixed layer — see engine.js). */
+html { overflow: hidden; overscroll-behavior: none; background: var(--edge, var(--deep)); }
+body { margin: 0; color: var(--text); background: var(--edge, var(--deep)); overflow: hidden; overscroll-behavior: none;
+  position: fixed; top: 0; left: 0; width: 100%; }
+/* Edge colour per screen: what iOS shows around/behind our layers. A theme sets
+   --edge-home / --edge-game (default: --home-bg / the world colour --deep). */
+html[data-screen="home"], html[data-screen="create"] { --edge: var(--edge-home, var(--home-bg)); }
+html[data-screen="game"] { --edge: var(--edge-game, var(--deep)); }
+html[data-screen="closeup"] { --edge: var(--closeup-bg); }
 .screen { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 .hidden { display: none !important; }
 #screen-game { background: var(--deep); position: fixed; inset: 0; height: auto; }

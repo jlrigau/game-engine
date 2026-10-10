@@ -26,6 +26,7 @@
   --shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
   --glow: 0 0 26px rgba(63, 224, 232, 0.14);
   --closeup-bg: #0b1029;
+  --edge-home: #221f5a; --edge-game: #0e1430;   /* colours at the screen edges (iOS bands) */
   --home-bg: #120c34;
 }
 .btn-primary { --fg: #ffffff; }

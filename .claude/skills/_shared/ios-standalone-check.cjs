@@ -13,7 +13,8 @@
  * physical screen height (html.ios-app + --app-h).
  * Simulation: navigator.standalone + screen 390×844, viewport 785 (launch) and 844
  * (corrected), plus plain Safari. Every run must print the SAME values: layers end at
- * 844, sheet/panel at 844 minus their margin.
+ * 844, sheet/panel at 844 minus their margin, and after a forced scroll + input
+ * focus/blur `shifted` = { scrollY: 0, homeTop: 0, edge: "home" }.
  */
 const pw = (() => { for (const c of ["playwright", "/opt/node22/lib/node_modules/playwright"]) { try { return require(c); } catch (_) {} } throw new Error("Playwright not found"); })();
 (async () => {
@@ -30,7 +31,12 @@ const pw = (() => { for (const c of ["playwright", "/opt/node22/lib/node_modules
     const p = await ctx.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message));
     await p.goto(`http://localhost:${port}/index.html`); await p.waitForTimeout(800);
     const r = (sel) => p.evaluate((s) => { const e = document.querySelector(s); if (!e) return null; const q = e.getBoundingClientRect(); return Math.round(q.bottom); }, sel);
-    const out = { mode, appH: await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--app-h")), home: await r("#screen-home"), sheet: await r(".home-sheet") };
+    // iOS leaves the document scrolled (rubber-band, input lifted above the keyboard):
+    // force a scroll + input focus/blur, the engine must snap everything back.
+    await p.evaluate(() => { const i = document.querySelector("input"); if (i) { i.focus(); i.blur(); } window.scrollTo(0, 120); });
+    await p.waitForTimeout(500);
+    const shifted = await p.evaluate(() => ({ scrollY: window.scrollY, homeTop: Math.round(document.getElementById("screen-home").getBoundingClientRect().top), edge: document.documentElement.dataset.screen }));
+    const out = { mode, shifted, appH: await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--app-h")), home: await r("#screen-home"), sheet: await r(".home-sheet") };
     await p.evaluate(() => { const b = document.querySelector("#btn-new, .btn-giant"); b && b.click(); });
     await p.waitForTimeout(600);
     await p.evaluate(() => { const b = [...document.querySelectorAll("#screen-create .btn-giant, #screen-create .btn-primary")].pop(); b && b.click(); });

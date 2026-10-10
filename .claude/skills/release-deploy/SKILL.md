@@ -41,6 +41,10 @@ Cleanly publish a change to production.
 ## Guard-rails
 - Always the configured branch, never another branch / PR without explicit permission.
 - Never skip cache-busting when a site file changes (the script does it).
+- GitHub Pages caches `index.html` for 10 min (`max-age=600`): the engine's stale-page guard
+  reloads to the live build, but tell testers to check the **build number** on the home
+  screen and to wait 1–2 min. Batch fixes into fewer deploys while someone is testing —
+  rapid successive deploys make results look random.
 - If the run fails: read the log (GitHub MCP `get_job_logs`), fix, re-push.
 
 ## Chaining

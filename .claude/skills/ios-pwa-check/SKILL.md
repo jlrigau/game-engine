@@ -38,6 +38,21 @@ inside `#screen-game`. Any NEW full-screen fixed layer must join that rule in en
 Check with `node .claude/skills/_shared/ios-standalone-check.cjs [port]`: the launch (785),
 corrected (844) and Safari runs must print identical values.
 
+## Random shifts / bands (Safari and home-screen app)
+- **Document scroll**: iOS scrolls the document behind fixed layers (rubber-band, input
+  lifted above the keyboard) and leaves it scrolled → everything shifts, a band shows.
+  The engine locks it (`body{position:fixed}`, `overscroll-behavior:none`) and snaps back
+  to (0,0) on scroll / focusout / visualViewport resize / pageshow. Don't remove it.
+- **Edge colour**: what iOS shows outside the layers (behind the floating toolbars, while
+  the viewport settles) is the page background → `html[data-screen]` + `--edge-home` /
+  `--edge-game` in the theme = the colours at the bottom of each screen.
+- **Stale page**: GitHub Pages serves `index.html` with `max-age=600`; the `<meta
+  no-cache>` tags don't change that. The engine fetches the live index (`no-store`) at
+  start/foreground and reloads once if the build differs. Still: tell the tester to wait
+  1–2 min after a deploy and check the build number on the home screen.
+- `ios-standalone-check.cjs` also forces a scroll + input focus/blur → `shifted` must be
+  `{scrollY:0, homeTop:0}`.
+
 ## Touch interactions (drag / scrub) on iOS
 The close-up scrub and any finger-drag must survive Safari's touch quirks. The engine
 already guards these (see ENGINE.md "iOS / touch robustness") — **don't regress them**:

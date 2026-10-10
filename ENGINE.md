@@ -354,6 +354,16 @@ height:var(--app-h)` and makes the panel `absolute` inside `#screen-game`. New f
 layers must be added to that rule. Test: `_shared/ios-standalone-check.cjs` (launch +
 corrected + Safari must print identical values).
 
+#### iOS: no scroll, edge colours, stale page
+- The document never scrolls: `body{position:fixed}` + `overscroll-behavior:none`, and
+  `engine.js` snaps back to (0,0) on scroll / focusout / visualViewport resize / pageshow.
+- `html[data-screen]` = home | create | game | closeup (kept in sync by engine.js); the
+  page background is `--edge-home` / `--edge-game` / `--closeup-bg` (theme vars) so any
+  area iOS shows outside our layers matches the screen's edge.
+- Stale page guard: at start and when back in the foreground, engine.js fetches the live
+  `index.html` (`cache:"no-store"`) and reloads once (`?fresh=`) if its `engine.js?v=`
+  differs from `assetVersion` (GitHub Pages caches index.html 10 min).
+
 #### iOS / touch robustness (why the close-up is built the way it is)
 A finger-scrub over disappearing targets hits two real Safari/iOS bugs. The engine and
 the generic `.closeup*` styles already guard against both — **keep these if you change
