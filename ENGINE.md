@@ -330,7 +330,8 @@ action = {
     popParticles: ["sparkle","star"], // icon keys when one spot is cleared
     foam: { colors:[…] } | false, // bubbles under the brush while scrubbing
     hint: "hand" | false,         // icon key: pulsing finger on the first spot until the first scrub
-    progress: false,              // hide the progress dots (one per spot)
+    progress: false,              // hide the progress bar (fixed size: one star slot per spot up to
+                                  //   spots.max — this round's stars grey→gold, later ones dimmed)
     finishDelay: 1900,            // ms before returning to the world
   },
   effects:{ need:+/- }, reward?, stat?, message?, celebrateMessage?,

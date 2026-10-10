@@ -2654,9 +2654,12 @@ function openCloseup(c, a) {
       brush.style.left = ""; brush.style.top = ""; brush.style.transform = "";   // reset to the visible CSS start position
     } else brush.classList.add("hidden");
   }
-  // progress dots (one per spot) — a clear "how much is left" for non-readers
+  // progress stars — a clear "how much is left" for non-readers. The bar always shows
+  // every slot up to spots.max (fixed size, no reflow as difficulty grows): this round's
+  // stars ("todo" → "on" when a spot is cleared) and, dimmed, the ones still to come.
   const prog = cuEl("cu-progress", "cu-progress", "div", root);
-  prog.innerHTML = Array.from({ length: count }, () => `<i>${iconHTML("star")}</i>`).join("");
+  const slots = Math.max(count, Math.min(max, 12));
+  prog.innerHTML = Array.from({ length: slots }, (_, k) => `<i class="${k < count ? "todo" : "future"}">${iconHTML("star")}</i>`).join("");
   prog.classList.toggle("hidden", cfg.progress === false);
   // a pulsing finger hint on the first spot until the first scrub
   if (cfg.hint !== false) {
@@ -2794,7 +2797,7 @@ function cuPop(spot) {
   Sound.play("pop", { pitch: 1 + done * 0.09 });               // rising pitch: progress you can hear
   cuState.remaining = Math.max(0, cuState.remaining - 1);
   const dots = document.querySelectorAll("#cu-progress i");
-  if (dots[done]) dots[done].classList.add("on");
+  if (dots[done]) { dots[done].classList.remove("todo"); dots[done].classList.add("on"); }
   if (cuState.remaining === 0) cuFinish();
 }
 
