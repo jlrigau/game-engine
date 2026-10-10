@@ -16,7 +16,8 @@ const VARIANTS = {                       // critter variants: [main colour]
 
 /* ---------------- Critter ---------------- */
 // A round, glowing alien blob with one big eye, two antennae and three stubby feet.
-// opts: { c (variant colour), eye:"open"|"happy", feet: -1|0|1 (walk), sq (squash), look (-1..1), uid }
+// opts: { c (variant colour), eye:"open"|"happy", feet: -1|0|1 (walk), sq (squash), look (-1..1), uid,
+//         turn (0..1): the whole face turns towards the LEFT (3/4 view) — walk sheets, flipped by the engine for right }
 function critter(o) {
   const c = o.c, u = o.uid || "c";
   const body = mix("#ffffff", c, 0.28), bodyD = mix("#c9d6ff", c, 0.35);
@@ -28,7 +29,8 @@ function critter(o) {
     rad(`${u}t`, [[0, "#ffffff"], [0.35, shade(c, 0.3)], [1, c]], 0.4, 0.35, 0.6) + glow(`${u}gl`, 3);
   const f = o.feet || 0;
   const foot = (x, lift) => `<ellipse cx="${x}" cy="${103 - lift}" rx="8.5" ry="6" fill="${bodyD}" stroke="${INK}" stroke-width="3"/>`;
-  const eyeX = 64 + look * 7, eyeY = cy - 4;
+  const tn = o.turn || 0, ft = -15 * tn;             // face shift for the 3/4 turn
+  const eyeX = 64 + look * 7 + ft, eyeY = cy - 4;
   const eye = o.eye === "happy"
     ? `<path d="M${eyeX - 15} ${eyeY + 3} Q${eyeX} ${eyeY - 13} ${eyeX + 15} ${eyeY + 3}" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`
     : `<circle cx="${eyeX}" cy="${eyeY}" r="17" fill="#ffffff" stroke="${INK}" stroke-width="3"/>
@@ -40,20 +42,20 @@ function critter(o) {
   return { defs, body: `
     <ellipse cx="64" cy="${cy}" rx="${rx + 16}" ry="${ry + 14}" fill="url(#${u}g)"/>
     ${foot(44, f > 0 ? 5 : 0)}${foot(84, f < 0 ? 5 : 0)}${foot(64, 0)}
-    ${ant(52, 38 - sq * 6, cy - ry - 18 + sq * 10)}${ant(76, 90 + sq * 6, cy - ry - 18 + sq * 10)}
+    ${ant(52 + tn * 4, 38 - sq * 6 + tn * 8, cy - ry - 18 + sq * 10)}${ant(76 + tn * 4, 90 + sq * 6 + tn * 8, cy - ry - 18 + sq * 10)}
     <ellipse cx="64" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${u}b)" stroke="${INK}" stroke-width="3.5"/>
     <ellipse cx="${64 - rx * 0.42}" cy="${cy - ry * 0.5}" rx="${rx * 0.22}" ry="${ry * 0.14}" fill="#ffffff" opacity=".85" transform="rotate(-25 ${64 - rx * 0.42} ${cy - ry * 0.5})"/>
     ${eye}
-    <ellipse cx="${46 + look * 4}" cy="${cy + 13}" rx="6" ry="3.6" fill="${c}" opacity=".45"/>
-    <ellipse cx="${82 + look * 4}" cy="${cy + 13}" rx="6" ry="3.6" fill="${c}" opacity=".45"/>
-    <path d="M${57 + look * 5} ${cy + 17} Q${64 + look * 5} ${cy + 23} ${71 + look * 5} ${cy + 17}" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>` };
+    <ellipse cx="${46 + look * 4 + ft * 0.75}" cy="${cy + 13}" rx="${6 - tn * 1.5}" ry="3.6" fill="${c}" opacity=".45"/>
+    <ellipse cx="${82 + look * 4 + ft * 0.8}" cy="${cy + 13}" rx="6" ry="3.6" fill="${c}" opacity=".45"/>
+    <path d="M${57 + look * 5 + ft} ${cy + 17} Q${64 + look * 5 + ft} ${cy + 23} ${71 + look * 5 + ft} ${cy + 17}" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>` };
 }
 function critterSheet(v, happy) {
   const c = VARIANTS[v];
   // 4-frame walk: squash ↔ stretch with alternating feet (the engine adds the hop)
   const params = [{ sq: 0.0, feet: 1 }, { sq: -0.05, feet: 0 }, { sq: 0.0, feet: -1 }, { sq: 0.05, feet: 0 }];
   let defs = "";
-  const frames = params.map((p, i) => { const r = critter({ c, uid: `k${i}`, sq: p.sq, feet: p.feet, eye: happy ? "happy" : "open" }); defs += r.defs; return `<g transform="translate(64 109) scale(0.88) translate(-64 -109)">${r.body}</g>`; });
+  const frames = params.map((p, i) => { const r = critter({ c, uid: `k${i}`, sq: p.sq, feet: p.feet, eye: happy ? "happy" : "open", look: -0.8, turn: 0.65 }); defs += r.defs; return `<g transform="translate(64 109) scale(0.88) translate(-64 -109)">${r.body}</g>`; });
   return job(`assets/sheet/critter_${happy ? "happy_" : ""}${v}.png`, 512, 128, sheet(frames, 128, 128, 4), defs);
 }
 function critterThumb(v) {
