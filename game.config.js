@@ -32,7 +32,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v50",
+    assetVersion: "v51",
     theme: { home: "#120c34", play: "#0b1029", closeup: "#1b1150" },
     showCoins: true,
     coinIcon: "shard",                // the currency: star shards
@@ -397,10 +397,11 @@ window.GAME = {
              obstacleSprite: "beam_v", obstacleScale: 1, obstacleBox: { dx: -18, dy: -170, w: 36, h: 170 },
              obstacles: [{ x: 1950, y: 1300 }, { x: 2080, y: 1300 }, { x: 2210, y: 1300 }, { x: 1950, y: 1570 }, { x: 2080, y: 1570 }, { x: 2210, y: 1570 }] },
     // the "forest" rule scatters an asteroid belt in the void, with guard rails along the road
-    forest: { tree: "rock", bush: "bollard", step: 60, hedgeMargin: 42, treeScale: [0.55, 0.95], bushScale: [0.8, 0.9], hedgeBox: { dx: -12, dy: -8, w: 24, h: 12 } },
+    forest: { tree: "rock", bush: "bollard", step: 60, hedgeMargin: 42, treeScale: [0.55, 0.95], bushScale: [0.8, 0.9], hedgeBox: { dx: -30, dy: -8, w: 60, h: 12 },
+              treeBox: { dx: -30, dy: -30, w: 60, h: 60 } },   // the asteroid belt is solid: no walking in space
     path: { width: 160, sand: 12, inset: 90, tile: "road", label: "Star Ring", labelY: 170,
             openings: [{ x: 200, y: 1410, w: 440, h: 160 }, { x: 2160, y: 830, w: 440, h: 160 }],
-            logs: { xs: [640, 1040, 1440, 1840, 2240], dec: 14, sprite: "comet_rock", scale: 1 } },
+            logs: { xs: [640, 1040, 1440, 1840, 2240], dec: 0, sprite: "comet_rock", scale: 1 } },
   },
 
   /* ---- Deliveries: pick a crate up, bring it to a ground target. Rare cargo → drones chase you ---- */

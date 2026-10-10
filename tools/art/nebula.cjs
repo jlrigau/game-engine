@@ -541,11 +541,12 @@ function beamV() {   // jump obstacle laid ACROSS a left↔right run: far pylon 
   g += pylon(cx, 140, 186, 28, 8.5, "#3fe0e8", u);                    // near pylon in front
   return job("assets/img/beam_v.png", W, H, g, defs);
 }
-function cometRock() {   // low jumpable row of space-rocks ACROSS a horizontal path (placed with origin 0.5,0.5)
-  const W = 90, H = 130, u = "cr";
+function cometRock() {   // jumpable barrier of space-rocks ACROSS the whole Star Ring road (placed with origin 0.5,0.5;
+  // as long as the road is wide: road 160 + sand 2×12 → rocks span y 14..206 of 220)
+  const W = 96, H = 220, u = "cr";
   const defs = rad(`${u}r`, [[0, "#d3cff2"], [0.55, "#8f8bc6"], [1, "#4c4f8c"]], 0.38, 0.3, 0.8) + glow(`${u}g`, 3) + blur(`${u}b`, 3) +
     lin(`${u}t`, [[0, "#ffd24a", 0], [0.6, "#ffb0dc", 0.7], [1, "#fff6c8", 1]], 1, 0, 0, 1);
-  let g = `<ellipse cx="46" cy="118" rx="32" ry="7" fill="#0b1030" opacity=".4" filter="url(#${u}b)"/><rect x="24" y="20" width="44" height="100" rx="22" fill="#0b1030" opacity=".18" filter="url(#${u}b)"/>`;
+  let g = `<ellipse cx="48" cy="206" rx="34" ry="8" fill="#0b1030" opacity=".4" filter="url(#${u}b)"/><rect x="24" y="14" width="48" height="190" rx="24" fill="#0b1030" opacity=".18" filter="url(#${u}b)"/>`;
   const rock = (x, y, r, seed) => {
     const R = rng(seed);
     let s = `<path d="${K.blob(x, y, r, r * 0.86, 9, 0.12, R)}" fill="url(#${u}r)" ${stk(3.5)}/>`;
@@ -553,11 +554,12 @@ function cometRock() {   // low jumpable row of space-rocks ACROSS a horizontal 
     s += `<path d="M${x - r * 0.6} ${y - r * 0.2} Q${x - r * 0.45} ${y - r * 0.6} ${x - r * 0.05} ${y - r * 0.68}" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>`;
     return s;
   };
-  g += rock(46, 30, 20, 3) + rock(42, 64, 23, 8) + rock(47, 98, 21, 13);
-  // comet streak: a tapering glowing tail landing on the middle rock
-  g += `<path d="M84 6 Q74 30 58 50 L54 46 Q72 26 80 4 Z" fill="url(#${u}t)" opacity=".9" filter="url(#${u}g)"/>`;
-  g += `<circle cx="56" cy="49" r="6.5" fill="#fff6c8" filter="url(#${u}g)"/><circle cx="55" cy="48" r="3" fill="#fff"/>`;
-  [[20, 22], [72, 84]].forEach(([x, y]) => { g += `<path d="${star(x, y, 5, 1.6, 4)}" fill="#fff6c8" filter="url(#${u}g)"/>`; });
+  // far (top) rocks first so the nearer ones overlap them
+  [[48, 30, 19, 3], [44, 62, 22, 8], [50, 96, 21, 13], [45, 129, 22, 21], [50, 161, 21, 34], [46, 191, 19, 55]].forEach(([x, y, r, k]) => { g += rock(x, y, r, k); });
+  // comet streak landing on the second rock
+  g += `<path d="M88 6 Q78 30 60 48 L56 44 Q76 24 84 4 Z" fill="url(#${u}t)" opacity=".9" filter="url(#${u}g)"/>`;
+  g += `<circle cx="58" cy="47" r="6.5" fill="#fff6c8" filter="url(#${u}g)"/><circle cx="57" cy="46" r="3" fill="#fff"/>`;
+  [[18, 24], [78, 110], [20, 170]].forEach(([x, y]) => { g += `<path d="${star(x, y, 5, 1.6, 4)}" fill="#fff6c8" filter="url(#${u}g)"/>`; });
   return job("assets/img/comet_rock.png", W, H, g, defs);
 }
 
