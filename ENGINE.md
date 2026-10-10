@@ -6,13 +6,27 @@ file documents every field and the engine capabilities they drive. Use `game.con
 (the minimal "Nebula Nursery" demo) as a working template. The demo only uses a subset
 of the fields below — every system is optional, so start small and add as you iterate.
 
-> Load order in `index.html`: `vendor/phaser.min.js` → `game.config.js` → `engine.js`.
+> Load order in `index.html`: `engine.css` → `style.css` (theme) → `vendor/phaser.min.js` →
+> `game.config.js` → `engine.js`.
+
+## Files of the generic layer
+- `engine.js` — all systems. `engine.css` — the shell's **structure** (layout, HUD, panel,
+  modal, close-up, animations), shared verbatim by every game. `style.css` — the game's
+  **theme only**: CSS variables (`--primary`, `--accent`, `--panel`, `--text`, `--chip-bg`,
+  `--home-bg`, `--night`, `--closeup-bg`, `--glow`, `--game-font`…) plus a few decorative
+  rules. `vendor/fonts/` — a vendored web font (Fredoka, OFL) referenced by the theme.
+- Art pipeline: `.claude/skills/_shared/render-svg.cjs` renders a game's art module
+  (`tools/art/<game>.cjs`, SVG strings built with `svg-kit.cjs`) to PNG with headless
+  Chromium. Smooth, anti-aliased, HiDPI-ready sprites; one source of truth per character.
 
 ## Capabilities (all optional, config-gated)
-- Top-down tiled world, camera follow, adaptive zoom.
-- Player avatar: 4-direction LPC walkcycle, tap/click-to-move + keyboard (WASD/ZQSD),
-  run on double-tap. Multiple selectable characters + create/change-look screen.
-- Creatures: autonomous wandering NPCs with **needs**, mood heart, **actions**
+- Top-down tiled world, smooth camera follow, adaptive zoom, **HiDPI canvas** (crisp on
+  phones), pixel-art OR smooth hi-res rendering, soft shadows, ambient particles, vignette.
+- Player avatar: 4-direction LPC walkcycle (any frame size), **tap-to-move with A\*
+  pathfinding around obstacles**, tap ripple, keyboard (WASD/ZQSD), run on double-tap,
+  idle breathing. Multiple selectable characters + create/change-look screen.
+- Creatures: autonomous wandering NPCs (reachable targets only, no stacking, bouncy
+  hop-walk, idle breathing, a "hello" hop when approached) with **needs**, mood heart, **actions**
   (effects/costs/rewards/animations), **variants** (tint or dedicated sheet),
   **customization** (rename + restyle), **aging/growth**, **breeding**, a **mount**
   system (ride + fatigue) and **hop/jump** over obstacles.
@@ -23,18 +37,25 @@ of the fields below — every system is optional, so start small and add as you 
 - **Environment**: fenced **arena** with obstacles + a **trail loop** of sand paths in
   a forest band, scattered by a single declarative rule (no bare edges/corners).
 - **Day/night** cycle with rest-gating; **objectives/levels** gamification.
+- **Juice**: toast queue, rewards that fly to the HUD, confetti, cinematic zoom into the
+  close-up, particle bursts, squash & stretch.
+- **Sound**: procedural WebAudio SFX + generative background music (no audio files), mute
+  button, iOS unlock on first touch.
+- **Guide arrow** (kids): after a few idle seconds, a bouncing arrow points at who needs
+  you (with an edge pointer when off-screen). **Unlocks**: progress milestones add scenery.
 - **Save** to localStorage with backward-compatible loading; **PWA/iOS** support.
 
 ## Top-level shape
 ```js
 window.GAME = {
-  meta, world, camera, assets, fence,
+  meta, render, audio, guide, world, camera, assets, fence,
   player, characters,
   creature,            // the creature system (optional)
   zones, stations,
   economy, shop, decor,
   environment,         // arena + trail loop (optional)
-  scenery,             // [[x,y,sprite,scale], ...]
+  scenery,             // [[x,y,sprite,scale], ...] or [{x,y,sprite,…}, ...]
+  unlocks,             // milestones that add scenery (optional)
   objectives, help,
 };
 ```
@@ -43,9 +64,9 @@ window.GAME = {
 Identity, theming and **all UI strings** (every label has an engine fallback, so you
 can override only what you want).
 ```
-title, titleIcon, shortName, tagline, saveKey, assetVersion: "vN",
+title, titleIcon, logo ("assets/img/logo.png" — big home-screen image), shortName, tagline, saveKey, assetVersion: "vN",
 audience: { minAge, notes },          // used by the asset skills' content policy
-theme: { home, play },                 // iOS theme-color per screen
+theme: { home, play, closeup },        // iOS theme-color per screen
 showCoins,                             // false → hide the coins HUD (no economy)
 showDay, showCreatureCount,            // false → hide the 📅 day / creature-count HUD chips (minimal HUD)
 showCapacity,                          // creature count: show "n/cap" vs bare "n". Default auto: "/cap" only when group size can change (breeding / spawn station / capacity shop)
@@ -57,41 +78,100 @@ refundMessage, noOnBuilding, noInHome, nameLabel, confirm, nameTaken, closeLabel
 ```
 Strings with `{name}`, `{day}`, `{names}`, `{item}` are interpolated by the engine.
 
+`meta.strings` overrides any **engine** UI label (each has an English fallback):
+`closeLabel, soundLabel, coinsLabel, dayLabel, levelLabel, noSave, refreshLabel,
+goalComplete ("{name}"), goalsComplete ("{n}"), levelUp ("{n}"), goalsTitle, noGoals,
+allGoalsDone, goalsProgress ("{done}/{total}…{next}"), topLevel`. (For back-compat a key
+set directly on `meta` also works.)
+
+### `render` (look & feel)
+```
+render: {
+  pixelArt: false,          // true (default, legacy) = nearest-neighbour pixel art; false = smooth hi-res art
+  maxDpr: 2,                // HiDPI cap (canvas has DPR x CSS pixels)
+  vignette: 0.3,            // 0..1 dark edge around the world view
+  selectColor, tapColor,    // selection ring / tap ripple colours (tapMarker:false hides the ripple)
+  text: { color, stroke, strokeThickness, weight },     // in-world labels (names…)
+  label: { bg, color, border, alpha, size },            // zone/station signs: a pill when bg is set
+  ambient: { particle:"soft"|"dot"|"star"|"spark"…, colors, count, speed,
+             drift:"up"|"down"|"float", alpha:[min,max], scale:[min,max], blend:"add" },
+  shadowAlpha, breathe:false, cameraLerp: 0.12, closeupZoom:false, confetti:[hex…], font,
+}
+```
+In-world text uses the theme font (`--game-font`) rendered at device resolution.
+
+### `audio` (procedural — no files)
+```
+audio: {
+  volume: 0.6,
+  sfx: { spawn:false, pop:{ notes:[72,76,79], type:"sine", gap:0.08, dur:0.2 }, … },  // disable / replace a sound
+  music: { tempo, root (MIDI), scale:"majorPenta"|"minorPenta"|"major"|"dorian",
+           progression:[semitones…], pad, lead (oscillator types), density, volume } | false,
+}
+```
+Built-in sounds: `tap click select action pop scrub celebrate reward spawn night morning
+goal open whoosh error unlock`. A station may pick its sound with `sfx`, an action too.
+Omit `audio` entirely for a silent game (the 🔊 button hides itself).
+
+### `guide` (where to go next — great for young kids)
+```
+guide: { idle: 4, color, scale, moodBelow: 60, rest: false, station: true }
+```
+After `idle` seconds without input, an arrow bobs over the nearest creature that "wants"
+something (wantBubble eligibility, else mood < `moodBelow`); with nobody around it points
+at the `spawn` station (or the rest station when `rest:true`). Off-screen → an edge pointer.
+
 ### `world` / `camera`
 ```
-world: { width, height, groundTile, bg, patches:[{x,y,w,h,tile,ox,oy}] }
-camera: { fitW, fitH, min, max }       // zoom = clamp(min(w/fitW,h/fitH), min, max)
+world: { width, height, groundTile, groundScale?, bg, patches:[{x,y,w,h,tile,ox,oy,tileScale}],
+         backdrop?:{ sprite, x, y, w, h } }   // a single painted floor image under everything
+camera: { fitW, fitH, min, max, clampToWorld? }  // zoom = clamp(min(w/fitW,h/fitH), min, max)
+                                       // clampToWorld: never show past the world edges (a closed room)
+nav: { cell: 20 }                      // optional: pathfinding grid size (world px)
 ```
 
 ### `assets` / `fence`
 ```
 assets.images: { key: "assets/img/x.png", ... }       // single images
 assets.sheets: { key: { path, frameWidth, frameHeight }, ... }   // spritesheets
-fence: { sheet, frames:{ post, side, cornerTL, cornerTR } }      // 32×32 fence tiles
+fence: { sheet, frames:{ post, side, cornerTL, cornerTR }, step: 32, scale: 1 }  // tiles every `step` px
 ```
 Everything in `assets` is preloaded automatically (with cache-busting via `av()`).
 
 ### `player` / `characters`
 ```
-player: { scale, speed:{walk,run,rideWalk,rideRun}, spawn:{x,y}, nameY }  // nameY = y offset of the name label above the head (default -80)
-characters: [ { id, name, sheet, thumb } ]   // sheet=64×64 walkcycle, thumb in assets/ui/
+player: { scale, speed:{walk,run,rideWalk,rideRun}, spawn:{x,y}, nameY, shadow:{w,h},
+          frameRate, originY, showName }  // nameY = y offset of the name label above the head (default -80)
+characters: [ { id, name, sheet, thumb } ]   // sheet = LPC walkcycle (9 cols × 4 rows: up,left,down,right;
+                                             // col 0 = idle) at any frame size; thumb in assets/ui/
 ```
 
 ### `creature` (optional system)
 ```
-label, icon, sheet, origin:{x,y}, walk:{start,end,frameRate}, moodIcon,  // moodIcon = particle shape of the floating mood indicator (default "heart")
+label, icon, sheet, origin:{x,y}, moodIcon,  // moodIcon = particle shape of the floating mood indicator (default "heart")
+walk: { start, end, frameRate, speed:40, hop:0, hopPeriod:300, squash:0.08 },  // hop>0 → bouncy hop-walk (px)
+headY,                                 // px from feet to head top at scale 1 (default: derived from frame size)
+shadow:{w,h}, spacing:46, breathe:0.025, nameY, nameSize, showName, showMood, moodScale,
+moodColors:[low,mid,high], moodFaces:["😢","😐","🙂","😄"],   // a face in the panel, by mood
+happySheet, happyAt:100,               // swap to a "happy" sheet once the mood need reaches happyAt
+tapAction: "<action id>",              // tapping a creature walks to it AND starts this action (kids: one tap)
+arrive: { speed, from:{x,y} },         // creatures brought by a spawn station walk in from a door
 youngLabel, adultLabel, variantLabel, customizeTitle, customizedMessage,
 moodNeed: "joy",                       // the need that drives celebration & day-mood
 moodFrom: ["food","energy","clean","joy"],   // needs averaged into the mood heart
 showBars: true,                        // false → hide the per-need bars in the panel (kid-friendly)
 moodDay: { base, lowPenalty, lowAt, highBonus, highAt },   // overnight mood rule
-needs: [ { id, icon, start, perDay } ],      // perDay = overnight delta (0..100 bars)
-variants: [ { id, name, color, tint? , sheet? } ],   // sheet = a dedicated, animated spritesheet for this variant (else base sheet + optional tint)
+needs: [ { id, icon, label, start, perDay } ],      // perDay = overnight delta (0..100 bars)
+variants: [ { id, name, color, tint?, sheet?, happySheet?, closeupBg?, closeupBgDone?, thumb?, fixedName? } ],
+   // sheet = a dedicated, animated spritesheet for this variant (else base sheet + optional tint);
+   // thumb = image path shown in the customize preview; fixedName = the variant IS a person
+   // (new creatures of this variant take its name; new spawns prefer variants not on screen)
 actions: [ {
   id, label, icon,
   cost:{resource,amount}?, require:{need:min}?, effects:{need:+/-}?, reward?,
   anim?, stat?, message?, celebrateMessage?,
   type: "ride"|"jump"|"customize"|"closeup"?,   // special actions (omit for a normal care action)
+  sfx?: "<sound name>",                          // sound played (default "action")
 } ],
 wantBubble: { sprite, need?, below?, withMood?, scale?, lift? },  // see below — "needs action" image bubble (replaces, or with withMood sits beside, the mood shape)
 allHappy: { mood, message, celebrate? },   // day-arc reward: rest with EVERYONE happy → synchronized celebration + special morning line
@@ -106,8 +186,8 @@ The engine owns the animation **system**; the theme picks the **look** per actio
 `anim` is either a legacy preset string (`"eat"`, `"cheer"`, `"sparkle"`) or an object:
 ```
 anim: {
-  motion: "nod" | "hop" | "bounce" | "none",   // body movement
-  particle: "star" | "heart" | "spark" | "bubble" | "diamond" | "dot",  // built-in shapes
+  motion: "nod" | "hop" | "bounce" | "wiggle" | "none",   // body movement (squash & stretch)
+  particle: "star" | "heart" | "spark" | "bubble" | "diamond" | "dot" | "soft",  // built-in shapes
   colors: ["#fff2a8", "#ffd24a", ...],          // tints cycled across particles
   count, fall, spread, y0, riseMin, riseMax, scaleMin, scaleMax,        // all optional
 }
@@ -161,7 +241,7 @@ Mood is the same average shown by the mood heart (`moodFrom`). Omit the block to
 
 ### `creature.depart` (leave after being cured)
 ```
-depart: { to:{x,y}?, speed?, emptyMessage? }
+depart: { to:{x,y}?, speed?, emptyMessage? }        // e.g. walk out through the door
 ```
 When present, a creature that triggers `celebrate` (its mood need hits 100) finishes its
 celebration, then **walks to `to` (default: off the bottom) at `speed` px/s (default 110)
@@ -182,7 +262,10 @@ action = {
   closeup: {
     bg: "<image key>",            // full-screen backdrop (e.g. a face) — overridable per
                                   //   creature via `variant.closeupBg` (e.g. each child's own face)
+    bgDone: "<image key>"?,       // "after" backdrop cross-faded in when clean (e.g. a big smile) —
+                                  //   per creature via `variant.closeupBgDone`
     spotSprite: "<image key>"?,   // sprite for a spot (omit → a plain CSS blob)
+    spotSprites: ["k1","k2"]?,    // several spot looks, cycled (e.g. three cute germs)
     brush: "<image key>"?,        // cursor sprite that follows the finger (optional)
     brushTip: { x, y }?,          // active scrub point as fractions of the brush sprite (e.g. its
                                   //   bristle head) — spots are removed from HERE, not the raw finger.
@@ -191,7 +274,8 @@ action = {
       base: 4,                    // spots on the first cure
       growEvery: 2, max: 12,      // +1 spot every N completions of this action (ramps up), capped
       rubs: 3,                    // scrubs needed to remove one spot
-      size: 74,                   // spot size in px
+      size: 74,                   // spot size in BACKDROP-IMAGE px (scaled with the cover fit)
+      minGap: 0.07,               // spots keep apart (fraction of the image); wiggle:false / rotate:false
       area: { x, y, w, h },       // spawn region as 0..1 fractions of the BACKDROP IMAGE
                                   //   (the backdrop fills the screen via object-fit:cover;
                                   //    spots are placed cover-aware so they stay on the teeth).
@@ -199,12 +283,19 @@ action = {
                                   //   spots alternate between them so each region gets some.
     },
     finishParticles: ["⭐","💖"], // emojis bursting when the scene is cleared
+    popParticles: ["✨","⭐"],     // emojis when one spot is cleared
+    foam: { colors:[…] } | false, // bubbles under the brush while scrubbing
+    hint: "👆" | false,           // pulsing finger on the first spot until the first scrub
+    progress: false,              // hide the progress dots (one per spot)
+    finishDelay: 1900,            // ms before returning to the world
   },
   effects:{ need:+/- }, reward?, stat?, message?, celebrateMessage?,
 }
 ```
 Requires the `#closeup` overlay element in `index.html` and the `.closeup*` styles in
-`style.css` (both generic). Difficulty ramps via `state.stats[stat]` (number of past
+`engine.css` (both generic). The camera swoops onto the creature before the scene fades
+in (`render.closeupZoom:false` to disable); each scrub plays a sound and each cleared spot
+a rising-pitch pop, so progress can be *heard*. Difficulty ramps via `state.stats[stat]` (number of past
 completions). The mood need reaching 100 via `effects` triggers `celebrate` in the
 world, so the cured creature visibly rejoices when you return.
 `meta.closeLabel` localises the ✖ button's `aria-label` (default `"Close"`).
@@ -233,10 +324,13 @@ the close-up**, and reuse the pattern for any new drag-over-touch interaction:
 ```
 zones: [ { id, home, rect:{x,y,w,h}, fence, gates:"both"|"left"|"right",
            gateA, gateB, tint, tintAlpha, label } ]   // home zone = where creatures roam
-stations: [ { type, x, y, sprite, label, scale?, box?, action, actionLabel,
-              onUse?, spawn? } ]   // action: "nextDay" | "spawn" | "openShop" | "custom"
+zones[].floor: "<image key>"          // an image stretched over the rect (rug, mat…) instead of a tint
+zones[].labelLift: 14                  // label offset above the rect
+stations: [ { type, x, y, sprite, label, labelY?, scale?, box?, action, actionLabel,
+              onUse?, spawn?, glow?, anim?, reach?:110, tapRadius?:80, sfx? } ]
+// action: "nextDay" | "spawn" | "openShop" | "custom"
 // action:"spawn" → brings a random number of fresh creatures up to a cap:
-//   spawn: { min, max, cap, message?("{n}"), fullMessage? }
+//   spawn: { min, max, cap, from?:{x,y}, message?("{n}"), fullMessage? }   // from = they walk in from a door
 ```
 
 ### `economy` / `shop` / `decor`
@@ -257,6 +351,20 @@ path: { width, sand, inset, tile, label, labelY,
 ```
 See the **place-scatter** skill for the single-rule vegetation system.
 
+### `scenery` (object form) and `unlocks`
+```
+scenery: [
+  [x, y, sprite, scale, box],                       // legacy array form (box: {dx,dy,w,h} | false)
+  { x, y, sprite, scale, box, ground, depth, origin:{x,y}, flip, alpha, anim, glow, glowY, glowSize },
+]
+//  ground:true → flat floor decal (rug, doormat) under everything, no collision
+//  origin {x:0,y:0} + depth → e.g. a back wall image anchored at the top-left
+//  anim: "sway" | "bob" | "pulse" | "breathe" | "spin"   ·   glow: "#hex" soft additive halo
+unlocks: [ { id, when: { stat, atLeast } | { coins } | (state)=>bool, scenery:{…}, message } ]
+```
+Unlocks are progression without reading: when a milestone is met, the item pops into the
+world with sparkles + a jingle and stays (saved in `state.unlocked`, re-derived on load).
+
 ### `objectives` / `help`
 ```
 objectives: { extraStats:["ride","jump","trailVisit"],
@@ -266,6 +374,19 @@ help: [ "html string", ... ]
 `check` is a function receiving the full `state` (`state.coins`, `state.day`,
 `state.creatures`, `state.stats`, `state.capacity`, `state.resources`, …).
 Action `stat` ids are auto-tracked in `state.stats`; declare extra ones in `extraStats`.
+
+## Art pipeline (SVG → PNG)
+```bash
+node .claude/skills/_shared/render-svg.cjs tools/art/<game>.cjs            # all art
+node .claude/skills/_shared/render-svg.cjs tools/art/<game>.cjs --only kid_ # a subset
+```
+The module exports a function returning `[{ file, width, height, svg }]`; `svg-kit.cjs`
+provides `svg/sheet/job`, gradients (`lin`, `rad`), filters (`glow`, `blur`), colour helpers
+(`shade`, `mix`), `star`, `blob`, and a seeded `rng` (same art every run). Draw each thing
+once as a parametric function (e.g. `critter({c, eye, feet})`) and reuse it for the walk
+sheet, thumbnails, close-up backdrops and app icon. Sheets for characters follow the LPC
+layout (9 × 4, col 0 idle); creatures a 1-row walk strip. 128-px frames + `render.pixelArt:false`
++ `player.scale ≈ 0.8` give crisp sprites on phones.
 
 ## Making a new game
 Use the **new-game** skill (interactive), or copy `game.config.js`, swap the assets,

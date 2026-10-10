@@ -25,7 +25,8 @@ Ask only what changes the output. Bundle into 1–2 `AskUserQuestion` calls:
 - **Target audience / age**: e.g. "young kids (6–8)", "kids (9–11)", "teens", "all
   ages", "adults". → sets `GAME.meta.audience` and the content-suitability bar used by
   **asset-search** (`references/content-policy.md`).
-- **Art style**: pixel-art LPC (default, assets available), or other.
+- **Art style**: smooth cartoon vector art generated from SVG (default — see the demo's
+  `tools/art/nebula.cjs`), or pixel-art (`render.pixelArt:true`).
 - **Language**: UI strings language (the demo ships English).
 - **Core loop**: the main entity to care for / interact with, and the 3–5 main
   **actions** (feed/clean/play/ride… or theme equivalents). Keep it close to the
@@ -38,7 +39,9 @@ Ask only what changes the output. Bundle into 1–2 `AskUserQuestion` calls:
     Almost text-free, so it's ideal for early readers. See ENGINE.md.
 - **Optional systems**: variants, customization, riding+obstacles, breeding, aging,
   shop, decorations, objectives/levels, trail loop, close-up scrub, depart+spawn,
-  want-bubble. **Default = OFF.** Only enable one if the user explicitly wants it in the
+  want-bubble, unlocks, guide arrow. **Default = OFF.** (Always ON, they're just
+  presentation: `render` look & feel and procedural `audio`. For young kids also turn on
+  `guide` + `creature.tapAction` + `unlocks` — progression with no reading.) Only enable one if the user explicitly wants it in the
   first version.
 
 If an answer is obvious from the theme, pick a sensible default and say so — don't
@@ -47,7 +50,9 @@ over-ask. Bias toward the smallest playable game.
 ## Step 2 — Author `game.config.js`
 Write a new `game.config.js` (the **whole** game) following the schema in **`ENGINE.md`**.
 Start from the demo as a template and replace, section by section:
-- `meta` (title, icons, save key, theme colours, **audience**, UI strings, language)
+- `meta` (title, icons, logo, save key, theme colours, **audience**, UI strings incl.
+  `meta.strings` for engine labels, language)
+- `render` (pixelArt:false, vignette, label pills, ambient particles), `audio` (music mood)
 - `world` + `camera`, `assets` (images/sheets), `player` + `characters`
 - `creature` (label, needs, actions with effects/costs/rewards, variants, customize,
   ride/jump, celebrate, aging, breeding, names, start state) — omit systems not wanted
@@ -59,10 +64,13 @@ Use a fresh `meta.saveKey` so it doesn't collide with other games' saves.
 ## Step 3 — Assets
 - **Reuse** the generic environment assets already in `assets/` when they fit
   (ground, trees, bushes, fences, buildings).
-- **New themed assets**: use **asset-search** → **asset-add** (search + verify +
-  slice), respecting the audience's content policy. For abstract/neutral creatures,
-  **generate** them procedurally with Pillow (see how the demo's `critter.png` and
-  icons were generated) — fully self-contained, no licensing.
+- **New themed assets — generate them**: write `tools/art/<game>.cjs` (copy the demo's
+  `tools/art/nebula.cjs` structure: one parametric function per thing — character,
+  creature, props, close-up backdrop, icon) and render with
+  `node .claude/skills/_shared/render-svg.cjs tools/art/<game>.cjs`. Fully original, no
+  licensing, crisp on phones. Always look at a contact sheet of the renders before wiring
+  them. External sprites remain possible via **asset-search** → **asset-add** (respect
+  the audience's content policy).
 - Variants can be **tints** of one base sheet (no new asset needed) — see
   **add-creature-variant**.
 - Generate fresh **PWA icons** (`assets/favicon.png` 512, `assets/apple-touch-icon.png`
@@ -85,7 +93,8 @@ Use a fresh `meta.saveKey` so it doesn't collide with other games' saves.
   per-feature skills + your own new `game.config.js`, none of which are removed.
 
 ## Step 4 — Theme & shell
-- Restyle `style.css` palette (CSS variables at the top) and update titles/ids in
+- Restyle `style.css` — it holds ONLY the theme (CSS variables, `@font-face`, a couple of
+  decorative rules); never edit `engine.css` (shared structure). Update titles/ids in
   `index.html` + `manifest.webmanifest` (`name`, `short_name`, `theme_color`,
   `apple-mobile-web-app-title`). Keep the iOS/PWA rules (see **ios-pwa-check**).
 

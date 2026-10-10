@@ -63,6 +63,9 @@ const SHOP = G.shop || {};
 const ECON = G.economy || {};
 const LEVELS = (G.objectives && G.objectives.levels) || [];
 const ENV = G.environment || null;
+const UNLOCKS = G.unlocks || [];
+const GUIDE = G.guide || null;                            // optional "where to go" arrow (kids)
+const RENDER = G.render || {};                            // rendering / look & feel options
 // The "/capacity" suffix on the creature count is only meaningful when the group
 // size can actually change (breeding, a spawn station, or a capacity shop). With
 // none of those it's a fixed cap the player can't act on, so show the bare count.
@@ -78,6 +81,19 @@ const PLAYER_NAME_Y = (G.player && G.player.nameY != null) ? G.player.nameY : -8
 
 // Primary playable zone where creatures roam (first zone flagged home, else first).
 const HOME_ZONE = ZONES.find((z) => z.home) || ZONES[0] || null;
+
+// Rendering: pixel-art (nearest, rounded) or smooth hi-res art; HiDPI canvas.
+const PIXEL_ART = RENDER.pixelArt !== false;
+const DPR = Math.max(1, Math.min(RENDER.maxDpr || 2, window.devicePixelRatio || 1));
+const TEXT_RES = Math.max(1, Math.ceil(DPR * Math.max(1, (G.camera && G.camera.max) || 1)));
+
+// UI strings: every label has an English fallback; a game overrides any of them in
+// META.strings (or, for back-compat, directly on META). {vars} are interpolated.
+function T(key, fallback, vars) {
+  let s = (META.strings && META.strings[key] != null) ? META.strings[key] : (META[key] != null ? META[key] : fallback);
+  if (vars) Object.keys(vars).forEach((k) => { s = String(s).split("{" + k + "}").join(vars[k]); });
+  return s;
+}
 
 /* ===================== Stats / objectives ===================== */
 
@@ -107,6 +123,7 @@ let state = null;
 const SAVE_KEY = META.saveKey || "generic-engine-save";
 
 function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function rand(min, max) { return min + Math.random() * (max - min); }
 function pick(l) { return l[randInt(0, l.length - 1)]; }
 function clamp01(v) { return Math.max(0, Math.min(100, Math.round(v))); }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -115,7 +132,8 @@ function $(id) { return document.getElementById(id); }
 function themeColor(c) { const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", c); }
 const TINT_HOME = (META.theme && META.theme.home) || "#ffce8f";
 const TINT_PLAY = (META.theme && META.theme.play) || "#b5572b";
-function hexInt(hex) { return parseInt(hex.replace("#", ""), 16); }
+function hexInt(hex) { return typeof hex === "number" ? hex : parseInt(String(hex).replace("#", ""), 16); }
+function nowMs() { return (typeof performance !== "undefined" ? performance.now() : Date.now()); }
 
 // Variant id of a creature (with migration of old/unknown values to the first one).
 function variantId(c) {
@@ -140,11 +158,22 @@ function freeName() {
   while (nameUsed(base + " " + i, null)) i++;
   return base + " " + i;
 }
+// A fresh variant, preferring one not already on screen (more variety, e.g. distinct kids).
+function freshVariant() {
+  if (!VARIANTS.length) return null;
+  const used = new Set(((state && state.creatures) || []).map((c) => c.variant));
+  const free = VARIANTS.filter((v) => !used.has(v.id));
+  return pick(free.length ? free : VARIANTS).id;
+}
 function newCreature(o = {}) {
+  const variant = o.variant || freshVariant();
+  const vd = variant ? VARIANTS.find((v) => v.id === variant) : null;
+  // a variant can carry its own fixed name (e.g. each child patient is a person)
+  const nm = o.name || (vd && vd.fixedName && !nameUsed(vd.name, null) ? vd.name : freeName());
   const c = {
     id: idCounter++,
-    name: o.name || freeName(),
-    variant: o.variant || (VARIANTS.length ? pick(VARIANTS).id : null),
+    name: nm,
+    variant,
     age: o.age != null ? o.age : randInt((CREATURE.aging && CREATURE.aging.adultAge) || 5, ((CREATURE.aging && CREATURE.aging.adultAge) || 5) + 4),
     x: 0, y: 0, tx: 0, ty: 0, nextStep: 0, obj: null,
   };
@@ -152,11 +181,10 @@ function newCreature(o = {}) {
   placeInHome(c);
   return c;
 }
+function homeRect() { return HOME_ZONE ? HOME_ZONE.rect : { x: 200, y: 200, w: WORLD.w - 400, h: WORLD.h - 400 }; }
 function placeInHome(c) {
-  const z = HOME_ZONE ? HOME_ZONE.rect : { x: 200, y: 200, w: WORLD.w - 400, h: WORLD.h - 400 };
-  c.x = randInt(z.x + 80, z.x + z.w - 80);
-  c.y = randInt(z.y + 80, z.y + z.h - 80);
-  c.tx = c.x; c.ty = c.y;
+  const p = freeSpotIn(homeRect(), 80);
+  c.x = p.x; c.y = p.y; c.tx = c.x; c.ty = c.y;
 }
 const ADULT_AGE = (CREATURE && CREATURE.aging && CREATURE.aging.adultAge) || 5;
 function isYoung(c) { return CREATURE && CREATURE.aging ? c.age < ADULT_AGE : false; }
@@ -164,15 +192,130 @@ function needAverage(c) {
   const ids = (CREATURE && CREATURE.moodFrom) || NEEDS.map((n) => n.id);
   return ids.reduce((s, id) => s + (c[id] || 0), 0) / ids.length;
 }
+function moodColor(m) {
+  const mc = (CREATURE && CREATURE.moodColors) || ["#e05656", "#f4b942", "#6fcf5f"];
+  return hexInt(m > 60 ? mc[2] : m > 35 ? mc[1] : mc[0]);
+}
 
 /* ===================== Save ===================== */
 
 function save() {
   if (!state) return;
   state.idCounter = idCounter;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state, (k, v) => k === "obj" ? undefined : v)); } catch (e) {}
+  const skip = { obj: 1, bodyT: 1, heartT: 1, wantT: 1, nameT: 1, shadowT: 1 };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state, (k, v) => skip[k] ? undefined : v)); } catch (e) {}
 }
 function load() { try { const b = localStorage.getItem(SAVE_KEY); return b ? JSON.parse(b) : null; } catch (e) { return null; } }
+
+/* ===================== Sound (procedural WebAudio — no audio files) ===================== */
+// Config: GAME.audio = { volume, sfx:{name:false|{notes,type,vol,dur,gap}}, music:{...}|false }.
+// Every sound is synthesised, so a game needs no audio assets. Muted state persists.
+const AUDIO = G.audio || null;
+const Sound = (() => {
+  let ctx = null, master = null, musicBus = null, muted = false, musicTimer = null, nextBeat = 0, beat = 0;
+  const KEY = SAVE_KEY + ":muted";
+  try { muted = localStorage.getItem(KEY) === "1"; } catch (e) {}
+  const vol0 = () => (AUDIO && AUDIO.volume != null ? AUDIO.volume : 0.6);
+  function ensure() {
+    if (!AUDIO) return null;
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+      try { ctx = new AC(); } catch (e) { return null; }
+      master = ctx.createGain(); master.gain.value = muted ? 0 : vol0(); master.connect(ctx.destination);
+      musicBus = ctx.createGain(); musicBus.gain.value = (AUDIO.music && AUDIO.music.volume) || 0.22; musicBus.connect(master);
+    }
+    if (ctx.state === "suspended") { try { ctx.resume(); } catch (e) {} }
+    return ctx;
+  }
+  const midi = (n) => 440 * Math.pow(2, (n - 69) / 12);
+  function tone(f, t0, dur, o = {}) {
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = o.type || "sine"; osc.frequency.setValueAtTime(f, t0);
+    if (o.slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, f + o.slide), t0 + dur);
+    const v = o.vol != null ? o.vol : 0.25, a = o.attack || 0.006;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(v, t0 + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(o.dest || master);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  }
+  let noiseBuf = null;
+  function noise(t0, dur, o = {}) {
+    if (!noiseBuf) {
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = o.filter || "bandpass"; f.frequency.value = o.freq || 2500; f.Q.value = o.q || 1;
+    const g = ctx.createGain(); const v = o.vol != null ? o.vol : 0.12;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(o.dest || master); src.start(t0); src.stop(t0 + dur + 0.05);
+  }
+  // Built-in palette of short, soft "toy" sounds. p = pitch multiplier.
+  const PRESETS = {
+    tap: (t, p) => tone(700 * p, t, 0.07, { type: "triangle", vol: 0.10 }),
+    click: (t, p) => tone(520 * p, t, 0.06, { type: "triangle", vol: 0.12, slide: 120 }),
+    select: (t, p) => { tone(523 * p, t, 0.10, { type: "sine", vol: 0.16 }); tone(784 * p, t + 0.06, 0.14, { type: "sine", vol: 0.14 }); },
+    action: (t, p) => { tone(587 * p, t, 0.10, { type: "triangle", vol: 0.16 }); tone(880 * p, t + 0.08, 0.16, { type: "triangle", vol: 0.14 }); },
+    pop: (t, p) => { tone(660 * p, t, 0.12, { type: "sine", vol: 0.26, slide: 700 * p }); noise(t, 0.05, { freq: 4000, vol: 0.05 }); },
+    scrub: (t, p) => noise(t, 0.08, { freq: 2600 * p, q: 0.9, vol: 0.09 }),
+    celebrate: (t, p) => [0, 4, 7, 12, 16].forEach((s, i) => tone(midi(72 + s) * p, t + i * 0.075, 0.28, { type: "triangle", vol: 0.15 })),
+    reward: (t, p) => { tone(988 * p, t, 0.08, { type: "square", vol: 0.06 }); tone(1319 * p, t + 0.07, 0.22, { type: "square", vol: 0.06 }); },
+    spawn: (t, p) => { tone(1319 * p, t, 0.9, { type: "sine", vol: 0.20 }); tone(1976 * p, t, 0.7, { type: "sine", vol: 0.08 }); tone(1319 * p, t + 0.22, 0.9, { type: "sine", vol: 0.14 }); },
+    night: (t, p) => [12, 7, 4, 0].forEach((s, i) => tone(midi(67 + s) * p, t + i * 0.16, 0.7, { type: "sine", vol: 0.12, attack: 0.03 })),
+    morning: (t, p) => [0, 4, 7, 11, 14].forEach((s, i) => tone(midi(67 + s) * p, t + i * 0.09, 0.5, { type: "sine", vol: 0.12 })),
+    goal: (t, p) => [0, 7, 12].forEach((s, i) => tone(midi(72 + s) * p, t + i * 0.1, 0.35, { type: "square", vol: 0.05 })),
+    open: (t, p) => noise(t, 0.18, { filter: "lowpass", freq: 900 * p, vol: 0.08 }),
+    whoosh: (t, p) => noise(t, 0.35, { filter: "bandpass", freq: 700 * p, q: 0.6, vol: 0.10 }),
+    error: (t, p) => tone(220 * p, t, 0.18, { type: "triangle", vol: 0.12, slide: -60 }),
+    unlock: (t, p) => [0, 4, 7, 12, 7, 12, 16].forEach((s, i) => tone(midi(72 + s) * p, t + i * 0.07, 0.25, { type: "sine", vol: 0.13 })),
+  };
+  function play(name, opts = {}) {
+    if (!AUDIO || muted) return;
+    const ov = AUDIO.sfx && AUDIO.sfx[name];
+    if (ov === false) return;
+    if (!ensure()) return;
+    const t = ctx.currentTime + 0.005, p = (opts.pitch || 1) * ((AUDIO.pitch) || 1);
+    if (ov && ov.notes) {                       // custom note list from config
+      ov.notes.forEach((n, i) => tone(midi(n) * p, t + i * (ov.gap || 0.08), ov.dur || 0.2, { type: ov.type || "sine", vol: ov.vol || 0.15 }));
+      return;
+    }
+    const fn = PRESETS[(ov && ov.preset) || name]; if (fn) fn(t, p);
+  }
+  // Gentle generative background music: soft pad chords + a sparse pentatonic melody.
+  const SCALES = { majorPenta: [0, 2, 4, 7, 9], minorPenta: [0, 3, 5, 7, 10], major: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10] };
+  function musicTick() {
+    const M = AUDIO && AUDIO.music; if (!M || !ctx || muted) return;
+    const spb = 60 / (M.tempo || 80);
+    while (nextBeat < ctx.currentTime + 0.25) {
+      const prog = M.progression || [0, 5, 3, 4];
+      const root = (M.root || 57) + (prog[Math.floor(beat / 8) % prog.length] || 0);
+      const scale = SCALES[M.scale || "majorPenta"] || SCALES.majorPenta;
+      if (beat % 8 === 0) [0, 4, 7].forEach((s) => tone(midi(root - 12 + s), nextBeat, spb * 8.2, { type: M.pad || "sine", vol: 0.05, attack: 0.6, dest: musicBus }));
+      if (Math.random() < (M.density || 0.45)) {
+        const n = scale[randInt(0, scale.length - 1)] + 12 * randInt(0, 1);
+        tone(midi((M.root || 57) + 12 + n), nextBeat, spb * 1.6, { type: M.lead || "triangle", vol: 0.07, dest: musicBus });
+      }
+      nextBeat += spb; beat++;
+    }
+  }
+  function startMusic() {
+    if (!AUDIO || !AUDIO.music || musicTimer || muted || !ensure()) return;
+    nextBeat = ctx.currentTime + 0.1; beat = 0;
+    musicTimer = setInterval(musicTick, 120);
+  }
+  function stopMusic() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+  function setMuted(m) {
+    muted = !!m;
+    try { localStorage.setItem(KEY, muted ? "1" : "0"); } catch (e) {}
+    if (ctx && master) master.gain.setTargetAtTime(muted ? 0 : vol0(), ctx.currentTime, 0.05);
+    if (muted) stopMusic(); else if (state) startMusic();
+  }
+  // iOS/Safari only allow audio after a user gesture: unlock on the first touch.
+  const unlock = () => { if (AUDIO && !muted) { ensure(); if (state) startMusic(); } };
+  ["pointerdown", "touchend", "keydown"].forEach((ev) => document.addEventListener(ev, unlock, { passive: true }));
+  return { play, setMuted, isMuted: () => muted, startMusic, stopMusic, enabled: () => !!AUDIO };
+})();
 
 /* ===================== Screen flow ===================== */
 
@@ -187,7 +330,8 @@ function init() {
   $("btn-continue").addEventListener("click", continueGame);
   const br = $("btn-refresh"); if (br) br.addEventListener("click", clearCacheAndReload);
   $("place-name-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-start").click(); });
-  if (load()) $("home-msg").textContent = META.continueHint || "A saved game exists: tap “Continue”.";
+  if (load()) { $("home-msg").textContent = T("continueHint", "A saved game exists: tap “Continue”."); $("btn-continue").classList.add("btn-pulse"); }
+  else $("btn-continue").classList.add("hidden");
 
   $("btn-me").addEventListener("click", () => openCreate({ ...state.player }, () => {
     state.player = pendingPlayer; save();
@@ -196,6 +340,13 @@ function init() {
   }));
   $("btn-help").addEventListener("click", openHelp);
   $("btn-goals").addEventListener("click", openGoals);
+  const bs = $("btn-sound");
+  if (bs) {
+    if (!Sound.enabled()) bs.classList.add("hidden");
+    const paint = () => { bs.textContent = Sound.isMuted() ? "🔇" : "🔊"; bs.title = T("soundLabel", "Sound"); };
+    paint();
+    bs.addEventListener("click", () => { Sound.setMuted(!Sound.isMuted()); paint(); Sound.play("click"); });
+  }
 
   $("btn-close-modal").addEventListener("click", closeModal);
   $("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
@@ -203,6 +354,7 @@ function init() {
   $("btn-action").addEventListener("click", () => { if (placingDecor) placeDecor(); else interact(activeTarget); });
   document.addEventListener("click", (e) => {
     const btn = e.target.closest("button"); if (!btn) return;
+    if (btn.id !== "btn-sound") Sound.play("click");
     if (btn.dataset.creature) creatureAction(btn.dataset.creature);
     else if (btn.dataset.station) interact({ type: btn.dataset.station, station: true });
     else if (btn.dataset.shop) buy(btn.dataset.shop);
@@ -230,7 +382,7 @@ function init() {
   }
   const cuClose = $("closeup-close");
   if (cuClose) {
-    if (G.meta && G.meta.closeLabel) cuClose.setAttribute("aria-label", G.meta.closeLabel);  // localise the generic shell
+    cuClose.setAttribute("aria-label", T("closeLabel", "Close"));  // localise the generic shell
     cuClose.addEventListener("click", () => closeCloseup());
   }
   window.addEventListener("resize", () => { if (closeupOpen) cuPlaceSpots(); });
@@ -248,16 +400,20 @@ function applyStaticText() {
   const set = (id, txt) => { const el = $(id); if (el != null && txt != null) el.textContent = txt; };
   const setHTML = (id, html) => { const el = $(id); if (el != null && html != null) el.innerHTML = html; };
   document.title = META.title || "Game";
-  setHTML("home-title", (META.titleIcon ? META.titleIcon + " " : "") + (META.title || "Game"));
-  set("place-icon", META.titleIcon || "");                 // in-game HUD clinic icon (generic shell)
+  const logo = $("home-logo");
+  if (logo && META.logo) { logo.src = av(META.logo); logo.classList.remove("hidden"); setHTML("home-title", META.title || "Game"); }
+  else setHTML("home-title", (META.titleIcon ? META.titleIcon + " " : "") + (META.title || "Game"));
+  set("place-icon", META.titleIcon || "");                 // in-game HUD icon (generic shell)
   set("home-tagline", META.tagline || "");
   set("home-name-label", (META.namePrompt && META.namePrompt.label) || "Name your place:");
   const inp = $("place-name-input"); if (inp && META.namePrompt) inp.placeholder = META.namePrompt.placeholder || "";
   set("btn-start", META.startLabel || "▶ New game");
   set("btn-continue", META.continueLabel || "📂 Continue");
+  set("btn-refresh", T("refreshLabel", "🔄 Refresh (clear cache)"));
   set("app-version", "build " + ASSET_VER);   // visible build tag (helps confirm the cache is fresh)
   set("create-title", META.createTitle || "🎨 Choose your character");
   set("btn-create-ok", META.createOkLabel || "✅ Let's go!");
+  if (RENDER.vignette) document.documentElement.style.setProperty("--vignette", String(RENDER.vignette));
 }
 
 // Dev tool: clear caches and reload with a fresh URL (without touching the save).
@@ -278,7 +434,7 @@ function newGame(name, player) {
     resources: Object.assign({}, ECON.startResources || {}),
     day: 1, capacity: ECON.startCapacity || 4,
     creatures: [], decors: [], speed: 1, actionsSinceRest: 0, lastBirth: 0,
-    stats: freshStats(), goalsDone: {}, level: 1,
+    stats: freshStats(), goalsDone: {}, level: 1, unlocked: {},
   };
   const startN = (CREATURE && CREATURE.startCount) || 0;
   for (let i = 0; i < startN; i++) {
@@ -290,7 +446,7 @@ function newGame(name, player) {
 
 function continueGame() {
   const s = load();
-  if (!s) { $("home-msg").textContent = "No saved game."; return; }
+  if (!s) { $("home-msg").textContent = T("noSave", "No saved game."); return; }
   state = s;
   if (!state.player) state.player = { avatar: CHARACTERS[0].id };
   if (!charDef(state.player.avatar) || !CHARACTERS.some((p) => p.id === state.player.avatar)) state.player.avatar = CHARACTERS[0].id;
@@ -303,6 +459,7 @@ function continueGame() {
   if (typeof state.capacity !== "number") state.capacity = ECON.startCapacity || 4;
   state.stats = Object.assign(freshStats(), state.stats || {});
   if (!state.goalsDone) state.goalsDone = {};
+  if (!state.unlocked) state.unlocked = {};
   recalcLevel();
   state.creatures = (state.creatures || []).map((c) => {
     const base = newCreature({}); // ensures any new need fields exist with defaults
@@ -323,6 +480,7 @@ function startGame() {
   buildHud();
   refreshHud();
   startPhaser();
+  Sound.startMusic();
 }
 
 /* ===================== HUD / messages ===================== */
@@ -333,23 +491,25 @@ function buildHud() {
   // The goals button only makes sense when objective levels exist.
   const gb = $("btn-goals"); if (gb) gb.classList.toggle("hidden", !LEVELS.length);
   let html = META.showCoins === false ? ""
-    : `<span class="resource" title="Coins">${META.coinIcon || "💰"} <b id="hud-coins">0</b></span>`;
+    : `<span class="resource" id="chip-coins" title="${T("coinsLabel", "Coins")}">${META.coinIcon || "💰"} <b id="hud-coins">0</b></span>`;
   (SHOP.resources || []).forEach((r) => {
     html += `<span class="resource" title="${r.name}">${r.icon || "📦"} <b id="hud-res-${r.id}">0</b></span>`;
   });
-  if (META.showDay !== false) html += `<span class="resource" title="Day">📅 <b id="hud-day">1</b></span>`;
+  if (META.showDay !== false) html += `<span class="resource" title="${T("dayLabel", "Day")}">📅 <b id="hud-day">1</b></span>`;
   if (CREATURE && META.showCreatureCount !== false) html += `<span class="resource" title="${CREATURE.label || "creatures"}">${CREATURE.icon || "🐾"} <b id="hud-cap">0/0</b></span>`;
-  if (LEVELS.length) html += `<span class="resource" title="Level">⭐ <b id="hud-level">1</b></span>`;
+  if (LEVELS.length) html += `<span class="resource" title="${T("levelLabel", "Level")}">⭐ <b id="hud-level">1</b></span>`;
   bar.innerHTML = html;
+  bar.classList.toggle("hidden", !html);
 }
 
 function refreshHud() {
-  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  const set = (id, v) => { const el = $(id); if (el && el.textContent !== String(v)) el.textContent = v; };
   if (META.showCoins !== false) set("hud-coins", state.coins);
   (SHOP.resources || []).forEach((r) => set("hud-res-" + r.id, (state.resources[r.id] || 0)));
   set("hud-day", state.day);
   if (CREATURE) set("hud-cap", SHOW_CAP ? state.creatures.length + "/" + state.capacity : String(state.creatures.length));
   checkGoals();
+  checkUnlocks();
   if (LEVELS.length) set("hud-level", state.level || 1);
   save();
 }
@@ -364,21 +524,123 @@ function checkGoals() {
   });
   recalcLevel();
   if (done.length) {
-    message(done.length === 1 ? `🎯 Goal complete: ${done[0].name}!` : `🎯 ${done.length} goals complete!`);
+    Sound.play("goal");
+    message(done.length === 1 ? T("goalComplete", "🎯 Goal complete: {name}!", { name: done[0].name }) : T("goalsComplete", "🎯 {n} goals complete!", { n: done.length }));
   }
   if ((state.level || 1) > before) {
     const n = state.level;
-    setTimeout(() => message(`⭐ Well done! You reached level ${n}! 🎉`), 1100);
+    message(T("levelUp", "⭐ Well done! You reached level {n}! 🎉", { n }));
+    confetti();
   }
 }
 function safeCheck(fn) { try { return !!fn(state); } catch (e) { return false; } }
 
-let messageTimer = null;
+// Unlocks: progress milestones that add scenery to the world (no reading needed —
+// the place visibly grows richer). when = (state)=>bool | {stat, atLeast} | {coins}.
+function unlockMet(u) {
+  const w = u.when;
+  if (typeof w === "function") return safeCheck(w);
+  if (w && w.stat) return (state.stats[w.stat] || 0) >= (w.atLeast || 1);
+  if (w && w.coins != null) return state.coins >= w.coins;
+  return false;
+}
+function checkUnlocks() {
+  if (!state || !UNLOCKS.length) return;
+  UNLOCKS.forEach((u, i) => {
+    const id = u.id || ("u" + i);
+    if (state.unlocked[id] || !unlockMet(u)) return;
+    state.unlocked[id] = true;
+    if (!sc) return;
+    const o = addSceneryItem(u.scenery || u, true);
+    if (o) {
+      const s = o.scaleX;
+      o.setScale(0.01);
+      sc.tweens.add({ targets: o, scaleX: s, scaleY: s, duration: 520, delay: 450, ease: "Back.easeOut" });
+      sc.time.delayedCall(450, () => {
+        emitBurst(o.x, o.y, { shape: "star", colors: ["#fff2a8", "#ffd24a", "#ffffff", "#a8e6ff"], count: 12, y0: 40, spread: 50 });
+        Sound.play("unlock");
+      });
+      COLLISIONS_DIRTY = true;
+    }
+    if (u.message) setTimeout(() => message(u.message), 600);
+  });
+}
+
+// Toast messages: queued so a burst of events doesn't overwrite each other
+// (each stays readable for a moment; the queue keeps only the latest few).
+const msgQueue = [];
+let msgBusyUntil = 0, msgTimer = null;
 function message(t) {
+  if (!t) return;
+  const el = $("game-message"); if (!el) return;
+  const now = nowMs();
+  if (!el.classList.contains("hidden") && now < msgBusyUntil) {
+    if (el.textContent !== t && !msgQueue.includes(t)) { msgQueue.push(t); if (msgQueue.length > 3) msgQueue.shift(); }
+    clearTimeout(msgTimer); msgTimer = setTimeout(nextMessage, msgBusyUntil - now);
+    return;
+  }
+  showMessage(t);
+}
+function showMessage(t) {
   const el = $("game-message");
   el.textContent = t; el.classList.remove("hidden");
   el.style.animation = "none"; void el.offsetWidth; el.style.animation = "";
-  clearTimeout(messageTimer); messageTimer = setTimeout(() => el.classList.add("hidden"), 2800);
+  msgBusyUntil = nowMs() + 1400;
+  clearTimeout(msgTimer); msgTimer = setTimeout(nextMessage, 2800);
+}
+function nextMessage() {
+  if (msgQueue.length) showMessage(msgQueue.shift());
+  else { const el = $("game-message"); if (el) el.classList.add("hidden"); }
+}
+
+// Screen-space confetti burst (DOM; used for level-ups and big moments).
+function confetti(n) {
+  const layer = document.body;
+  const cols = RENDER.confetti || ["#ff5db1", "#ffd24a", "#3fe0e8", "#8df06b", "#b58bff", "#ffffff"];
+  for (let i = 0; i < (n || 36); i++) {
+    const d = document.createElement("div");
+    d.className = "confetti";
+    d.style.left = rand(5, 95) + "vw";
+    d.style.background = cols[i % cols.length];
+    d.style.setProperty("--dx", rand(-30, 30) + "vw");
+    d.style.setProperty("--rot", randInt(-720, 720) + "deg");
+    d.style.animationDelay = randInt(0, 300) + "ms";
+    d.style.animationDuration = randInt(1400, 2200) + "ms";
+    layer.appendChild(d);
+    setTimeout(() => d.remove(), 2700);
+  }
+}
+
+// World point → CSS pixel position on screen.
+function worldToScreen(x, y) {
+  const cam = sc.cameras.main, el = sc.game.canvas.getBoundingClientRect();
+  const z = cam.zoom / DPR;
+  return { x: el.left + (x - cam.worldView.x) * z, y: el.top + (y - cam.worldView.y) * z };
+}
+// A reward that flies from a world point to its HUD chip (then the chip bumps).
+function flyReward(x, y, text, chipId) {
+  if (!sc) return;
+  const chip = $(chipId || "chip-coins");
+  const p = worldToScreen(x, y);
+  const d = document.createElement("div");
+  d.className = "fly-reward"; d.textContent = text;
+  d.style.left = p.x + "px"; d.style.top = p.y + "px";
+  document.body.appendChild(d);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    d.classList.add("rise");
+    setTimeout(() => {
+      if (chip && !chip.closest(".hidden")) {
+        const r = chip.getBoundingClientRect();
+        d.classList.add("go");
+        d.style.left = (r.left + r.width / 2) + "px"; d.style.top = (r.top + r.height / 2) + "px";
+      } else d.classList.add("fade");
+    }, 520);
+  }));
+  setTimeout(() => {
+    d.remove();
+    if (chip) { chip.classList.remove("bump"); void chip.offsetWidth; chip.classList.add("bump"); }
+    Sound.play("reward");
+  }, 1150);
 }
 
 /* ===================== Character creation (DOM) ===================== */
@@ -401,11 +663,12 @@ function openCreate(player, onValidate) {
   CHARACTERS.forEach((p) => {
     const b = document.createElement("button");
     b.className = "btn-avatar btn-thumb" + (pendingPlayer.avatar === p.id ? " chosen" : "");
-    b.innerHTML = `<img src="${av("assets/ui/" + p.thumb + ".png")}" alt="${p.name}" />`;
+    b.innerHTML = `<img src="${av("assets/ui/" + p.thumb + ".png")}" alt="${p.name}" /><span class="thumb-name">${p.name}</span>`;
     b.title = p.name;
     b.addEventListener("click", () => {
       pendingPlayer.avatar = p.id; ga.querySelectorAll(".btn-avatar").forEach((x) => x.classList.remove("chosen"));
       b.classList.add("chosen"); drawPreview();
+      const pv = $("avatar-preview"); pv.classList.remove("bump"); void pv.offsetWidth; pv.classList.add("bump");
     });
     ga.appendChild(b);
   });
@@ -423,10 +686,10 @@ function openCreate(player, onValidate) {
 let game = null, sc = null;
 let player = null, playerSprite = null, playerShadow = null, playerName = null, playerFacing = "down";
 let cursors = null, wasd = null;
-let moveTarget = null, pendingInteract = null, followCreature = null;
+let moveTarget = null, navPath = [], pendingInteract = null, followCreature = null, followRepath = 0, followAuto = false;
 let placingDecor = null, ghostDecor = null, ghostSide = 1;
 let nightRunning = false;
-let running = false, lastTapT = 0;
+let running = false, lastTapT = 0, lastInputT = 0;
 let rideFatigueAcc = 0;
 let jumpRunning = false;
 const jumpAnim = { h: 0 };
@@ -434,41 +697,70 @@ let activeTarget = null, panelId = null, mounted = null;
 // Sentinel meaning "panel is stale, rebuild on the next refreshInteraction" — distinct
 // from a real panel id AND from null (which is a valid id: "nothing selected"). Using
 // null to invalidate hid a bug: deselecting to null left the panel showing the old target.
-const PANEL_DIRTY = " dirty";
+const PANEL_DIRTY = " dirty";
 let closeupOpen = false, cuState = null, cuPid = null;   // generic close-up mini-scene
-let selRing = null;
-let decorObjs = [];
-let COLLISIONS = [];
+let selRing = null, guideArrow = null;
+let decorObjs = [], ambient = [];
+let COLLISIONS = [], COLLISIONS_DIRTY = true;
+
+function fontFamily() {
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--game-font").trim();
+  return RENDER.font || v || "sans-serif";
+}
+// Shared text style for in-world labels (crisp on HiDPI thanks to `resolution`).
+function txtStyle(size, o = {}) {
+  const t = RENDER.text || {};
+  return {
+    fontSize: size + "px", fontFamily: fontFamily(), fontStyle: o.weight || t.weight || "bold",
+    color: o.color || t.color || "#fff8ec", stroke: o.stroke || t.stroke || "#3a2716",
+    strokeThickness: o.strokeThickness != null ? o.strokeThickness : (t.strokeThickness != null ? t.strokeThickness : Math.max(3, Math.round(size / 4))),
+    resolution: TEXT_RES,
+  };
+}
 
 function startPhaser() {
   if (game) { buildWorld(); return; }
   const worldEl = $("world");
-  game = new Phaser.Game({
-    type: Phaser.AUTO,
-    parent: "world",
-    backgroundColor: (G.world && G.world.bg) || "#6fae4f",
-    pixelArt: true,
-    roundPixels: true,
-    scale: {
-      mode: Phaser.Scale.NONE,
-      width: worldEl.clientWidth || window.innerWidth,
-      height: worldEl.clientHeight || window.innerHeight,
-    },
-    scene: { preload: scenePreload, create: sceneCreate, update: sceneUpdate },
+  const ready = (document.fonts && document.fonts.load) ? Promise.race([
+    document.fonts.load("700 20px " + fontFamily().split(",")[0]).catch(() => {}),
+    new Promise((r) => setTimeout(r, 1200)),
+  ]) : Promise.resolve();
+  ready.then(() => {
+    const w = worldEl.clientWidth || window.innerWidth, h = worldEl.clientHeight || window.innerHeight;
+    game = new Phaser.Game({
+      type: Phaser.AUTO,
+      parent: "world",
+      backgroundColor: (G.world && G.world.bg) || "#6fae4f",
+      pixelArt: PIXEL_ART,
+      antialias: !PIXEL_ART,
+      roundPixels: PIXEL_ART,
+      // HiDPI: the canvas has DPR x more pixels than its CSS size (crisp on phones).
+      scale: { mode: Phaser.Scale.NONE, width: Math.round(w * DPR), height: Math.round(h * DPR), zoom: 1 / DPR },
+      scene: { preload: scenePreload, create: sceneCreate, update: sceneUpdate },
+    });
+    window.game = game;
+    const fit = () => {
+      if (!game || !game.scale) return;
+      game.scale.resize(Math.round(worldEl.clientWidth * DPR), Math.round(worldEl.clientHeight * DPR));
+      game.scale.setZoom(1 / DPR);
+      fitZoom();
+    };
+    if (window.ResizeObserver) new ResizeObserver(fit).observe(worldEl);
+    window.addEventListener("resize", fit);
+    window.addEventListener("orientationchange", () => setTimeout(fit, 200));
   });
-  const fit = () => { if (game && game.scale) { game.scale.resize(worldEl.clientWidth, worldEl.clientHeight); fitZoom(); } };
-  if (window.ResizeObserver) new ResizeObserver(fit).observe(worldEl);
-  window.addEventListener("resize", fit);
-  window.addEventListener("orientationchange", () => setTimeout(fit, 200));
 }
 
+let baseZoom = 1;
 function fitZoom() {
   if (!sc) return;
   const cam = G.camera || {};
-  const w = sc.scale.width, h = sc.scale.height;
+  const w = sc.scale.width / DPR, h = sc.scale.height / DPR;
   const z = clamp(Math.min(w / (cam.fitW || 780), h / (cam.fitH || 820)), cam.min || 0.5, cam.max || 0.9);
-  sc.cameras.main.setZoom(z);
+  baseZoom = z * DPR;
+  if (!closeupOpen && !zoomFx) sc.cameras.main.setZoom(baseZoom);
 }
+let zoomFx = false;
 
 /* ===================== Asset loading ===================== */
 
@@ -480,17 +772,30 @@ function scenePreload() {
     const s = sheets[k];
     this.load.spritesheet(k, av(s.path), { frameWidth: s.frameWidth, frameHeight: s.frameHeight });
   });
+  // A simple loading bar (the canvas is otherwise blank while assets stream in).
+  const W = this.scale.width, H = this.scale.height;
+  const bg = this.add.rectangle(W / 2, H / 2, W * 0.5, 14 * DPR, 0xffffff, 0.18).setScrollFactor(0);
+  const bar = this.add.rectangle(W / 4, H / 2, 1, 10 * DPR, 0xffffff, 0.9).setOrigin(0, 0.5).setScrollFactor(0);
+  this.load.on("progress", (v) => { bar.width = Math.max(1, W * 0.5 * v); });
+  this.load.on("complete", () => { bg.destroy(); bar.destroy(); });
 }
 
 // Animations: player walk (4 directions) and creature side-walk.
 const DIRS = { up: 0, left: 1, down: 2, right: 3 }; // LPC walkcycle rows (9 frames/row)
+function creatureSheets() {
+  const sheets = new Set([CREATURE.sheet]);
+  VARIANTS.forEach((v) => { if (v.sheet) sheets.add(v.sheet); if (v.happySheet) sheets.add(v.happySheet); });
+  if (CREATURE.happySheet) sheets.add(CREATURE.happySheet);
+  return sheets;
+}
 function buildAnims() {
+  const pr = (G.player && G.player.frameRate) || 10;
   CHARACTERS.forEach((p) => {
     Object.entries(DIRS).forEach(([dir, row]) => {
       const key = `${p.sheet}-${dir}`;
       if (!sc.anims.exists(key)) sc.anims.create({
         key, frames: sc.anims.generateFrameNumbers(p.sheet, { start: row * 9 + 1, end: row * 9 + 8 }),
-        frameRate: 10, repeat: -1,
+        frameRate: pr, repeat: -1,
       });
     });
   });
@@ -499,11 +804,9 @@ function buildAnims() {
     // One walk anim per distinct sheet (base + any variant with its own sheet), so
     // variants that ship a dedicated spritesheet animate instead of snapping back
     // to the base sheet's frames.
-    const sheets = new Set([CREATURE.sheet]);
-    VARIANTS.forEach((v) => { if (v.sheet) sheets.add(v.sheet); });
-    sheets.forEach((sheet) => {
+    creatureSheets().forEach((sheet) => {
       const key = "creature-walk-" + sheet;
-      if (!sc.anims.exists(key)) sc.anims.create({
+      if (!sc.anims.exists(key) && sc.textures.exists(sheet)) sc.anims.create({
         key, frames: sc.anims.generateFrameNumbers(sheet, { start: w.start, end: w.end }),
         frameRate: w.frameRate || 6, repeat: -1,
       });
@@ -515,11 +818,12 @@ function buildAnims() {
 
 // Picket fence around a rectangle, with a gate. opts.gates = "both" | "left" | "right".
 function fenceRect(r, opts = {}) {
-  const s = 32, x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
+  const s = (G.fence && G.fence.step) || 32, x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
   const gA = y0 + r.h * (opts.gateA || 0.4), gB = y0 + r.h * (opts.gateB || 0.6);
   const fr = (G.fence && G.fence.frames) || { post: 1, side: 17, cornerTL: 32, cornerTR: 34 };
   const sheet = (G.fence && G.fence.sheet) || "fence";
-  const add = (x, y, frame, flipY) => { const o = sc.add.image(x, y, sheet, frame).setOrigin(0.5, 0.7).setDepth(y); if (flipY) o.setFlipY(true); };
+  const fs = (G.fence && G.fence.scale) || 1;
+  const add = (x, y, frame, flipY) => { const o = sc.add.image(x, y, sheet, frame).setOrigin(0.5, 0.7).setScale(fs).setDepth(y); if (flipY) o.setFlipY(true); };
   for (let x = x0 + s; x < x1; x += s) { add(x, y0, fr.post, false); add(x, y1, fr.post, false); }
   const gates = opts.gates || "left";
   for (let y = y0 + s; y < y1; y += s) {
@@ -542,8 +846,18 @@ function fenceRect(r, opts = {}) {
   else COLLISIONS.push({ x: x1 - t / 2, y: y0, w: t, h: r.h });
 }
 
-function worldLabel(x, y, txt, depth) {
-  sc.add.text(x, y, txt, { fontSize: "24px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 5 }).setOrigin(0.5, 1).setDepth(depth);
+// A world label: plain outlined text, or a soft "sign" pill when render.label.bg is set.
+function worldLabel(x, y, txt, depth, size) {
+  const L = RENDER.label || {};
+  const t = sc.add.text(0, 0, txt, txtStyle(size || L.size || 24, L.bg ? { color: L.color, stroke: L.stroke || L.bg, strokeThickness: L.bg ? 0 : undefined } : {})).setOrigin(0.5, 1);
+  if (!L.bg) { t.setPosition(x, y).setDepth(depth); return t; }
+  const padX = 14, padY = 6, w = t.width / 1 + padX * 2, h = t.height + padY * 2;
+  const g = sc.add.graphics();
+  g.fillStyle(0x000000, 0.14); g.fillRoundedRect(-w / 2, -h + 3, w, h, h / 2);
+  g.fillStyle(hexInt(L.bg), L.alpha != null ? L.alpha : 0.92); g.fillRoundedRect(-w / 2, -h, w, h, h / 2);
+  if (L.border) { g.lineStyle(2, hexInt(L.border), 1); g.strokeRoundedRect(-w / 2, -h, w, h, h / 2); }
+  t.setPosition(0, -padY);
+  return sc.add.container(x, y, [g, t]).setDepth(depth);
 }
 
 /* ===================== Environment (forest band + trail loop) ===================== */
@@ -641,34 +955,175 @@ function buildEnvironment() {
   }
 }
 
-// Fixed interior scenery: [x, y, sprite, scale, collision?] where collision is a
-// box {dx,dy,w,h}, or false for none, or omitted for a default base footprint.
+// Interior scenery. Each entry is either the legacy array [x, y, sprite, scale, box]
+// (box = {dx,dy,w,h} | false for none | omitted for a default footprint) or an object
+// { x, y, sprite, scale, box, ground, depth, origin:{x,y}, flip, alpha, anim, glow }.
+//   ground:true → flat floor decal (rug, mat…) drawn under everything, no collision.
+//   anim: "sway" | "bob" | "pulse" | "spin" — gentle ambient life.
+//   glow: "#hex" → a soft additive halo behind the sprite (lamps, crystals…).
+function normScenery(e) {
+  if (Array.isArray(e)) return { x: e[0], y: e[1], sprite: e[2], scale: e[3], box: e[4] };
+  return e;
+}
+function addSceneryItem(raw, isNew) {
+  const s = normScenery(raw);
+  if (!s || !s.sprite || !sc.textures.exists(s.sprite)) return null;
+  const sc0 = s.scale || 1;
+  const o = s.origin || (s.ground ? { x: 0.5, y: 0.5 } : { x: 0.5, y: 0.95 });
+  if (s.glow) {
+    const gl = sc.add.image(s.x, s.y - (s.glowY != null ? s.glowY : 30 * sc0), ensureGlow()).setTint(hexInt(s.glow))
+      .setBlendMode(Phaser.BlendModes.ADD).setScale((s.glowSize || 1.6) * sc0).setAlpha(0.55).setDepth(s.ground ? -16 : s.y - 1);
+    sc.tweens.add({ targets: gl, alpha: 0.25, scale: gl.scale * 0.85, duration: randInt(1400, 2200), yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  }
+  const img = sc.add.image(s.x, s.y, s.sprite).setOrigin(o.x, o.y).setScale(sc0)
+    .setDepth(s.depth != null ? s.depth : (s.ground ? -17 : s.y));
+  if (s.flip) img.setFlipX(true);
+  if (s.alpha != null) img.setAlpha(s.alpha);
+  if (s.anim) animateScenery(img, s.anim);
+  if (s.ground) return img;
+  const box = s.box;
+  if (box === false) return img;
+  if (box) COLLISIONS.push({ x: s.x + box.dx, y: s.y + box.dy, w: box.w, h: box.h, scen: isNew });
+  else COLLISIONS.push({ x: s.x - 16 * sc0, y: s.y - 16, w: 32 * sc0, h: 20, scen: isNew });
+  return img;
+}
+function animateScenery(img, anim) {
+  const d = randInt(1800, 2800), s = img.scaleX;
+  if (anim === "sway") sc.tweens.add({ targets: img, angle: { from: -2.5, to: 2.5 }, duration: d, yoyo: true, repeat: -1, ease: "Sine.easeInOut", delay: randInt(0, 800) });
+  else if (anim === "bob") sc.tweens.add({ targets: img, y: img.y - 6, duration: d, yoyo: true, repeat: -1, ease: "Sine.easeInOut", delay: randInt(0, 800) });
+  else if (anim === "pulse") sc.tweens.add({ targets: img, scaleX: s * 1.04, scaleY: s * 1.04, duration: d * 0.7, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  else if (anim === "spin") sc.tweens.add({ targets: img, angle: 360, duration: d * 4, repeat: -1 });
+  else if (anim === "breathe") sc.tweens.add({ targets: img, scaleY: s * 1.03, duration: d * 0.6, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+}
 function buildScenery() {
-  (G.scenery || []).forEach(([x, y, sprite, scale, box]) => {
-    sc.add.image(x, y, sprite).setOrigin(0.5, 0.95).setScale(scale).setDepth(y);
-    if (box === false) return;
-    if (box) COLLISIONS.push({ x: x + box.dx, y: y + box.dy, w: box.w, h: box.h });
-    else COLLISIONS.push({ x: x - 16 * scale, y: y - 16, w: 32 * scale, h: 20 });
-  });
+  (G.scenery || []).forEach((e) => addSceneryItem(e, false));
+  UNLOCKS.forEach((u, i) => { if (state.unlocked && state.unlocked[u.id || ("u" + i)]) addSceneryItem(u.scenery || u, false); });
 }
 
 // Block the player from crossing obstacles (fence, trees, buildings) — per-axis AABB.
-function blockObstacles() {
-  const hw = mounted ? 30 : 15, hh = mounted ? 18 : 10, px = player.x, py = player.y;
+function pushOut(o, hw, hh) {
   COLLISIONS.forEach((m) => {
+    const px = o.x, py = o.y;
     if (px + hw > m.x && px - hw < m.x + m.w && py + hh > m.y && py - hh < m.y + m.h) {
       const penX = Math.min(px + hw - m.x, m.x + m.w - (px - hw));
       const penY = Math.min(py + hh - m.y, m.y + m.h - (py - hh));
-      if (penX < penY) player.x += (player.x < m.x + m.w / 2 ? -penX : penX);
-      else player.y += (player.y < m.y + m.h / 2 ? -penY : penY);
+      if (penX < penY) o.x += (o.x < m.x + m.w / 2 ? -penX : penX);
+      else o.y += (o.y < m.y + m.h / 2 ? -penY : penY);
     }
   });
+}
+function blockObstacles() { pushOut(player, mounted ? 30 : 15, mounted ? 18 : 10); }
+
+/* ===================== Navigation (A* on a grid built from COLLISIONS) ===================== */
+// Tap-to-move walks AROUND obstacles instead of pushing into them, and creatures only
+// pick wander targets they can actually reach.
+const NAV = { cell: 20, cols: 0, rows: 0, grid: null, hw: 16, hh: 11 };
+function buildNav() {
+  NAV.cell = (G.nav && G.nav.cell) || 20;
+  const c = NAV.cell;
+  NAV.cols = Math.ceil(WORLD.w / c); NAV.rows = Math.ceil(WORLD.h / c);
+  NAV.grid = new Uint8Array(NAV.cols * NAV.rows);
+  const m = 40;                                                        // world edge margin
+  for (let r = 0; r < NAV.rows; r++) for (let q = 0; q < NAV.cols; q++) {
+    const x = q * c + c / 2, y = r * c + c / 2;
+    if (x < m || x > WORLD.w - m || y < m || y > WORLD.h - m) NAV.grid[r * NAV.cols + q] = 1;
+  }
+  COLLISIONS.forEach((b) => {
+    const x0 = b.x - NAV.hw, x1 = b.x + b.w + NAV.hw, y0 = b.y - NAV.hh, y1 = b.y + b.h + NAV.hh;
+    for (let r = Math.max(0, Math.floor(y0 / c)); r <= Math.min(NAV.rows - 1, Math.floor(y1 / c)); r++) {
+      const cy = r * c + c / 2; if (cy <= y0 || cy >= y1) continue;
+      for (let q = Math.max(0, Math.floor(x0 / c)); q <= Math.min(NAV.cols - 1, Math.floor(x1 / c)); q++) {
+        const cx = q * c + c / 2; if (cx > x0 && cx < x1) NAV.grid[r * NAV.cols + q] = 1;
+      }
+    }
+  });
+  COLLISIONS_DIRTY = false;
+}
+function navCell(x, y) { return { q: clamp(Math.floor(x / NAV.cell), 0, NAV.cols - 1), r: clamp(Math.floor(y / NAV.cell), 0, NAV.rows - 1) }; }
+function navFree(q, r) { return q >= 0 && r >= 0 && q < NAV.cols && r < NAV.rows && !NAV.grid[r * NAV.cols + q]; }
+function freeAt(x, y) { if (!NAV.grid) return true; const p = navCell(x, y); return navFree(p.q, p.r); }
+function nearestFree(q, r, maxR) {
+  if (navFree(q, r)) return { q, r };
+  for (let d = 1; d <= (maxR || 12); d++) {
+    let best = null, bd = Infinity;
+    for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue;
+      if (navFree(q + dx, r + dy)) { const dd = dx * dx + dy * dy; if (dd < bd) { bd = dd; best = { q: q + dx, r: r + dy }; } }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+function lineFree(x0, y0, x1, y1) {
+  const d = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(d / (NAV.cell * 0.5));
+  for (let i = 1; i <= n; i++) { if (!freeAt(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false; }
+  return true;
+}
+function findPath(sx, sy, tx, ty) {
+  if (COLLISIONS_DIRTY || !NAV.grid) buildNav();
+  const C = NAV.cols, cell = NAV.cell;
+  const s0 = navCell(sx, sy), t0 = navCell(tx, ty);
+  const s = nearestFree(s0.q, s0.r, 4), t = nearestFree(t0.q, t0.r, 14);
+  if (!s || !t) return null;
+  const goal = navFree(t0.q, t0.r) ? { x: tx, y: ty } : { x: t.q * cell + cell / 2, y: t.r * cell + cell / 2 };
+  if (lineFree(sx, sy, goal.x, goal.y)) return [goal];
+  const N = C * NAV.rows, start = s.r * C + s.q, end = t.r * C + t.q;
+  const g = new Float32Array(N).fill(Infinity), from = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
+  const heap = [];   // binary heap of [f, idx]
+  const push = (f, i) => { heap.push([f, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  const h = (i) => { const q = i % C, r = (i / C) | 0; const dx = Math.abs(q - t.q), dy = Math.abs(r - t.r); return (dx + dy) + (1.4142 - 2) * Math.min(dx, dy); };
+  g[start] = 0; push(h(start), start);
+  let found = false, guard = 0;
+  while (heap.length && guard++ < 40000) {
+    const [, i] = pop(); if (closed[i]) continue; closed[i] = 1;
+    if (i === end) { found = true; break; }
+    const q = i % C, r = (i / C) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nq = q + dx, nr = r + dy; if (!navFree(nq, nr)) continue;
+      if (dx && dy && (!navFree(q + dx, r) || !navFree(q, r + dy))) continue;   // no corner cutting
+      const j = nr * C + nq; if (closed[j]) continue;
+      const ng = g[i] + (dx && dy ? 1.4142 : 1);
+      if (ng < g[j]) { g[j] = ng; from[j] = i; push(ng + h(j), j); }
+    }
+  }
+  if (!found) return null;
+  const cells = [];
+  for (let i = end; i !== -1 && i !== start; i = from[i]) cells.push({ x: (i % C) * cell + cell / 2, y: ((i / C) | 0) * cell + cell / 2 });
+  cells.reverse(); cells[cells.length - 1] = goal;
+  // string-pulling: keep only the waypoints needed for straight, natural lines
+  const out = []; let ax = sx, ay = sy, k = 0;
+  while (k < cells.length) {
+    let far = k;
+    for (let j = cells.length - 1; j > k; j--) { if (lineFree(ax, ay, cells[j].x, cells[j].y)) { far = j; break; } }
+    out.push(cells[far]); ax = cells[far].x; ay = cells[far].y; k = far + 1;
+  }
+  return out;
+}
+// Walk the player to (x,y) along a path (falls back to a straight line).
+function walkTo(x, y) {
+  x = clamp(x, 40, WORLD.w - 40); y = clamp(y, 40, WORLD.h - 40);
+  const p = findPath(player.x, player.y, x, y);
+  navPath = p && p.length ? p : [{ x, y }];
+  moveTarget = navPath[0];
+}
+// A random reachable point inside a rect (used by creatures and spawns).
+function freeSpotIn(r, m) {
+  m = m || 70;
+  for (let i = 0; i < 24; i++) {
+    const x = randInt(r.x + m, r.x + r.w - m), y = randInt(r.y + m, r.y + r.h - m);
+    if (!COLLISIONS.length || freeAt(x, y)) return { x, y };
+  }
+  return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
 
 function sceneCreate() {
   sc = this;
   computeEnvironment();
-  this.cameras.main.setBounds(-700, -700, WORLD.w + 1400, WORLD.h + 1400);
+  // camera.clampToWorld: never show past the world edges (e.g. a closed room)
+  if (G.camera && G.camera.clampToWorld) this.cameras.main.setBounds(0, 0, WORLD.w, WORLD.h);
+  else this.cameras.main.setBounds(-700, -700, WORLD.w + 1400, WORLD.h + 1400);
   this.cameras.main.setBackgroundColor((G.world && G.world.bg) || "#6fae4f");
   buildAnims();
   buildWorld();
@@ -696,29 +1151,38 @@ function hookInputFocus() {
 
 function buildWorld() {
   sc.children.removeAll();
-  decorObjs = [];
-  COLLISIONS = [];
-  placingDecor = null; ghostDecor = null; jumpRunning = false;
+  decorObjs = []; ambient = [];
+  COLLISIONS = []; COLLISIONS_DIRTY = true;
+  placingDecor = null; ghostDecor = null; jumpRunning = false; navPath = []; moveTarget = null;
 
   // Ground: tiled, extending beyond the world so no gaps show at the edges.
   const ground = (G.world && G.world.groundTile) || "grass";
-  sc.add.tileSprite(-700, -700, WORLD.w + 1400, WORLD.h + 1400, ground).setOrigin(0, 0).setDepth(-20);
+  const gt = sc.add.tileSprite(-700, -700, WORLD.w + 1400, WORLD.h + 1400, ground).setOrigin(0, 0).setDepth(-20);
+  if (G.world && G.world.groundScale) gt.setTileScale(G.world.groundScale);
+  // Optional single backdrop image under the world (e.g. a painted room floor).
+  if (G.world && G.world.backdrop) {
+    const b = G.world.backdrop;
+    sc.add.image(b.x || 0, b.y || 0, b.sprite).setOrigin(0, 0).setDisplaySize(b.w || WORLD.w, b.h || WORLD.h).setDepth(-19.5);
+  }
 
   // Configured ground patches (paths in front of buildings, etc.).
   (G.world && G.world.patches || []).forEach((q) => {
-    sc.add.tileSprite(q.x, q.y, q.w, q.h, q.tile || "dirt").setOrigin(q.ox != null ? q.ox : 0, q.oy != null ? q.oy : 0).setDepth(-19);
+    const t = sc.add.tileSprite(q.x, q.y, q.w, q.h, q.tile || "dirt").setOrigin(q.ox != null ? q.ox : 0, q.oy != null ? q.oy : 0).setDepth(-19);
+    if (q.tileScale) t.setTileScale(q.tileScale);
   });
 
-  // Zones (e.g. the pen): tinted ground + fence + label.
+  // Zones (e.g. the pen): floor image / tinted ground + fence + label.
   ZONES.forEach((z) => {
     const r = z.rect;
-    if (z.tint) {
+    if (z.floor) {
+      sc.add.image(r.x + r.w / 2, r.y + r.h / 2, z.floor).setDisplaySize(r.w + (z.floorPad || 0) * 2, r.h + (z.floorPad || 0) * 2).setDepth(-18);
+    } else if (z.tint) {
       const g = sc.add.graphics();
       g.fillStyle(hexInt(z.tint), z.tintAlpha != null ? z.tintAlpha : 0.55);
       g.fillRoundedRect(r.x, r.y, r.w, r.h, 18); g.setDepth(-18);
     }
     if (z.fence) fenceRect(r, { gates: z.gates || "both", gateA: z.gateA, gateB: z.gateB });
-    if (z.label) worldLabel(r.x + r.w / 2, r.y - 14, z.label, 99990);
+    if (z.label) worldLabel(r.x + r.w / 2, r.y - (z.labelLift != null ? z.labelLift : 14), z.label, 99990);
   });
 
   buildEnvironment();
@@ -726,35 +1190,83 @@ function buildWorld() {
 
   // Buildings (+ base collision footprint).
   STATIONS.forEach((s) => {
+    if (s.glow) {
+      const gl = sc.add.image(s.x, s.y - 40, ensureGlow()).setTint(hexInt(s.glow)).setBlendMode(Phaser.BlendModes.ADD).setScale(2.2).setAlpha(0.5).setDepth(s.y - 1);
+      sc.tweens.add({ targets: gl, alpha: 0.2, duration: 1600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    }
     const b = sc.add.image(s.x, s.y, s.sprite).setOrigin(0.5, 0.88).setScale(s.scale || 1.2).setDepth(s.y);
-    sc.add.text(s.x, s.y + 28, s.label, { fontSize: "22px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 5 }).setOrigin(0.5).setDepth(99990);
+    if (s.anim) animateScenery(b, s.anim);
+    if (s.label) worldLabel(s.x, s.y + (s.labelY != null ? s.labelY : 44), s.label, 99990, 20);
     s.obj = b;
     const box = s.box || { dx: -70, dy: -60, w: 140, h: 75 };
     COLLISIONS.push({ x: s.x + box.dx, y: s.y + box.dy, w: box.w, h: box.h });
   });
 
   buildDecors();
+  buildNav();
   // clear any transient mid-action flags from a save taken during a cure/celebration,
   // so a reloaded creature can never get stranded (unselectable / never departs).
-  state.creatures.forEach((c) => { c.departing = false; c.celebrating = false; c.leaving = false; });
-  state.creatures.forEach(buildCreatureObj);
+  state.creatures.forEach((c) => { c.departing = false; c.celebrating = false; c.leaving = false; c.arriving = false; });
+  state.creatures.forEach((c) => { if (!freeAt(c.x, c.y)) placeInHome(c); buildCreatureObj(c); });
 
   // Player
-  playerShadow = sc.add.ellipse(0, 0, 30, 11, 0x000000, 0.25);
+  const PL = G.player || {};
+  const sh = PL.shadow || { w: 34, h: 12 };
+  playerShadow = sc.add.image(0, 2, ensureShadow()).setDisplaySize(sh.w * 1.25, sh.h * 1.6).setAlpha(RENDER.shadowAlpha != null ? RENDER.shadowAlpha : 0.32);
   const sheet = charDef(state.player.avatar).sheet;
-  playerSprite = sc.add.sprite(0, 0, sheet, 18).setOrigin(0.5, 0.97).setScale((G.player && G.player.scale) || 1.7);
+  playerSprite = sc.add.sprite(0, 0, sheet, 18).setOrigin(0.5, PL.originY || 0.97).setScale(PL.scale || 1.7);
   playerFacing = "down";
-  playerName = sc.add.text(0, PLAYER_NAME_Y, state.player.name || "", { fontSize: "15px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 4 }).setOrigin(0.5);
-  const sp = (G.player && G.player.spawn) || (HOME_ZONE ? { x: HOME_ZONE.rect.x - 240, y: HOME_ZONE.rect.y + HOME_ZONE.rect.h * 0.5 } : { x: 560, y: 700 });
+  playerName = sc.add.text(0, PLAYER_NAME_Y, state.player.name || "", txtStyle(15)).setOrigin(0.5);
+  if (PL.showName === false) playerName.setVisible(false);
+  const sp = PL.spawn || (HOME_ZONE ? { x: HOME_ZONE.rect.x - 240, y: HOME_ZONE.rect.y + HOME_ZONE.rect.h * 0.5 } : { x: 560, y: 700 });
   player = sc.add.container(sp.x, sp.y, [playerShadow, playerSprite, playerName]);
   player.setSize(40, 40);
   mounted = null;
 
-  selRing = sc.add.ellipse(0, 0, 90, 50, 0xffd54a, 0);
-  selRing.setStrokeStyle(4, 0xffd54a, 1); selRing.setVisible(false); selRing.setDepth(2);
+  // Selection ring (soft, pulsing) + tap marker + guide arrow.
+  const selCol = hexInt(RENDER.selectColor || "#ffd54a");
+  selRing = sc.add.ellipse(0, 0, 96, 40, selCol, 0.16);
+  selRing.setStrokeStyle(3, selCol, 0.95); selRing.setVisible(false); selRing.setDepth(2);
+  sc.tweens.add({ targets: selRing, scaleX: 1.12, scaleY: 1.12, alpha: 0.7, duration: 650, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+  guideArrow = null;
+  if (GUIDE) {
+    guideArrow = sc.add.image(0, 0, ensureShape("arrow")).setTint(hexInt(GUIDE.color || RENDER.selectColor || "#ffd54a")).setScale((GUIDE.scale || 1.3) * 0.5).setDepth(99997).setVisible(false);
+  }
+  buildAmbient();
 
-  sc.cameras.main.startFollow(player, true, 0.5, 0.5);
+  sc.cameras.main.startFollow(player, true, RENDER.cameraLerp || 0.12, RENDER.cameraLerp || 0.12);
   fitZoom();
+  sc.cameras.main.centerOn(player.x, player.y);
+  lastInputT = nowMs();
+  panelId = PANEL_DIRTY;
+}
+
+/* ===================== Ambient particles (dust motes, stars, sparkles…) ===================== */
+// render.ambient = { particle, colors, count, speed, alpha:[min,max], scale:[min,max], drift:"up"|"down"|"float", blend:"add" }
+function buildAmbient() {
+  const A = RENDER.ambient; if (!A) return;
+  const key = ensureShape(A.particle || "dot");
+  const cols = (A.colors || ["#ffffff"]).map(hexInt);
+  for (let i = 0; i < (A.count || 24); i++) {
+    const p = sc.add.image(rand(0, WORLD.w), rand(0, WORLD.h), key).setTint(cols[i % cols.length]).setDepth(A.depth || 99000);
+    if (A.blend === "add") p.setBlendMode(Phaser.BlendModes.ADD);
+    p.a0 = rand((A.alpha || [0.2, 0.7])[0], (A.alpha || [0.2, 0.7])[1]);
+    p.setScale(rand((A.scale || [0.25, 0.6])[0], (A.scale || [0.25, 0.6])[1]) * 0.5);
+    p.ph = rand(0, Math.PI * 2); p.sp = (A.speed || 14) * rand(0.5, 1.3);
+    ambient.push(p);
+  }
+}
+function updateAmbient(t, dt) {
+  if (!ambient.length) return;
+  const A = RENDER.ambient, v = sc.cameras.main.worldView, pad = 40;
+  const dir = A.drift === "down" ? 1 : A.drift === "float" ? 0 : -1;
+  ambient.forEach((p) => {
+    p.y += dir * p.sp * dt; p.x += Math.sin(t / 1700 + p.ph) * 8 * dt;
+    if (dir === 0) p.y += Math.cos(t / 2100 + p.ph) * 6 * dt;
+    if (p.y < v.y - pad) p.y = v.bottom + pad; else if (p.y > v.bottom + pad) p.y = v.y - pad;
+    if (p.x < v.x - pad) p.x = v.right + pad; else if (p.x > v.right + pad) p.x = v.x - pad;
+    p.setAlpha(A.twinkle === false ? p.a0 : p.a0 * (0.55 + 0.45 * Math.sin(t / 600 + p.ph * 3)));
+  });
 }
 
 /* ===================== Creature objects ===================== */
@@ -766,16 +1278,30 @@ function creatureScale(c) {
   const a = CREATURE.aging.scaleBaby || 1.15, b = CREATURE.aging.scaleAdult || 2.0;
   return a + (b - a) * t;
 }
-function heartY(c) { return -(61 * creatureScale(c) + 14); }
+// Height of the creature's head above its feet: configurable, else derived from the
+// frame size (the legacy formula for 64-px frames is preserved exactly).
+function creatureFrameH() { const s = G.assets && G.assets.sheets && G.assets.sheets[CREATURE.sheet]; return (s && s.frameHeight) || 64; }
+function heartY(c) {
+  if (CREATURE.headY != null) return -(CREATURE.headY * creatureScale(c) + 14);
+  return -(61 * (creatureFrameH() / 64) * creatureScale(c) + 14);
+}
 
 function applyVariantTint(sprite, c) {
   const v = variantDef(variantId(c));
   if (v && v.tint != null) sprite.setTint(typeof v.tint === "string" ? hexInt(v.tint) : v.tint);
   else sprite.clearTint();
 }
+function isHappy(c) {
+  const at = CREATURE.happyAt != null ? CREATURE.happyAt : 100;
+  return MOOD_NEED ? (c[MOOD_NEED] || 0) >= at : needAverage(c) >= at;
+}
 function creatureTexture(c) {
-  // variant may specify its own sheet; otherwise base sheet + tint
+  // variant may specify its own sheet (+ an optional "happy" version once its mood is maxed);
+  // otherwise base sheet + tint
   const v = variantDef(variantId(c));
+  const happy = isHappy(c);
+  if (happy && v && v.happySheet && sc.textures.exists(v.happySheet)) return v.happySheet;
+  if (happy && !(v && v.sheet) && CREATURE.happySheet && sc.textures.exists(CREATURE.happySheet)) return CREATURE.happySheet;
   return (v && v.sheet) ? v.sheet : CREATURE.sheet;
 }
 function creatureWalkKey(c) { return "creature-walk-" + creatureTexture(c); }
@@ -783,36 +1309,42 @@ function creatureWalkKey(c) { return "creature-walk-" + creatureTexture(c); }
 function buildCreatureObj(c) {
   const scale = creatureScale(c);
   const orig = CREATURE.origin || { x: 0.5, y: 0.85 };
-  const shadow = sc.add.ellipse(0, 0, 58, 16, 0x000000, 0.25).setScale(scale);
+  const shw = (CREATURE.shadow && CREATURE.shadow.w) || 58, shh = (CREATURE.shadow && CREATURE.shadow.h) || 16;
+  const shadow = sc.add.image(0, 2, ensureShadow()).setDisplaySize(shw * 1.25 * scale, shh * 1.6 * scale).setAlpha(RENDER.shadowAlpha != null ? RENDER.shadowAlpha : 0.32);
+  shadow.baseW = shw * 1.25; shadow.baseH = shh * 1.6;
   const body = sc.add.sprite(0, 0, creatureTexture(c)).setOrigin(orig.x, orig.y).setScale(scale);
-  body.play(creatureWalkKey(c));
+  body.play({ key: creatureWalkKey(c), startFrame: randInt(0, 3) });
   applyVariantTint(body, c);
   // WANT replaces the mood shape, UNLESS wantBubble.withMood: then both coexist
   // (mood shape stays as the always-on colour gauge, want bubble pops in above it).
   const wantOnly = WANT && !WANT.withMood;
   const heart = wantOnly
     ? sc.add.image(0, heartY(c) - (WANT.lift || 6), WANT.sprite).setOrigin(0.5, 1).setScale(WANT.scale || 1).setVisible(!WANT.intermittent)
-    : sc.add.image(0, heartY(c), ensureShape(MOOD_SHAPE)).setOrigin(0.5).setScale(0.95).setTint(0x6fcf5f);
+    : sc.add.image(0, heartY(c), ensureShape(MOOD_SHAPE)).setOrigin(0.5).setScale(0.95 * 0.5 * (CREATURE.moodScale || 1)).setTint(0x6fcf5f);
+  if (CREATURE.showMood === false && !wantOnly) heart.setVisible(false);
   const kids = [shadow, body, heart];
   let wantT = null;
   if (WANT && WANT.withMood) {
     wantT = sc.add.image(0, heartY(c) - (WANT.lift || 22), WANT.sprite).setOrigin(0.5, 1).setScale(WANT.scale || 1).setVisible(false);
     kids.push(wantT);
   }
-  const nameT = sc.add.text(0, 22, c.name, { fontSize: "16px", fontFamily: "sans-serif", color: "#fff8ec", fontStyle: "bold", stroke: "#3a2716", strokeThickness: 4 }).setOrigin(0.5);
+  const nameT = sc.add.text(0, CREATURE.nameY != null ? CREATURE.nameY : 22, c.name, txtStyle(CREATURE.nameSize || 16)).setOrigin(0.5);
+  if (CREATURE.showName === false) nameT.setVisible(false);
   kids.push(nameT);
   const cont = sc.add.container(c.x, c.y, kids);
   c.obj = cont; c.bodyT = body; c.heartT = heart; c.wantT = wantT; c.nameT = nameT; c.shadowT = shadow;
+  c.baseScale = scale; c.ph = rand(0, Math.PI * 2); c.texKey = body.texture.key;
 }
 
 function refreshCreatureVisual(c) {
   if (!c.obj) return;
   const scale = creatureScale(c);
-  c.bodyT.setTexture(creatureTexture(c));
-  c.bodyT.play(creatureWalkKey(c));
+  const tex = creatureTexture(c);
+  if (c.bodyT.texture.key !== tex) { c.bodyT.setTexture(tex); c.texKey = tex; }
+  c.bodyT.play(creatureWalkKey(c), true);
   applyVariantTint(c.bodyT, c);
-  c.bodyT.setScale(scale);
-  if (c.shadowT) c.shadowT.setScale(scale);
+  c.bodyT.setScale(scale); c.baseScale = scale;
+  if (c.shadowT) c.shadowT.setDisplaySize(c.shadowT.baseW * scale, c.shadowT.baseH * scale);
   c.heartT.y = heartY(c) - ((WANT && !WANT.withMood) ? (WANT.lift || 6) : 0);
   if (c.wantT) c.wantT.y = heartY(c) - (WANT.lift || 22);
   c.nameT.setText(c.name);
@@ -831,28 +1363,36 @@ function buildDecors() {
       COLLISIONS.push({ x: it.x + (b.dx || 0), y: it.y + (b.dy || 0), w: b.w, h: b.h, deco: true });
     }
   });
+  COLLISIONS_DIRTY = true;
 }
 
 // Animate the player by direction (or idle pose facing the last direction).
-function animatePlayer(mvx, mvy) {
+function animatePlayer(mvx, mvy, t) {
   if (!playerSprite) return;
   const sheet = charDef(state.player.avatar).sheet;
+  const ps = (G.player && G.player.scale) || 1.7;
   if (mounted) {
     if (mvx) playerFacing = mvx < 0 ? "left" : "right";
     else if (playerFacing !== "left" && playerFacing !== "right") playerFacing = "right";
     playerSprite.anims.stop();
     playerSprite.setFrame(DIRS[playerFacing] * 9);
+    playerSprite.setScale(ps);
     return;
   }
   if (mvx || mvy) {
-    const dir = Math.abs(mvx) > Math.abs(mvy) ? (mvx < 0 ? "left" : "right") : (mvy < 0 ? "up" : "down");
+    const dir = Math.abs(mvx) > Math.abs(mvy) * 0.9 ? (mvx < 0 ? "left" : "right") : (mvy < 0 ? "up" : "down");
     playerFacing = dir;
     const ak = `${sheet}-${dir}`;
     const cur = playerSprite.anims.currentAnim;
     if (!playerSprite.anims.isPlaying || !cur || cur.key !== ak) playerSprite.play(ak, true);
+    playerSprite.timeScale = running ? 1.5 : 1;
+    playerSprite.setScale(ps);
   } else {
     playerSprite.anims.stop();
     playerSprite.setFrame(DIRS[playerFacing] * 9);
+    // idle "breathing" so the character never looks frozen
+    const b = RENDER.breathe === false ? 0 : 0.018 * Math.sin(t / 420);
+    playerSprite.setScale(ps * (1 - b * 0.5), ps * (1 + b));
   }
 }
 
@@ -860,8 +1400,9 @@ function animatePlayer(mvx, mvy) {
 
 function sceneUpdate(time, delta) {
   if (!player) return;
-  const dt = Math.min(delta / 1000, 0.05);
+  const dt = Math.min(delta / 1000, 0.1);
   const modalOpen = !$("modal").classList.contains("hidden") || nightRunning || closeupOpen;
+  if (COLLISIONS_DIRTY) buildNav();
 
   let vx = 0, vy = 0;
   if (!modalOpen) {
@@ -871,11 +1412,16 @@ function sceneUpdate(time, delta) {
     if (cursors.down.isDown || wasd.down.isDown) vy += 1;
   }
 
-  if (vx || vy) followCreature = null;
+  if (vx || vy) { followCreature = null; lastInputT = nowMs(); }
   if (followCreature && !mounted && !modalOpen) {
     const c = followCreature, dx = player.x - c.x, dy = player.y - c.y, d = Math.hypot(dx, dy) || 1;
-    if (d < 92) { followCreature = null; moveTarget = null; }
-    else moveTarget = { x: c.x + (dx / d) * 72, y: c.y + (dy / d) * 72 };
+    if (d < 92) {
+      const auto = followAuto; followCreature = null; followAuto = false; moveTarget = null; navPath = [];
+      if (auto) autoAction(c);
+    } else if (time > followRepath || !moveTarget) {
+      followRepath = time + 280;
+      walkTo(c.x + (dx / d) * 72, c.y + (dy / d) * 72);
+    }
   }
 
   const RIDE = CREATURE && CREATURE.ride;
@@ -884,20 +1430,31 @@ function sceneUpdate(time, delta) {
     const sp = (G.player && G.player.speed) || { walk: 200, run: 370, rideWalk: 340, rideRun: 560 };
     const spd = mounted ? (running ? sp.rideRun : sp.rideWalk) : (running ? sp.run : sp.walk);
     if (vx || vy) {
-      moveTarget = null; pendingInteract = null; running = false;
+      moveTarget = null; navPath = []; pendingInteract = null; running = false;
       const n = Math.hypot(vx, vy); mvx = vx / n; mvy = vy / n;
     } else if (moveTarget && !modalOpen) {
       const dx = moveTarget.x - player.x, dy = moveTarget.y - player.y, d = Math.hypot(dx, dy);
-      if (d < 8) { moveTarget = null; running = false; if (pendingInteract) { const r = pendingInteract; pendingInteract = null; interact(r); } }
-      else { mvx = dx / d; mvy = dy / d; }
+      if (d < 8) {
+        navPath.shift();
+        if (navPath.length) moveTarget = navPath[0];
+        else { moveTarget = null; running = false; if (pendingInteract) { const r = pendingInteract; pendingInteract = null; interact(r); } }
+      } else { mvx = dx / d; mvy = dy / d; }
     }
-    if (mvx || mvy) { player.x += mvx * spd * dt; player.y += mvy * spd * dt; }
-    animatePlayer(mvx, mvy);
-    player.x = clamp(player.x, 40, WORLD.w - 40);
-    player.y = clamp(player.y, 40, WORLD.h - 40);
-    blockObstacles();
+    if (mvx || mvy) {
+      const ox = player.x, oy = player.y;
+      player.x += mvx * spd * dt; player.y += mvy * spd * dt;
+      player.x = clamp(player.x, 40, WORLD.w - 40);
+      player.y = clamp(player.y, 40, WORLD.h - 40);
+      blockObstacles();
+      // stuck against something while auto-walking → re-plan the route
+      if (moveTarget && Math.hypot(player.x - ox, player.y - oy) < spd * dt * 0.25) {
+        player.stuck = (player.stuck || 0) + dt;
+        if (player.stuck > 0.35) { player.stuck = 0; const last = navPath[navPath.length - 1]; if (last) walkTo(last.x, last.y); }
+      } else player.stuck = 0;
+    }
+    animatePlayer(mvx, mvy, time);
   } else {
-    animatePlayer(0, 0);
+    animatePlayer(0, 0, time);
   }
   player.setDepth(player.y);
 
@@ -936,93 +1493,140 @@ function sceneUpdate(time, delta) {
     if (statKeys().includes("trailVisit")) { state.stats.trailVisit = 1; refreshHud(); }
   }
 
-  // creature wandering + mood
-  const now = time;
+  updateCreatures(time, dt);
+  updateAmbient(time, dt);
+  refreshInteraction();
+  updateGuide(time);
+}
+
+function updateCreatures(now, dt) {
   const departed = [];
+  const W = CREATURE ? (CREATURE.walk || {}) : {};
+  const wanderSpeed = W.speed || 40;
   state.creatures.forEach((c) => {
     if (!c.obj) return;
+    let moving = false;
     if (c.departing) {                                    // cured → walk OUT of the room, then fade out
       const dp = (CREATURE && CREATURE.depart) || {};
       const sp = dp.speed || 110;
       const dx = c.exitX - c.x, dy = c.exitY - c.y, d = Math.hypot(dx, dy) || 1;
-      if (d > 6) { c.x += (dx / d) * sp * dt; c.y += (dy / d) * sp * dt; if (c.bodyT) c.bodyT.setFlipX(dx > 0); }
+      if (d > 6) { c.x += (dx / d) * sp * dt; c.y += (dy / d) * sp * dt; if (c.bodyT) c.bodyT.setFlipX(dx > 0); moving = true; }
       c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
       c.departT = (c.departT || 0) + dt;
-      // don't start fading until the child has actually walked out of the clinic (home zone),
+      // don't start fading until the creature has actually walked out of the home zone,
       // so they never vanish mid-room; once outside they fade quickly and are removed.
       if (leftHome(c)) c.obj.alpha = Math.max(0, c.obj.alpha - dt * 1.6);
       if (d < 10 || c.obj.alpha <= 0.03 || c.departT > 10) departed.push(c);
+      animateCreatureBody(c, now, true);
       return;
     }
     if (c !== mounted) {
       if (c.celebrating) {
         c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
-      } else if (distPlayer(c.x, c.y) < 115) {
+      } else if (!c.arriving && distPlayer(c.x, c.y) < 115) {
         c.nextStep = now + 800;
         c.bodyT.setFlipX(player.x > c.x);
         c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
       } else {
-        if (now > c.nextStep) {
-          const z = HOME_ZONE ? HOME_ZONE.rect : { x: 60, y: 60, w: WORLD.w - 120, h: WORLD.h - 120 };
-          c.tx = randInt(z.x + 70, z.x + z.w - 70);
-          c.ty = randInt(z.y + 70, z.y + z.h - 70);
+        if (!c.arriving && now > c.nextStep) {
+          const p = freeSpotIn(homeRect(), 70);
+          // only accept a target reachable in a straight line (no walking through furniture)
+          if (lineFree(c.x, c.y, p.x, p.y)) { c.tx = p.x; c.ty = p.y; }
           c.nextStep = now + randInt(2500, 6000);
         }
         const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy);
-        if (d > 3) { c.x += (dx / d) * 40 * dt; c.y += (dy / d) * 40 * dt; c.bodyT.setFlipX(dx > 0); }
+        const spd = c.arriving ? ((CREATURE.arrive && CREATURE.arrive.speed) || 120) : wanderSpeed;
+        if (d > 3) { c.x += (dx / d) * spd * dt; c.y += (dy / d) * spd * dt; if (Math.abs(dx) > 1) c.bodyT.setFlipX(dx > 0); moving = true; }
+        else if (c.arriving) { c.arriving = false; c.nextStep = now + randInt(1200, 3000); }
+        if (!c.arriving) {
+          const o = { x: c.x, y: c.y }; pushOut(o, 12, 8); c.x = o.x; c.y = o.y;      // never sink into furniture
+        }
         c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
       }
     } else {
       c.bodyT.setFlipX(playerFacing === "right");
     }
-    if (WANT) {
-      // a "needs care" bubble: shown while the creature still wants the treatment, hidden once cured / leaving.
-      // withMood → the bubble lives in its own slot (c.wantT) and the mood shape (c.heartT) stays on as a gauge.
-      const wt = WANT.withMood ? c.wantT : c.heartT;
-      const nv = WANT.need ? (c[WANT.need] || 0) : needAverage(c);
-      const wants = wt && nv < (WANT.below != null ? WANT.below : 100) && !c.departing && !c.celebrating;
-      const lift = WANT.lift || (WANT.withMood ? 22 : 6), base = WANT.scale || 1;
-      if (wt) {
-        if (!wants) {
-          wt.setVisible(false); c.wantUntil = null;             // cured/leaving → no bubble
-        } else if (WANT.intermittent) {
-          // pop up for a moment, then hide for a random gap (desynced per creature) — they "pipe up" now and then
-          if (c.wantUntil == null) {                            // first eligibility: stay quiet a random while
-            c.wantPhase = "hide"; c.wantUntil = now + randInt(300, (WANT.hideMax || 9) * 1000);
-          }
-          if (now >= c.wantUntil) {
-            if (c.wantPhase === "show") { c.wantPhase = "hide"; c.wantUntil = now + randInt((WANT.hideMin || 5) * 1000, (WANT.hideMax || 11) * 1000); }
-            else { c.wantPhase = "show"; c.wantShownAt = now; c.wantUntil = now + (WANT.showFor || 2.5) * 1000; }
-          }
-          const showing = c.wantPhase === "show";
-          wt.setVisible(showing);
-          if (showing) {
-            const e = Math.min(1, (now - c.wantShownAt) / 180); // quick pop-in
-            wt.setScale(base * (0.55 + 0.45 * e * (2 - e)));
-            wt.y = heartY(c) - lift + Math.sin(now / 300 + c.x) * 3;
-          }
-        } else {
-          wt.setVisible(true);
-          wt.y = heartY(c) - lift + Math.sin(now / 320 + c.x) * 3;  // gentle bob
-        }
-      }
-      if (WANT.withMood) {                                       // mood shape keeps its colour gauge alongside the bubble
-        const m = needAverage(c);
-        c.heartT.setTint(m > 60 ? 0x6fcf5f : m > 35 ? 0xf4b942 : 0xe05656);
-      }
-    } else {
-      const m = needAverage(c);
-      c.heartT.setTint(m > 60 ? 0x6fcf5f : m > 35 ? 0xf4b942 : 0xe05656);
-    }
+    animateCreatureBody(c, now, moving);
+    updateMood(c, now);
   });
+  // gentle separation so creatures don't stack on top of each other
+  const list = state.creatures;
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const a = list[i], b = list[j];
+    if (!a.obj || !b.obj || a === mounted || b === mounted || a.departing || b.departing) continue;
+    const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+    const minD = (CREATURE.spacing || 46);
+    if (d > 0.01 && d < minD) {
+      const push = (minD - d) * 0.5 * Math.min(1, dt * 6), ux = dx / d, uy = dy / d;
+      a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push;
+    }
+  }
   if (departed.length) {
     departed.forEach(removeCreature);
     refreshHud(); panelId = PANEL_DIRTY;
     const dp = CREATURE && CREATURE.depart;
     if (dp && dp.emptyMessage && !state.creatures.some((c) => !c.departing)) message(dp.emptyMessage);
   }
+}
 
-  refreshInteraction();
+// Procedural body life: idle breathing and (optionally) a bouncy hop while walking.
+function animateCreatureBody(c, now, moving) {
+  const t = c.bodyT; if (!t || c.celebrating || (sc.tweens.isTweening && sc.tweens.isTweening(t))) return;
+  const s = c.baseScale || 1, W = CREATURE.walk || {};
+  if (moving && W.hop) {
+    const ph = (now / (W.hopPeriod || 300)) * Math.PI + c.ph;
+    const h = Math.abs(Math.sin(ph));
+    t.y = -h * W.hop * s;
+    const sq = (1 - h) * (W.squash != null ? W.squash : 0.08);
+    t.setScale(s * (1 + sq), s * (1 - sq));
+    if (c.shadowT) c.shadowT.setAlpha((RENDER.shadowAlpha || 0.32) * (1 - 0.35 * h));
+  } else {
+    const b = RENDER.breathe === false ? 0 : (CREATURE.breathe != null ? CREATURE.breathe : 0.025) * Math.sin(now / 480 + c.ph);
+    t.y = 0; t.setScale(s * (1 - b * 0.6), s * (1 + b));
+  }
+}
+
+function updateMood(c, now) {
+  if (WANT) {
+    // a "needs care" bubble: shown while the creature still wants the treatment, hidden once cured / leaving.
+    // withMood → the bubble lives in its own slot (c.wantT) and the mood shape (c.heartT) stays on as a gauge.
+    const wt = WANT.withMood ? c.wantT : c.heartT;
+    const nv = WANT.need ? (c[WANT.need] || 0) : needAverage(c);
+    const wants = wt && nv < (WANT.below != null ? WANT.below : 100) && !c.departing && !c.celebrating && !c.arriving;
+    const lift = WANT.lift || (WANT.withMood ? 22 : 6), base = WANT.scale || 1;
+    if (wt) {
+      if (!wants) {
+        wt.setVisible(false); c.wantUntil = null;             // cured/leaving → no bubble
+      } else if (WANT.intermittent) {
+        // pop up for a moment, then hide for a random gap (desynced per creature) — they "pipe up" now and then
+        if (c.wantUntil == null) {                            // first eligibility: stay quiet a random while
+          c.wantPhase = "hide"; c.wantUntil = now + randInt(300, (WANT.hideMax || 9) * 1000);
+        }
+        if (now >= c.wantUntil) {
+          if (c.wantPhase === "show") { c.wantPhase = "hide"; c.wantUntil = now + randInt((WANT.hideMin || 5) * 1000, (WANT.hideMax || 11) * 1000); }
+          else { c.wantPhase = "show"; c.wantShownAt = now; c.wantUntil = now + (WANT.showFor || 2.5) * 1000; }
+        }
+        const showing = c.wantPhase === "show";
+        wt.setVisible(showing);
+        if (showing) {
+          const e = Math.min(1, (now - c.wantShownAt) / 220); // springy pop-in
+          const k = e < 1 ? (1 + 0.25 * Math.sin(e * Math.PI)) * e : 1;
+          wt.setScale(base * (0.4 + 0.6 * k));
+          wt.y = heartY(c) - lift + Math.sin(now / 300 + c.ph) * 3;
+        }
+      } else {
+        wt.setVisible(true);
+        wt.y = heartY(c) - lift + Math.sin(now / 320 + c.ph) * 3;  // gentle bob
+      }
+    }
+    if (WANT.withMood) {                                       // mood shape keeps its colour gauge alongside the bubble
+      c.heartT.setTint(moodColor(needAverage(c)));
+      c.heartT.y = heartY(c) + Math.sin(now / 400 + c.ph) * 2;
+    }
+  } else {
+    c.heartT.setTint(moodColor(needAverage(c)));
+    c.heartT.y = heartY(c) + Math.sin(now / 400 + c.ph) * 2;
+  }
 }
 
 // True once a departing creature has crossed outside the home zone (so fading can begin).
@@ -1047,20 +1651,31 @@ function removeCreature(c) {
 }
 
 // A station with action "spawn" brings a random number of fresh creatures (up to a cap).
+// spawn.from = {x,y} → they walk in from there (a door) instead of popping in place.
 function spawnCreatures(st) {
   const sp = st.spawn || {};
   const cap = sp.cap || 8;
   const active = state.creatures.filter((c) => !c.departing).length;
   const room = cap - active;
-  if (room <= 0) { message(sp.fullMessage || "Full!"); return; }
+  if (room <= 0) { message(sp.fullMessage || "Full!"); Sound.play("error"); return; }
   const n = Math.min(randInt(sp.min || 1, sp.max || 3), room);
+  Sound.play(st.sfx || "spawn");
+  if (st.obj && sc) { const s = st.obj.scaleX; sc.tweens.add({ targets: st.obj, scaleX: s * 1.08, scaleY: s * 0.92, duration: 110, yoyo: true, repeat: 1 }); }
+  const from = sp.from || (CREATURE.arrive && CREATURE.arrive.from);
   for (let i = 0; i < n; i++) {
     const c = newCreature({});
     state.creatures.push(c);
+    if (from) {
+      const dest = { x: c.x, y: c.y };
+      c.x = from.x + randInt(-20, 20); c.y = from.y + i * 26; c.tx = dest.x; c.ty = dest.y; c.arriving = true;
+    }
     if (sc) {
       buildCreatureObj(c);
-      if (c.obj) { c.obj.alpha = 0; sc.tweens.add({ targets: c.obj, alpha: 1, duration: 350 }); }
-      actionAnim(c, { motion: "hop", particle: "spark", colors: ["#ffffff", "#ffd24a", "#a8e6ff"], count: 4, y0: 30 });
+      if (c.obj) {
+        c.obj.alpha = 0;
+        sc.tweens.add({ targets: c.obj, alpha: 1, duration: 350, delay: i * 220 });
+      }
+      if (!from) actionAnim(c, { motion: "hop", particle: "spark", colors: ["#ffffff", "#ffd24a", "#a8e6ff"], count: 4, y0: 30 });
     }
   }
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
@@ -1081,48 +1696,139 @@ function refreshInteraction() {
   let best = null, dmin = Infinity;
   if (mounted) best = mounted;
   else {
-    STATIONS.forEach((s) => { const d = distPlayer(s.x, s.y); if (d < 110 && d < dmin) { dmin = d; best = s; } });
-    state.creatures.forEach((c) => { if (c.departing || c.celebrating || c.leaving) return; const d = distPlayer(c.x, c.y); if (d < 95 && d < dmin) { dmin = d; best = c; } });
+    STATIONS.forEach((s) => { const d = distPlayer(s.x, s.y); if (d < (s.reach || 110) && d < dmin) { dmin = d; best = s; } });
+    state.creatures.forEach((c) => { if (c.departing || c.celebrating || c.leaving || c.arriving) return; const d = distPlayer(c.x, c.y); if (d < 95 && d < dmin) { dmin = d; best = c; } });
   }
+  const prev = activeTarget;
   activeTarget = best;
   const id = best ? (best.variant !== undefined && !best.station ? "c" + best.id : "s" + best.type) : null;
-  if (id !== panelId) { panelId = id; buildPanel(); }
+  if (id !== panelId) {
+    panelId = id; buildPanel();
+    if (best && best !== prev) {
+      Sound.play("select");
+      if (isCreature(best) && best.bodyT && sc && !best.celebrating) {           // a little "hello!" hop
+        sc.tweens.add({ targets: best.bodyT, y: -14 * (best.baseScale || 1), duration: 140, yoyo: true, ease: "Quad.easeOut" });
+      }
+    }
+  }
   if (best && isCreature(best)) refreshBars(best);
 
   if (best && selRing) {
-    selRing.setPosition(best.x, best.y + 10).setVisible(true).setDepth(best.y - 1);
+    selRing.setPosition(best.x, best.y + 6).setVisible(true).setDepth(best.y - 1);
   } else if (selRing) selRing.setVisible(false);
 
   $("btn-action").classList.add("hidden");
 }
 function isCreature(t) { return t && t.variant !== undefined && !t.station; }
 
+/* ===================== Guide arrow (where to go next) ===================== */
+// guide = { idle: seconds before it shows, color, scale, moodBelow, station:true }
+let guideTarget = null, guideRepick = 0;
+function pickGuideTarget() {
+  const active = state.creatures.filter((c) => c.obj && !c.departing && !c.celebrating && !c.leaving && !c.arriving);
+  const wants = (c) => WANT ? ((WANT.need ? (c[WANT.need] || 0) : needAverage(c)) < (WANT.below != null ? WANT.below : 100))
+    : needAverage(c) < (GUIDE.moodBelow || 60);
+  const cands = active.filter(wants);
+  if (cands.length) return cands.reduce((a, b) => (distPlayer(a.x, a.y) <= distPlayer(b.x, b.y) ? a : b));
+  if (GUIDE.station === false) return null;
+  if (!active.length) return STATIONS.find((s) => s.action === "spawn") || null;            // nobody here → bring more
+  if (GUIDE.rest && (state.actionsSinceRest || 0) > 0) return STATIONS.find((s) => s.action === "nextDay") || null;
+  return null;
+}
+function updateGuide(time) {
+  const edge = guideEdgeEl();
+  if (!GUIDE || !guideArrow) { if (edge) edge.classList.add("hidden"); return; }
+  const idle = (nowMs() - lastInputT) / 1000;
+  const busy = activeTarget || moveTarget || followCreature || closeupOpen || nightRunning || placingDecor || !$("modal").classList.contains("hidden");
+  if (busy || idle < (GUIDE.idle != null ? GUIDE.idle : 4)) { guideArrow.setVisible(false); guideTarget = null; if (edge) edge.classList.add("hidden"); return; }
+  if (!guideTarget || time > guideRepick || (isCreature(guideTarget) && (guideTarget.departing || guideTarget.celebrating || !state.creatures.includes(guideTarget)))) {
+    guideTarget = pickGuideTarget(); guideRepick = time + 1500;
+  }
+  const tg = guideTarget;
+  if (!tg) { guideArrow.setVisible(false); if (edge) edge.classList.add("hidden"); return; }
+  const top = isCreature(tg) ? tg.y + heartY(tg) - 34 : tg.y - ((tg.obj && tg.obj.displayHeight) || 120) * 0.95 - 10;
+  guideArrow.setPosition(tg.x, top + Math.sin(time / 180) * 9).setVisible(true);
+  // off-screen → an arrow on the screen edge pointing towards it
+  const v = sc.cameras.main.worldView;
+  const inView = tg.x > v.x + 20 && tg.x < v.right - 20 && tg.y > v.y + 40 && tg.y < v.bottom - 20;
+  if (edge) {
+    if (inView) edge.classList.add("hidden");
+    else {
+      const cx = v.centerX, cy = v.centerY, ang = Math.atan2(tg.y - cy, tg.x - cx);
+      const r = sc.game.canvas.getBoundingClientRect();
+      const hw = r.width / 2 - 34, hh = r.height / 2 - 70;
+      const k = Math.min(Math.abs(hw / (Math.cos(ang) || 1e-6)), Math.abs(hh / (Math.sin(ang) || 1e-6)));
+      edge.style.left = (r.left + r.width / 2 + Math.cos(ang) * k) + "px";
+      edge.style.top = (r.top + r.height / 2 + Math.sin(ang) * k) + "px";
+      edge.style.setProperty("--ang", (ang * 180 / Math.PI) + "deg");
+      edge.classList.remove("hidden");
+    }
+  }
+}
+let guideEdge = null;
+function guideEdgeEl() {
+  if (!GUIDE) return null;
+  if (!guideEdge) { guideEdge = document.createElement("div"); guideEdge.className = "guide-edge hidden"; guideEdge.innerHTML = "<span>➤</span>"; document.body.appendChild(guideEdge); }
+  return guideEdge;
+}
+
 /* ===================== Pointer ===================== */
 
 function onPointer(p) {
-  if (!$("modal").classList.contains("hidden") || closeupOpen) return;
+  if (!$("modal").classList.contains("hidden") || closeupOpen || nightRunning) return;
   const wx = p.worldX, wy = p.worldY;
-  const tnow = (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const tnow = nowMs();
   running = (tnow - lastTapT) < 350;
-  lastTapT = tnow;
+  lastTapT = tnow; lastInputT = tnow;
 
-  followCreature = null;
+  followCreature = null; followAuto = false;
   let target = null, dmin = Infinity;
-  STATIONS.forEach((s) => { const d = Math.hypot(s.x - wx, s.y - wy); if (d < 70 && d < dmin) { dmin = d; target = s; } });
-  state.creatures.forEach((c) => { if (c === mounted || c.departing || c.celebrating || c.leaving) return; const d = Math.hypot(c.x - wx, c.y - wy); if (d < 55 && d < dmin) { dmin = d; target = c; } });
+  STATIONS.forEach((s) => { const d = Math.hypot(s.x - wx, (s.y - 30) - wy); if (d < (s.tapRadius || 80) && d < dmin) { dmin = d; target = s; } });
+  state.creatures.forEach((c) => {
+    if (c === mounted || c.departing || c.celebrating || c.leaving) return;
+    const d = Math.hypot(c.x - wx, (c.y + heartY(c) * 0.45) - wy);           // tap anywhere on the body
+    if (d < 62 * Math.max(1, c.baseScale || 1) && d < dmin) { dmin = d; target = c; }
+  });
   if (target && isCreature(target)) {
-    followCreature = target; pendingInteract = null;
+    followCreature = target; pendingInteract = null; followRepath = 0;
+    followAuto = !!(CREATURE.tapAction);
+    tapRipple(target.x, target.y + 6, true);
   } else if (target) {
     const dx = player.x - target.x, dy = player.y - target.y, d = Math.hypot(dx, dy) || 1;
-    moveTarget = { x: target.x + (dx / d) * 90, y: target.y + (dy / d) * 90 };
+    walkTo(target.x + (dx / d) * 90, target.y + (dy / d) * 90);
     pendingInteract = target;
-  } else { moveTarget = { x: clamp(wx, 40, WORLD.w - 40), y: clamp(wy, 40, WORLD.h - 40) }; pendingInteract = null; }
+    tapRipple(target.x, target.y + 6, true);
+  } else {
+    walkTo(wx, wy); pendingInteract = null;
+    tapRipple(clamp(wx, 40, WORLD.w - 40), clamp(wy, 40, WORLD.h - 40));
+  }
+  Sound.play("tap");
+}
+
+// A ripple on the ground where the player tapped (clear "I'm going there" feedback).
+function tapRipple(x, y, strong) {
+  if (!sc || RENDER.tapMarker === false) return;
+  const col = hexInt(RENDER.tapColor || RENDER.selectColor || "#ffffff");
+  const r = sc.add.ellipse(x, y, 54, 22).setStrokeStyle(strong ? 4 : 3, col, 0.95).setDepth(1).setScale(0.3);
+  sc.tweens.add({ targets: r, scaleX: 1.25, scaleY: 1.25, alpha: 0, duration: 520, ease: "Quad.easeOut", onComplete: () => r.destroy() });
+  const d = sc.add.ellipse(x, y, 10, 5, col, 0.9).setDepth(1);
+  sc.tweens.add({ targets: d, alpha: 0, duration: 700, onComplete: () => d.destroy() });
+}
+
+// creature.tapAction: tapping a creature walks to it AND starts this action on arrival
+// (one tap instead of two — great for young kids). Only while it still "wants" it.
+function autoAction(c) {
+  const id = CREATURE.tapAction; if (!id || !state.creatures.includes(c) || c.departing || c.leaving || c.celebrating) return;
+  if (WANT) { const nv = WANT.need ? (c[WANT.need] || 0) : needAverage(c); if (nv >= (WANT.below != null ? WANT.below : 100)) return; }
+  activeTarget = c;
+  creatureAction(id);
 }
 
 /* ===================== Panel ===================== */
 
 function buildPanel() {
   const p = $("panel");
+  p.classList.remove("idle");
   if (placingDecor) {
     p.innerHTML = `<div class="pc-station">
       <p class="panel-hint">${(META.placeHint || "Walk anywhere, then place {item}.").replace("{item}", placingDecor.name)}</p>
@@ -1130,9 +1836,14 @@ function buildPanel() {
         <button class="btn btn-accent" data-place="1">✅ ${META.placeHere || "Place here"}</button>
         <button class="btn btn-secondary" data-cancel-place="1">❌ ${META.cancel || "Cancel"}</button>
       </div></div>`;
+    panelPop(p);
     return;
   }
-  if (!activeTarget) { p.innerHTML = `<p class="panel-hint">${META.idleHint || "Walk around and approach something to act."}</p>`; return; }
+  if (!activeTarget) {
+    p.classList.add("idle");
+    p.innerHTML = META.idleHint === "" ? "" : `<p class="panel-hint">${META.idleHint || "Walk around and approach something to act."}</p>`;
+    return;
+  }
   if (isCreature(activeTarget)) {
     const c = activeTarget, isMounted = mounted === c;
     let actions;
@@ -1143,32 +1854,43 @@ function buildPanel() {
         + `<button class="btn btn-secondary" data-creature="${rideAct.id}">🛑 ${rideAct.dismountLabel || "Get off"}</button>`;
     } else {
       actions = ACTIONS.filter((a) => a.type !== "jump").map((a) => {
-        const cls = a.type === "ride" ? "btn btn-accent" : (a.type === "customize" ? "btn btn-secondary" : (a.type === "closeup" ? "btn btn-giant" : "btn"));
-        return `<button class="${cls}" data-creature="${a.id}">${a.icon || ""} ${a.label}</button>`;
+        const cls = a.type === "ride" ? "btn btn-accent" : (a.type === "customize" ? "btn btn-secondary btn-small" : (a.type === "closeup" ? "btn btn-giant btn-primary" : "btn"));
+        return `<button class="${cls}" data-creature="${a.id}"><span class="b-ico">${a.icon || ""}</span><span class="b-lbl">${a.label}</span></button>`;
       }).join("");
     }
     const ageTxt = CREATURE.aging
       ? (isYoung(c) ? `${CREATURE.youngLabel || "🐣 Young"} (${c.age}${META.ageUnit || "d"})` : `${CREATURE.adultLabel || "Adult"} (${c.age}${META.ageUnit || "d"})`)
       : "";
+    const v = variantDef(variantId(c));
+    const dot = v && v.color ? `<span class="pc-dot" style="background:${v.color}"></span>` : "";
     p.innerHTML = `
-      <div class="pc-head"><div><b>${c.name}</b> <span class="pc-sub">${ageTxt}</span></div></div>
+      <div class="pc-head">${dot}<div class="pc-name"><b>${c.name}</b> <span class="pc-sub">${ageTxt}</span></div><span class="pc-mood" id="pc-mood"></span></div>
       ${CREATURE.showBars === false ? "" : '<div class="pc-bars" id="pc-bars"></div>'}
-      <div class="pc-actions">${actions}</div>`;
+      <div class="pc-actions${ACTIONS.length >= 3 && !isMounted ? " tiles" : ""}">${actions}</div>`;
     refreshBars(c);
   } else {
     const s = activeTarget;
     const st = STATIONS.find((x) => x.type === s.type);
-    p.innerHTML = `<div class="pc-station"><button class="btn btn-giant" data-station="${s.type}">${(st && st.actionLabel) || st.label}</button></div>`;
+    p.innerHTML = `<div class="pc-station"><button class="btn btn-giant btn-primary" data-station="${s.type}">${(st && st.actionLabel) || st.label}</button></div>`;
   }
+  panelPop(p);
 }
+function panelPop(p) { p.classList.remove("pop"); void p.offsetWidth; p.classList.add("pop"); }
 
 function refreshBars(c) {
+  const mood = $("pc-mood");
+  if (mood && CREATURE.moodFaces) {
+    const f = CREATURE.moodFaces, m = needAverage(c);
+    const face = f[Math.min(f.length - 1, Math.floor(m / (100 / f.length + 0.001)))];
+    if (mood.textContent !== face) mood.textContent = face;
+  }
   const cont = $("pc-bars"); if (!cont) return;
-  cont.innerHTML = NEEDS.map((n) => {
+  const html = NEEDS.map((n) => {
     const v = c[n.id] || 0;
     const cl = v < 25 ? "r-red" : v < 50 ? "r-yellow" : "r-green";
-    return `<div class="need"><span class="icon">${n.icon || ""}</span><div class="bar"><div class="bar-fill ${cl}" style="width:${v}%"></div></div></div>`;
+    return `<div class="need" title="${n.label || n.id}"><span class="icon">${n.icon || ""}</span><div class="bar"><div class="bar-fill ${cl}" style="width:${v}%"></div></div></div>`;
   }).join("");
+  if (cont.dataset.h !== html) { cont.innerHTML = html; cont.dataset.h = html; }
 }
 
 /* ===================== Interactions ===================== */
@@ -1178,6 +1900,7 @@ function interact(target) {
   if (isCreature(target)) return;
   const st = STATIONS.find((x) => x.type === target.type);
   if (!st) return;
+  lastInputT = nowMs();
   if (st.action === "nextDay") nextDay();
   else if (st.action === "spawn") spawnCreatures(st);
   else if (st.action === "openShop") openShop();
@@ -1187,6 +1910,7 @@ function interact(target) {
 function creatureAction(actionId) {
   const c = activeTarget; if (!c || !isCreature(c)) return;
   const a = ACTIONS.find((x) => x.id === actionId); if (!a) return;
+  lastInputT = nowMs();
 
   if (a.type === "ride") { toggleRide(c); return; }
   if (a.type === "jump") { doJump(); return; }
@@ -1195,21 +1919,22 @@ function creatureAction(actionId) {
 
   // resource cost
   if (a.cost) {
-    if ((state.resources[a.cost.resource] || 0) < a.cost.amount) { message(a.outOfStock || `Out of ${a.cost.resource}!`); return; }
+    if ((state.resources[a.cost.resource] || 0) < a.cost.amount) { message(a.outOfStock || `Out of ${a.cost.resource}!`); Sound.play("error"); return; }
   }
   // need requirement (e.g. needs enough energy to play)
   if (a.require) {
-    for (const k in a.require) { if ((c[k] || 0) < a.require[k]) { message((a.tooLow || "{name} is too tired.").replace("{name}", c.name)); return; } }
+    for (const k in a.require) { if ((c[k] || 0) < a.require[k]) { message((a.tooLow || "{name} is too tired.").replace("{name}", c.name)); Sound.play("error"); return; } }
   }
   if (a.cost) state.resources[a.cost.resource] = (state.resources[a.cost.resource] || 0) - a.cost.amount;
 
   const moodBefore = MOOD_NEED ? (c[MOOD_NEED] || 0) : 0;
   // apply need effects
   Object.keys(a.effects || {}).forEach((k) => { c[k] = clamp01((c[k] || 0) + a.effects[k]); });
-  if (a.reward) state.coins += a.reward;
+  if (a.reward) { state.coins += a.reward; flyReward(c.x, c.y - 40, "+" + a.reward + " " + (META.coinIcon || "💰")); }
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (a.stat) state.stats[a.stat] = (state.stats[a.stat] || 0) + 1;
   if (a.anim) actionAnim(c, a.anim);
+  Sound.play(a.sfx || "action");
 
   // celebrate when the mood need reaches max during this action (adults only)
   let celebrated = false;
@@ -1232,6 +1957,7 @@ function toggleRide(c) {
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (statKeys().includes("ride")) state.stats.ride = (state.stats.ride || 0) + 1;
   rideFatigueAcc = 0;
+  Sound.play("action");
   message((RIDE.mountMessage || "Riding {name}!").replace("{name}", c.name));
   panelId = PANEL_DIRTY; refreshInteraction(); refreshHud();
 }
@@ -1244,9 +1970,10 @@ function doJump() {
   if (J.cost && RIDE.fatigueNeed) c[RIDE.fatigueNeed] = clamp01(c[RIDE.fatigueNeed] - J.cost);
   rideFatigueAcc = 0; state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (statKeys().includes("jump")) state.stats.jump = (state.stats.jump || 0) + 1;
-  jumpRunning = true; moveTarget = null; followCreature = null;
+  jumpRunning = true; moveTarget = null; navPath = []; followCreature = null;
   const dir = (playerFacing === "left") ? -1 : 1;
   const targetX = clamp(player.x + dir * (J.distance || 165), 40, WORLD.w - 40);
+  Sound.play("whoosh");
   sc.tweens.add({ targets: player, x: targetX, duration: 560, ease: "Quad.easeOut", onComplete: () => { jumpRunning = false; } });
   jumpAnim.h = 0;
   sc.tweens.add({ targets: jumpAnim, h: 1, duration: 290, yoyo: true, ease: "Sine.easeOut" });
@@ -1255,7 +1982,7 @@ function doJump() {
 }
 
 function dismount(c, exhausted) {
-  mounted = null; moveTarget = null; running = false; rideFatigueAcc = 0; jumpRunning = false;
+  mounted = null; moveTarget = null; navPath = []; running = false; rideFatigueAcc = 0; jumpRunning = false;
   if (playerSprite) playerSprite.y = 0;
   if (playerShadow) playerShadow.setVisible(true);
   c.x = clamp(player.x + 135, 40, WORLD.w - 40);
@@ -1270,6 +1997,7 @@ function dismount(c, exhausted) {
 /* ===================== Animations / effects ===================== */
 
 // --- Procedural particle textures (drawn white so they tint to any colour) ---
+// Drawn at 2x (48 px) and displayed at half scale → crisp on HiDPI screens.
 function starPoints(cx, cy, R, r, n) {
   const pts = [];
   for (let i = 0; i < n * 2; i++) {
@@ -1285,22 +2013,46 @@ function ensureShape(shape) {
   if (sc.textures.exists(key)) return key;
   const g = sc.make.graphics({ x: 0, y: 0, add: false });
   g.fillStyle(0xffffff, 1);
-  const S = 24, c = 12;
+  const S = 48, c = 24;
   if (shape === "heart") {
-    g.fillCircle(7, 8, 6); g.fillCircle(17, 8, 6); g.fillTriangle(1, 10, 23, 10, 12, 24);
+    g.fillCircle(14, 17, 12.5); g.fillCircle(34, 17, 12.5); g.fillTriangle(2.5, 21, 45.5, 21, 24, 46);
   } else if (shape === "star") {
-    g.fillPoints(starPoints(c, c, 11, 4.6, 5), true);
+    g.fillPoints(starPoints(c, c + 1, 22, 9.5, 5), true);
   } else if (shape === "spark") {
-    g.fillPoints([{ x: c, y: 0 }, { x: c + 4, y: c }, { x: c, y: S }, { x: c - 4, y: c }], true);
-    g.fillPoints([{ x: 0, y: c }, { x: c, y: c - 4 }, { x: S, y: c }, { x: c, y: c + 4 }], true);
+    g.fillPoints([{ x: c, y: 0 }, { x: c + 7, y: c - 7 }, { x: S, y: c }, { x: c + 7, y: c + 7 }, { x: c, y: S }, { x: c - 7, y: c + 7 }, { x: 0, y: c }, { x: c - 7, y: c - 7 }], true);
   } else if (shape === "diamond") {
-    g.fillPoints([{ x: c, y: 1 }, { x: S - 1, y: c }, { x: c, y: S - 1 }, { x: 1, y: c }], true);
+    g.fillPoints([{ x: c, y: 2 }, { x: S - 6, y: c }, { x: c, y: S - 2 }, { x: 6, y: c }], true);
   } else if (shape === "bubble" || shape === "ring") {
-    g.lineStyle(3, 0xffffff, 1); g.strokeCircle(c, c, 9); g.fillCircle(c - 3, c - 3, 2);
+    g.lineStyle(5, 0xffffff, 1); g.strokeCircle(c, c, 18); g.fillCircle(c - 7, c - 7, 4);
+  } else if (shape === "arrow") {           // big downward pointer (guide)
+    g.fillRoundedRect(c - 8, 0, 16, 22, 5); g.fillTriangle(4, 18, S - 4, 18, c, S - 2);
+  } else if (shape === "soft") {            // blurry dot (dust motes / bokeh)
+    for (let r = 22; r > 0; r -= 2) { g.fillStyle(0xffffff, 0.09); g.fillCircle(c, c, r); }
   } else { // dot / default
-    g.fillCircle(c, c, 5);
+    g.fillCircle(c, c, 10);
   }
   g.generateTexture(key, S, S); g.destroy();
+  return key;
+}
+// Soft radial ground shadow (much nicer than a flat ellipse).
+function ensureShadow() {
+  const key = "fx_shadow";
+  if (sc.textures.exists(key)) return key;
+  const W = 128, H = 48, t = sc.textures.createCanvas(key, W, H), ctx = t.getContext();
+  const gr = ctx.createRadialGradient(W / 2, H / 2, 2, W / 2, H / 2, W / 2);
+  gr.addColorStop(0, "rgba(0,0,0,0.95)"); gr.addColorStop(0.55, "rgba(0,0,0,0.6)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.save(); ctx.scale(1, H / W); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(W / 2, W / 2, W / 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  t.refresh();
+  return key;
+}
+// Soft radial glow (white → tinted; used for halos with additive blending).
+function ensureGlow() {
+  const key = "fx_glow";
+  if (sc.textures.exists(key)) return key;
+  const S = 128, t = sc.textures.createCanvas(key, S, S), ctx = t.getContext();
+  const gr = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  gr.addColorStop(0, "rgba(255,255,255,0.9)"); gr.addColorStop(0.4, "rgba(255,255,255,0.35)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, S, S); t.refresh();
   return key;
 }
 
@@ -1309,26 +2061,33 @@ function emitBurst(x, y, spec) {
   if (!sc) return;
   spec = spec || {};
   const key = ensureShape(spec.shape || "dot");
-  const colors = (spec.colors && spec.colors.length ? spec.colors : ["#ffffff"]).map((v) => typeof v === "string" ? hexInt(v) : v);
+  const colors = (spec.colors && spec.colors.length ? spec.colors : ["#ffffff"]).map(hexInt);
   const n = spec.count || 5, fall = !!spec.fall;
   const spread = spec.spread || 24, y0 = spec.y0 != null ? spec.y0 : 46;
   const sMin = spec.scaleMin || 0.7, sMax = spec.scaleMax || 1.1;
   for (let i = 0; i < n; i++) {
+    const sc0 = rand(sMin, sMax) * 0.5;
     const p = sc.add.image(x + randInt(-spread, spread), y - y0, key)
-      .setDepth(99998).setScale(randInt(Math.round(sMin * 10), Math.round(sMax * 10)) / 10).setTint(colors[i % colors.length]);
+      .setDepth(99998).setScale(sc0 * 0.4).setTint(colors[i % colors.length]).setAngle(randInt(-20, 20));
     const dy = fall ? randInt(16, 30) : -randInt(spec.riseMin || 46, spec.riseMax || 82);
-    sc.tweens.add({ targets: p, y: p.y + dy, alpha: 0, duration: randInt(spec.durMin || 500, spec.durMax || 880),
-      ease: fall ? "Quad.easeIn" : "Sine.easeOut", onComplete: () => p.destroy() });
+    const dx = randInt(-spread, spread) * 0.6;
+    sc.tweens.add({ targets: p, scaleX: sc0, scaleY: sc0, duration: 140, ease: "Back.easeOut" });
+    sc.tweens.add({ targets: p, x: p.x + dx, y: p.y + dy, alpha: 0, angle: p.angle + randInt(-60, 60), duration: randInt(spec.durMin || 600, spec.durMax || 1000),
+      ease: fall ? "Quad.easeIn" : "Sine.easeOut", delay: 60, onComplete: () => p.destroy() });
   }
 }
 
 // Body motion presets used by action animations.
 function applyMotion(c, motion) {
   if (!c.bodyT || !sc || motion === "none") return;
-  const m = motion || "bounce";
-  if (m === "nod") sc.tweens.add({ targets: c.bodyT, y: 7, duration: 120, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
-  else if (m === "hop") sc.tweens.add({ targets: c.bodyT, y: -24, duration: 210, yoyo: true, ease: "Quad.easeOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
-  else sc.tweens.add({ targets: c.bodyT, y: -12, duration: 130, yoyo: true, ease: "Quad.easeOut", onComplete: () => { if (c.bodyT) c.bodyT.y = 0; } });
+  const m = motion || "bounce", s = c.baseScale || 1, t = c.bodyT;
+  const done = () => { if (c.bodyT) { c.bodyT.y = 0; c.bodyT.setScale(s); } };
+  if (m === "nod") sc.tweens.add({ targets: t, y: 7 * s, scaleY: s * 0.92, duration: 120, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: done });
+  else if (m === "hop") {
+    t.setScale(s * 1.12, s * 0.88);
+    sc.tweens.add({ targets: t, y: -26 * s, scaleX: s * 0.92, scaleY: s * 1.1, duration: 200, yoyo: true, ease: "Quad.easeOut", onComplete: done });
+  } else if (m === "wiggle") sc.tweens.add({ targets: t, angle: { from: -8, to: 8 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => { if (c.bodyT) c.bodyT.angle = 0; done(); } });
+  else sc.tweens.add({ targets: t, y: -12 * s, duration: 130, yoyo: true, ease: "Quad.easeOut", onComplete: done });
 }
 
 // Legacy string presets (back-compat) for action.anim.
@@ -1339,7 +2098,7 @@ const ANIM_PRESETS = {
 };
 
 // THEME-DRIVEN action animation. `anim` is a preset string OR an object:
-//   { motion:"nod"|"hop"|"bounce"|"none", particle:"star"|"heart"|"spark"|"bubble"|"diamond"|"dot",
+//   { motion:"nod"|"hop"|"bounce"|"wiggle"|"none", particle:"star"|"heart"|"spark"|"bubble"|"diamond"|"dot"|"soft",
 //     colors:[hex...], count, fall, spread, y0 }
 function actionAnim(c, anim) {
   if (!c.obj || !c.bodyT || !sc) return;
@@ -1358,7 +2117,9 @@ function celebrate(c) {
   c.celebrating = true;
   const cel = CREATURE.celebrate || {};
   const mode = cel.mode || "hop";
-  const t = c.bodyT;
+  const t = c.bodyT, s = c.baseScale || 1;
+  refreshCreatureVisual(c);                       // e.g. swap to the "happy" sheet
+  Sound.play("celebrate");
   if (mode === "rear") {
     const orig = CREATURE.origin || { x: 0.46, y: 0.734 };
     const oxN = t.flipX ? 0.30 : 0.70, oyN = 0.95;
@@ -1370,12 +2131,15 @@ function celebrate(c) {
       onComplete: () => { if (t) { t.angle = 0; t.setOrigin(orig.x, orig.y); t.x = 0; t.y = 0; } c.celebrating = false; if (CREATURE.depart) departCreature(c); },
     });
   } else {
+    // squash → big hop with a little spin of joy → land
+    t.setScale(s * 1.15, s * 0.85);
     sc.tweens.add({
-      targets: t, y: -34, duration: 230, yoyo: true, repeat: 1, ease: "Quad.easeOut",
-      onComplete: () => { if (t) t.y = 0; c.celebrating = false; if (CREATURE.depart) departCreature(c); },
+      targets: t, y: -38 * s, scaleX: s * 0.92, scaleY: s * 1.1, duration: 230, yoyo: true, repeat: 1, ease: "Quad.easeOut",
+      onComplete: () => { if (t) { t.y = 0; t.setScale(s); } c.celebrating = false; if (CREATURE.depart) departCreature(c); },
     });
   }
-  emitBurst(c.x, c.y, { shape: cel.particle || "heart", colors: cel.colors || ["#ff7eb6", "#7fd06f", "#ffd24a"], count: cel.count || 5, y0: 50, riseMin: 48, riseMax: 84 });
+  emitBurst(c.x, c.y, { shape: cel.particle || "heart", colors: cel.colors || ["#ff7eb6", "#7fd06f", "#ffd24a"], count: cel.count || 5, y0: 50, riseMin: 48, riseMax: 90, spread: 34 });
+  sc.time.delayedCall(260, () => emitBurst(c.x, c.y, { shape: "spark", colors: ["#ffffff", "#fff2a8"], count: 4, y0: 70, spread: 40, scaleMin: 0.5, scaleMax: 0.8 }));
   if (cel.message) message(cel.message.replace("{name}", c.name));
 }
 
@@ -1385,6 +2149,7 @@ function nextDay() {
   if (nightRunning) return;
   if ((state.actionsSinceRest || 0) === 0 && CREATURE) {
     message(META.restBlockedHint || "You just woke up! Take care of someone first.");
+    Sound.play("error");
     return;
   }
   // Day-arc reward: if every creature is happy at rest, give a synchronized send-off before the night.
@@ -1393,14 +2158,14 @@ function nextDay() {
   if (state.allHappyTonight && ALL_HAPPY.celebrate !== false) {
     state.creatures.forEach((c, i) => { if (sc) sc.time.delayedCall(i * 140, () => celebrate(c)); });
   }
-  nightRunning = true; moveTarget = null; message(META.nightMessage || "🌙 Night falls…");
+  nightRunning = true; moveTarget = null; navPath = []; message(META.nightMessage || "🌙 Night falls…");
+  Sound.play("night");
   const v = $("night-veil");
   if (v) {
-    v.style.transition = "opacity 1s ease";
-    v.style.opacity = "0.78";
-    setTimeout(applyDay, 1150);
-    setTimeout(() => { v.style.opacity = "0"; }, 1850);
-    setTimeout(() => { nightRunning = false; }, 2900);
+    v.classList.add("on");
+    setTimeout(applyDay, 1250);
+    setTimeout(() => { v.classList.remove("on"); Sound.play("morning"); }, 2000);
+    setTimeout(() => { nightRunning = false; }, 3000);
   } else { applyDay(); nightRunning = false; }
 }
 
@@ -1432,7 +2197,7 @@ function applyDay() {
   refreshHud(); save();
   const allHappy = state.allHappyTonight; state.allHappyTonight = false;
   if (baby) message((CREATURE.breeding && CREATURE.breeding.message || "🐣 A baby was born: {name}!").replace("{name}", baby.name));
-  else if (allHappy && ALL_HAPPY && ALL_HAPPY.message) message(ALL_HAPPY.message.replace("{day}", state.day));
+  else if (allHappy && ALL_HAPPY && ALL_HAPPY.message) { message(ALL_HAPPY.message.replace("{day}", state.day)); setTimeout(() => confetti(), 900); }
   else if (neglected.length) message((META.neglectMessage || "🌅 Day {day}. Take care of {names}!").replace("{day}", state.day).replace("{names}", listFr(neglected)));
   else message((META.morningMessage || "🌅 Day {day}: everyone slept well.").replace("{day}", state.day));
 }
@@ -1448,7 +2213,7 @@ function tryBirth() {
   if (happyAdults.length < 2 || hasYoung || !room || !cooldownOk) return null;
   const parent = pick(happyAdults);
   const baby = newCreature({ age: 0, variant: pick(happyAdults).variant });
-  const z = HOME_ZONE ? HOME_ZONE.rect : { x: 60, y: 60, w: WORLD.w - 120, h: WORLD.h - 120 };
+  const z = homeRect();
   baby.x = clamp(parent.x + randInt(-50, 50), z.x + 60, z.x + z.w - 60);
   baby.y = clamp(parent.y + randInt(-50, 50), z.y + 60, z.y + z.h - 60);
   baby.tx = baby.x; baby.ty = baby.y;
@@ -1466,8 +2231,8 @@ function listFr(arr) {
 
 /* ===================== Modal / shop / customize ===================== */
 
-function openModal(t, html) { $("modal-title").innerHTML = t; $("modal-body").innerHTML = html; $("modal").classList.remove("hidden"); }
-function closeModal() { $("modal").classList.add("hidden"); }
+function openModal(t, html) { $("modal-title").innerHTML = t; $("modal-body").innerHTML = html; $("modal").classList.remove("hidden"); Sound.play("open"); }
+function closeModal() { $("modal").classList.add("hidden"); lastInputT = nowMs(); }
 
 function openShop() {
   const room = state.creatures.length < state.capacity;
@@ -1498,29 +2263,31 @@ function openShop() {
 }
 
 function buy(what) {
+  const notEnough = () => { Sound.play("error"); message(META.notEnough || "Not enough coins!"); };
   if (what.startsWith("res:")) {
     const id = what.slice(4);
     const r = (SHOP.resources || []).find((x) => x.id === id); if (!r) return;
-    if (state.coins < r.price) return message(META.notEnough || "Not enough coins!");
+    if (state.coins < r.price) return notEnough();
     state.coins -= r.price; state.resources[id] = (state.resources[id] || 0) + (r.amount || 1);
     message(`${r.icon || ""} +${r.amount || 1} ${r.name}!`);
   } else if (what === "capacity") {
-    if (state.coins < SHOP.capacity.price) return message(META.notEnough || "Not enough coins!");
+    if (state.coins < SHOP.capacity.price) return notEnough();
     state.coins -= SHOP.capacity.price; state.capacity++;
     message(SHOP.capacity.boughtMessage || "Expanded!");
   } else if (what === "creature") {
     if (state.creatures.length >= state.capacity) return message(SHOP.fullMessage || "No room!");
-    if (state.coins < SHOP.buyCreature.price) return message(META.notEnough || "Not enough coins!");
+    if (state.coins < SHOP.buyCreature.price) return notEnough();
     state.coins -= SHOP.buyCreature.price;
     const c = newCreature({}); state.creatures.push(c); if (sc) buildCreatureObj(c);
     message((SHOP.buyCreature.boughtMessage || "Welcome, {name}!").replace("{name}", c.name));
   }
+  Sound.play("reward");
   refreshHud(); openShop();
 }
 
 function buyDecor(id) {
   const d = DECOR.find((x) => x.id === id); if (!d) return;
-  if (state.coins < d.price) return message(META.notEnough || "Not enough coins!");
+  if (state.coins < d.price) { Sound.play("error"); return message(META.notEnough || "Not enough coins!"); }
   state.coins -= d.price;
   placingDecor = d; ghostSide = 1;
   closeModal();
@@ -1553,13 +2320,15 @@ function placeDecor() {
   if (!placingDecor) return;
   const { x, y } = ghostXY();
   const err = placementError(placingDecor, x, y);
-  if (err) { message(err); return; }
+  if (err) { message(err); Sound.play("error"); return; }
   state.decors.push({ id: placingDecor.id, x, y });
   state.stats.decor = (state.stats.decor || 0) + 1;
   if (CREATURE && MOOD_NEED) state.creatures.forEach((c) => (c[MOOD_NEED] = clamp01((c[MOOD_NEED] || 0) + 5)));
   const name = placingDecor.name; placingDecor = null;
   if (ghostDecor) { ghostDecor.destroy(); ghostDecor = null; }
   buildDecors(); save(); refreshHud(); panelId = "upd"; refreshInteraction();
+  emitBurst(x, y, { shape: "star", colors: ["#fff2a8", "#ffd24a", "#ffffff"], count: 8, y0: 30, spread: 40 });
+  Sound.play("unlock");
   message((META.placedMessage || "{name} placed! ✨").replace("{name}", name));
 }
 
@@ -1577,13 +2346,18 @@ function openCustomize(c) {
   let html = `<div class="customize-preview" id="cz-preview"></div>`;
   if (cz.rename) html += `<label class="cz-label">${META.nameLabel || "Name:"}</label><input id="cz-name" type="text" maxlength="14" value="${c.name}" />`;
   if (cz.variant && VARIANTS.length) html += `<div class="group"><span class="group-title">${CREATURE.variantLabel || "Colour"}</span><div class="avatar-row" id="cz-variant"></div></div>`;
-  html += `<button class="btn btn-giant" id="cz-ok">✅ ${META.confirm || "Confirm"}</button>`;
+  html += `<button class="btn btn-giant btn-primary" id="cz-ok">✅ ${META.confirm || "Confirm"}</button>`;
   openModal((CREATURE.customizeTitle || "🎨 Customize") + " " + c.name, html);
 
+  // Preview: the creature's own (variant) thumbnail if available, else a colour blob.
   const drawPreview = () => {
     const v = variantDef(variantId(c));
     const col = (v && v.color) || "#cccccc";
-    $("cz-preview").innerHTML = `<div class="variant-blob" style="background:${col}"></div>`;
+    const thumb = v && v.thumb ? av(v.thumb) : null;
+    $("cz-preview").innerHTML = thumb
+      ? `<div class="variant-blob has-thumb" style="--c:${col}"><img src="${thumb}" alt="" /></div>`
+      : `<div class="variant-blob" style="background:${col};color:${col}"></div>`;
+    const b = $("cz-preview").firstElementChild; if (b) b.classList.add("bump");
   };
   if (cz.variant && VARIANTS.length) {
     VARIANTS.forEach((v) => {
@@ -1591,7 +2365,7 @@ function openCustomize(c) {
       b.className = "btn-avatar swatch" + (variantId(c) === v.id ? " chosen" : "");
       b.style.background = v.color || "#ccc";
       b.title = v.name;
-      b.addEventListener("click", () => { c.variant = v.id; $("cz-variant").querySelectorAll(".btn-avatar").forEach((x) => x.classList.remove("chosen")); b.classList.add("chosen"); drawPreview(); });
+      b.addEventListener("click", () => { c.variant = v.id; $("cz-variant").querySelectorAll(".btn-avatar").forEach((x) => x.classList.remove("chosen")); b.classList.add("chosen"); drawPreview(); refreshCreatureVisual(c); });
       $("cz-variant").appendChild(b);
     });
   }
@@ -1602,6 +2376,8 @@ function openCustomize(c) {
       if (name) c.name = name;
     }
     refreshCreatureVisual(c); save(); closeModal(); panelId = PANEL_DIRTY;
+    actionAnim(c, { motion: "hop", particle: "spark", colors: [(variantDef(variantId(c)) || {}).color || "#ffffff", "#ffffff"], count: 8 });
+    Sound.play("action");
     message((CREATURE.customizedMessage || "{name} updated! 🎨").replace("{name}", c.name));
   });
   drawPreview();
@@ -1612,16 +2388,28 @@ function openCustomize(c) {
 // scrubs/taps "spots" off a backdrop image until it's clean, then the action's
 // effects / reward / celebrate are applied (exactly like finishing a normal
 // action). Entirely config-driven via action.closeup — see ENGINE.md.
+function cuEl(id, cls, tag, parent) {
+  let e = $(id);
+  if (!e) { e = document.createElement(tag || "div"); e.id = id; e.className = cls; (parent || $("closeup-stage")).appendChild(e); }
+  return e;
+}
 function openCloseup(c, a) {
-  const root = $("closeup"); if (!root || !a) return;
+  const root = $("closeup"); if (!root || !a || closeupOpen) return;
   const cfg = a.closeup || {};
   const stage = $("closeup-stage"), bg = $("closeup-bg"), brush = $("closeup-brush");
   const imgPath = (k, def) => av((G.assets.images && G.assets.images[k]) || ("assets/img/" + (k || def) + ".png"));
   // The backdrop can be overridden per creature variant (e.g. each child's own face).
   const cv = variantDef(variantId(c));
   const src = imgPath((cv && cv.closeupBg) || cfg.bg, "closeup");
-  if (bg) bg.src = src;
-  stage.querySelectorAll(".cu-spot, .cu-emoji").forEach((n) => n.remove());
+  if (bg) { bg.src = src; bg.classList.remove("cu-fade"); }
+  // optional "after" backdrop revealed on finish (e.g. the same face, now smiling)
+  const doneKey = (cv && cv.closeupBgDone) || cfg.bgDone;
+  const bg2 = cuEl("closeup-bg2", "closeup-bg closeup-bg2", "img");
+  bg2.draggable = false; bg2.alt = "";
+  if (doneKey) bg2.src = imgPath(doneKey, "closeup"); else bg2.removeAttribute("src");
+  bg2.classList.remove("show");
+  if (bg && bg.nextSibling !== bg2) bg.parentNode.insertBefore(bg2, bg.nextSibling);   // just above the backdrop, under the spots
+  stage.querySelectorAll(".cu-spot, .cu-emoji, .cu-foam, .cu-hint").forEach((n) => n.remove());
 
   const sp = cfg.spots || {};
   const cured = (a.stat && state.stats[a.stat]) || 0;       // ramps difficulty with progress
@@ -1629,39 +2417,65 @@ function openCloseup(c, a) {
   const count = clamp(base + (grow ? Math.floor(cured / grow) : 0), 1, max);
   const rubs = sp.rubs || 3, size = sp.size || 64;
   // `area` may be one region or several (e.g. upper + lower teeth); spots alternate
-  // between them so every region gets some.
+  // between them so every region gets some. Spots avoid overlapping each other.
   const areas = Array.isArray(sp.area) ? sp.area : [sp.area || { x: 0.18, y: 0.42, w: 0.64, h: 0.28 }];
+  const placed = [];
+  const sprites = cfg.spotSprites || (cfg.spotSprite ? [cfg.spotSprite] : null);
   for (let i = 0; i < count; i++) {
     const ar = areas[i % areas.length];
-    const s = document.createElement(cfg.spotSprite ? "img" : "div");
-    s.className = "cu-spot"; s.draggable = false;
-    if (cfg.spotSprite) s.src = imgPath(cfg.spotSprite, "spot");
+    let fx = 0, fy = 0;
+    for (let tries = 0; tries < 20; tries++) {
+      fx = ar.x + Math.random() * ar.w; fy = ar.y + Math.random() * ar.h;
+      if (!placed.some((p) => Math.hypot((p.x - fx) * 1.3, p.y - fy) < (sp.minGap || 0.07))) break;
+    }
+    placed.push({ x: fx, y: fy });
+    const s = document.createElement(sprites ? "img" : "div");
+    s.className = "cu-spot" + (sp.wiggle === false ? "" : " wiggle"); s.draggable = false;
+    if (sprites) s.src = imgPath(sprites[i % sprites.length], "spot");
     // store the spot's position/size as fractions of the BACKDROP IMAGE; it's mapped
-    // to screen pixels in cuPlaceSpots() so it stays on the teeth under object-fit:cover.
-    s.dataset.fx = (ar.x + Math.random() * ar.w).toFixed(4);
-    s.dataset.fy = (ar.y + Math.random() * ar.h).toFixed(4);
-    s.dataset.sz = String(size);
-    s.style.setProperty("--rot", Math.floor(Math.random() * 360) + "deg");
+    // to screen pixels in cuPlaceSpots() so it stays on the subject under object-fit:cover.
+    s.dataset.fx = fx.toFixed(4);
+    s.dataset.fy = fy.toFixed(4);
+    s.dataset.sz = String(size * rand(0.88, 1.12));
+    s.style.setProperty("--rot", (sp.rotate === false ? 0 : Math.floor(Math.random() * 50 - 25)) + "deg");
+    s.style.animationDelay = (-Math.random() * 2).toFixed(2) + "s";
     s.dataset.rubs0 = String(rubs); s.dataset.rubs = String(rubs); s.dataset.t = "0";
     stage.appendChild(s);
   }
   if (brush) {
     if (cfg.brush) {
       brush.src = imgPath(cfg.brush, "brush"); brush.classList.remove("hidden");
-      brush.style.left = ""; brush.style.top = "";   // reset to the visible CSS start position
+      brush.style.left = ""; brush.style.top = ""; brush.style.transform = "";   // reset to the visible CSS start position
     } else brush.classList.add("hidden");
   }
-  cuState = { c, a, remaining: count, pressed: false };
-  closeupOpen = true;
+  // progress dots (one per spot) — a clear "how much is left" for non-readers
+  const prog = cuEl("cu-progress", "cu-progress", "div", root);
+  prog.innerHTML = Array.from({ length: count }, () => '<i></i>').join("");
+  prog.classList.toggle("hidden", cfg.progress === false);
+  // a pulsing finger hint on the first spot until the first scrub
+  if (cfg.hint !== false) {
+    const h = document.createElement("div"); h.className = "cu-hint"; h.textContent = cfg.hint || "👆";
+    stage.appendChild(h);
+  }
+  cuState = { c, a, remaining: count, total: count, pressed: false, ang: 0, lx: null, foamT: 0, scrubT: 0 };
+  // Cinematic in: the camera swoops onto the creature, then the scene fades in.
+  if (sc && RENDER.closeupZoom !== false) {
+    zoomFx = true;
+    const cam = sc.cameras.main; cam.stopFollow();
+    cam.pan(c.x, c.y - 30, 300, "Sine.easeInOut"); cam.zoomTo(baseZoom * 1.9, 320, "Sine.easeIn");
+  }
+  Sound.play("whoosh");
+  closeupOpen = true; navPath = []; moveTarget = null; followCreature = null;
   clearSelection();
   root.classList.remove("hidden");
-  themeColor((META.theme && META.theme.play) || TINT_PLAY);
+  root.classList.remove("cu-enter"); void root.offsetWidth; root.classList.add("cu-enter");
+  themeColor((META.theme && META.theme.closeup) || (META.theme && META.theme.play) || TINT_PLAY);
   cuPlaceSpots();
   if (bg) bg.onload = cuPlaceSpots;        // re-place once natural size is known
 }
 
 // Map each spot's image-fraction (fx,fy) to screen px under object-fit:cover, so the
-// backdrop can fill the whole screen (cropped) while spots stay glued to the teeth.
+// backdrop can fill the whole screen (cropped) while spots stay glued to the subject.
 function cuCover() {
   const stage = $("closeup-stage"), bg = $("closeup-bg");
   const Wc = stage.clientWidth, Hc = stage.clientHeight;
@@ -1678,13 +2492,25 @@ function cuPlaceSpots() {
     s.style.top = (c.oy + parseFloat(s.dataset.fy) * c.dh) + "px";
     s.style.width = px + "px"; s.style.height = px + "px";
   });
+  const first = stage.querySelector(".cu-spot"), h = stage.querySelector(".cu-hint");
+  if (first && h) { h.style.left = first.style.left; h.style.top = first.style.top; }
 }
 
 function cuMoveBrush(e) {
   const brush = $("closeup-brush"); if (!brush || brush.classList.contains("hidden")) return;
   const r = $("closeup-stage").getBoundingClientRect();
-  brush.style.left = (e.clientX - r.left) + "px";
-  brush.style.top = (e.clientY - r.top) + "px";
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  brush.style.left = x + "px";
+  brush.style.top = y + "px";
+  // the brush tilts with the stroke direction (feels like real scrubbing)
+  if (cuState) {
+    if (cuState.lx != null) {
+      const target = clamp((x - cuState.lx) * 2.2, -24, 24);
+      cuState.ang += (target - cuState.ang) * 0.35;
+    }
+    cuState.lx = x;
+    brush.style.transform = `translate(-50%,-50%) rotate(${cuState.ang.toFixed(1)}deg)`;
+  }
 }
 
 function cuReleaseCapture() {
@@ -1695,43 +2521,72 @@ function cuReleaseCapture() {
   cuPid = null;
 }
 
+// The active scrub point: the BRUSH HEAD (closeup.brushTip, fractions of the sprite),
+// computed from the brush's centre + its rotation (not the rotated bounding box).
+function cuTip(e) {
+  let x = e.clientX, y = e.clientY;
+  const brush = $("closeup-brush");
+  const tip = cuState && cuState.a && cuState.a.closeup && cuState.a.closeup.brushTip;
+  if (tip && brush && !brush.classList.contains("hidden")) {
+    const w = brush.offsetWidth, h = brush.offsetHeight;
+    const ox = ((tip.x != null ? tip.x : 0.5) - 0.5) * w, oy = ((tip.y != null ? tip.y : 0.5) - 0.5) * h;
+    const a = (cuState.ang || 0) * Math.PI / 180;
+    x += ox * Math.cos(a) - oy * Math.sin(a); y += ox * Math.sin(a) + oy * Math.cos(a);
+  }
+  return { x, y };
+}
+
 // Hit-test spots by GEOMETRY (the spots are pointer-events:none, so the pointer target
 // is always the stable stage). This makes a continuous finger-scrub clean every spot it
 // passes over, and never leaves the pointer captured by a removed element.
 function cuRub(e) {
   if (!cuState) return;
-  // Scrub from the BRUSH HEAD (bristles), not the raw finger position: map a point of the
-  // brush sprite (closeup.brushTip, fractions of the sprite — default its centre) to screen px.
-  let x = e.clientX, y = e.clientY;
-  const brush = $("closeup-brush");
-  const tip = cuState.a && cuState.a.closeup && cuState.a.closeup.brushTip;
-  if (tip && brush && !brush.classList.contains("hidden")) {
-    const br = brush.getBoundingClientRect();
-    x = br.left + (tip.x != null ? tip.x : 0.5) * br.width;
-    y = br.top + (tip.y != null ? tip.y : 0.5) * br.height;
+  const { x, y } = cuTip(e);
+  const now = nowMs();
+  const stage = $("closeup-stage"), sr = stage.getBoundingClientRect();
+  const hint = stage.querySelector(".cu-hint"); if (hint) hint.remove();
+  // foam bubbles while brushing (anywhere), throttled
+  const foam = cuState.a.closeup && cuState.a.closeup.foam;
+  if (foam !== false && now - cuState.foamT > 55 && stage.querySelectorAll(".cu-foam").length < 40) {
+    cuState.foamT = now;
+    const f = document.createElement("div"); f.className = "cu-foam";
+    const cols = (foam && foam.colors) || ["#ffffff", "#e9fbff", "#dff3ff"];
+    f.style.background = pick(cols);
+    const s = randInt(8, 22); f.style.width = s + "px"; f.style.height = s + "px";
+    f.style.left = (x - sr.left + randInt(-18, 18)) + "px"; f.style.top = (y - sr.top + randInt(-12, 12)) + "px";
+    stage.appendChild(f); setTimeout(() => f.remove(), 900);
   }
-  const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
-  const spots = $("closeup-stage").querySelectorAll(".cu-spot");
+  const spots = stage.querySelectorAll(".cu-spot");
+  const pad = 10;
   for (let i = 0; i < spots.length; i++) {
     const t = spots[i], r = t.getBoundingClientRect();
-    if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+    if (x < r.left - pad || x > r.right + pad || y < r.top - pad || y > r.bottom + pad) continue;
     if (now - (parseFloat(t.dataset.t) || 0) < 90) return;   // cooldown so a scrub isn't instant
     t.dataset.t = String(now);
     const left = (parseInt(t.dataset.rubs, 10) || 1) - 1;
     t.dataset.rubs = String(left);
     const f = Math.max(0, left) / (parseInt(t.dataset.rubs0, 10) || 1);
-    t.style.opacity = (0.25 + 0.75 * f).toFixed(2);
-    t.style.transform = `translate(-50%,-50%) rotate(var(--rot)) scale(${(0.4 + 0.6 * f).toFixed(2)})`;
+    t.style.opacity = (0.3 + 0.7 * f).toFixed(2);
+    t.style.transform = `translate(-50%,-50%) rotate(var(--rot)) scale(${(0.45 + 0.55 * f).toFixed(2)})`;
+    t.classList.remove("hit"); void t.offsetWidth; t.classList.add("hit");
+    if (now - cuState.scrubT > 70) { cuState.scrubT = now; Sound.play("scrub", { pitch: rand(0.85, 1.2) }); }
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (_) {} }
     if (left <= 0) cuPop(t);
     return;
   }
 }
 
 function cuPop(spot) {
-  cuEmoji(spot.style.left, spot.style.top, ["✨", "⭐"], false);
+  const done = cuState ? cuState.total - cuState.remaining : 0;
+  cuEmoji(spot.style.left, spot.style.top, (cuState && cuState.a.closeup && cuState.a.closeup.popParticles) || ["✨", "⭐"], false);
+  const ring = document.createElement("div"); ring.className = "cu-ring"; ring.style.left = spot.style.left; ring.style.top = spot.style.top;
+  $("closeup-stage").appendChild(ring); setTimeout(() => ring.remove(), 600);
   spot.remove();
   if (!cuState) return;
+  Sound.play("pop", { pitch: 1 + done * 0.09 });               // rising pitch: progress you can hear
   cuState.remaining = Math.max(0, cuState.remaining - 1);
+  const dots = document.querySelectorAll("#cu-progress i");
+  if (dots[done]) dots[done].classList.add("on");
   if (cuState.remaining === 0) cuFinish();
 }
 
@@ -1741,35 +2596,44 @@ function cuEmoji(left, top, glyphs, burst) {
     const e = document.createElement("div");
     e.className = "cu-emoji" + (burst ? " cu-burst" : "");
     e.textContent = g; e.style.left = left; e.style.top = top;
-    e.style.animationDelay = (burst ? Math.floor(Math.random() * 250) : k * 70) + "ms";
-    stage.appendChild(e); setTimeout(() => e.remove(), 1300);
+    e.style.setProperty("--dx", randInt(-40, 40) + "px");
+    e.style.animationDelay = (burst ? Math.floor(Math.random() * 300) : k * 70) + "ms";
+    stage.appendChild(e); setTimeout(() => e.remove(), 1600);
   });
 }
 
 function cuFinish() {
   const { c, a } = cuState;
-  // Release the pointer capture NOW (stage still visible) rather than 950ms later when the
+  // Release the pointer capture NOW (stage still visible) rather than later when the
   // overlay hides — on iOS a finger still down when a captured element is removed/hidden
   // leaves the capture stuck and freezes later taps. Releasing early avoids that.
   if (cuState) cuState.pressed = false;
   cuReleaseCapture();
-  const parts = (a.closeup && a.closeup.finishParticles) || ["⭐", "💖", "✨", "🌟"];
-  for (let i = 0; i < 16; i++) cuEmoji((10 + Math.random() * 80) + "%", (18 + Math.random() * 55) + "%", [parts[i % parts.length]], true);
-  setTimeout(() => { closeCloseup(); cuApply(c, a); }, 950);
+  const cfg = a.closeup || {};
+  const parts = cfg.finishParticles || ["⭐", "💖", "✨", "🌟"];
+  const bg2 = $("closeup-bg2");
+  const reveal = bg2 && bg2.getAttribute("src");
+  if (reveal) bg2.classList.add("show");                       // e.g. the patient's big happy smile
+  const shine = cuEl("cu-shine", "cu-shine", "div", $("closeup")); shine.classList.remove("go"); void shine.offsetWidth; shine.classList.add("go");
+  const brush = $("closeup-brush"); if (brush) brush.classList.add("hidden");
+  for (let i = 0; i < 18; i++) cuEmoji((8 + Math.random() * 84) + "%", (15 + Math.random() * 60) + "%", [parts[i % parts.length]], true);
+  Sound.play("celebrate");
+  setTimeout(() => { closeCloseup(); cuApply(c, a); }, cfg.finishDelay || (reveal ? 1900 : 1100));
 }
 
 // Apply the action's outcome — mirrors the tail of creatureAction().
 function cuApply(c, a) {
   const moodBefore = MOOD_NEED ? (c[MOOD_NEED] || 0) : 0;
   Object.keys(a.effects || {}).forEach((k) => { c[k] = clamp01((c[k] || 0) + a.effects[k]); });
-  if (a.reward) state.coins += a.reward;
+  if (a.reward) { state.coins += a.reward; setTimeout(() => flyReward(c.x, c.y - 50, "+" + a.reward + " " + (META.coinIcon || "💰")), 350); }
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (a.stat) state.stats[a.stat] = (state.stats[a.stat] || 0) + 1;
   let celebrated = false;
   if (MOOD_NEED && CREATURE.celebrate && (!CREATURE.celebrate.adultsOnly || !isYoung(c)) && moodBefore < 100 && (c[MOOD_NEED] || 0) >= 100) {
-    if (sc) sc.time.delayedCall(250, () => celebrate(c)); celebrated = true;
+    if (sc) sc.time.delayedCall(350, () => celebrate(c)); celebrated = true;
     if (CREATURE.depart) c.leaving = true;   // cured & about to leave → stop selecting it (panel clears now, not 250ms later)
   }
+  refreshCreatureVisual(c);
   if (a.message) message((celebrated && a.celebrateMessage ? a.celebrateMessage : a.message).replace("{name}", c.name));
   refreshBars(c); refreshHud(); panelId = PANEL_DIRTY; refreshInteraction();
 }
@@ -1780,26 +2644,31 @@ function clearSelection() {
 
 function closeCloseup() {
   cuReleaseCapture();
-  const root = $("closeup"); if (root) { root.classList.add("hidden"); root.style.backgroundImage = ""; }
-  const stage = $("closeup-stage"); if (stage) stage.querySelectorAll(".cu-spot, .cu-emoji").forEach((n) => n.remove());
+  const root = $("closeup"); if (root) { root.classList.add("hidden"); root.classList.remove("cu-enter"); root.style.backgroundImage = ""; }
+  const stage = $("closeup-stage"); if (stage) stage.querySelectorAll(".cu-spot, .cu-emoji, .cu-foam, .cu-hint, .cu-ring").forEach((n) => n.remove());
+  const bg2 = $("closeup-bg2"); if (bg2) bg2.classList.remove("show");
   closeupOpen = false; cuState = null; clearSelection();
   // Make sure the world is fully interactive again (belt-and-braces: clear any
   // transient input/movement state and re-assert camera follow + keyboard).
-  moveTarget = null; pendingInteract = null; followCreature = null;
-  running = false; jumpRunning = false;
+  moveTarget = null; navPath = []; pendingInteract = null; followCreature = null;
+  running = false; jumpRunning = false; lastInputT = nowMs();
   themeColor((META.theme && META.theme.play) || TINT_PLAY);
   if (sc && sc.input) {                                  // re-assert pointer + keyboard input
     sc.input.enabled = true;
     if (sc.input.manager) sc.input.manager.enabled = true;
     if (sc.input.keyboard) { sc.input.keyboard.enabled = true; sc.input.keyboard.resetKeys(); }
   }
-  if (sc && player) sc.cameras.main.startFollow(player, true, 0.5, 0.5);
+  if (sc && player) {
+    const cam = sc.cameras.main;
+    cam.startFollow(player, true, RENDER.cameraLerp || 0.12, RENDER.cameraLerp || 0.12);
+    if (zoomFx) { cam.zoomTo(baseZoom, 420, "Sine.easeOut", true, (_c, p) => { if (p >= 1) zoomFx = false; }); }
+  }
 }
 
 /* ===================== Goals / help ===================== */
 
 function openGoals() {
-  if (!LEVELS.length) { openModal("🎯 Goals", "<p>No goals configured.</p>"); return; }
+  if (!LEVELS.length) { openModal(T("goalsTitle", "🎯 Goals"), `<p>${T("noGoals", "No goals configured.")}</p>`); return; }
   const idx = Math.min((state.level || 1) - 1, LEVELS.length - 1);
   const lvl = LEVELS[idx];
   const list = lvl.goals;
@@ -1812,14 +2681,14 @@ function openGoals() {
     return `<div class="goal-row ${ok ? "goal-ok" : ""}"><span class="goal-check">${ok ? "✅" : "⬜"}</span>
       <span class="goal-txt"><b>${o.name}</b><small>${o.desc}</small></span></div>`;
   }).join("");
-  const sub = allDone ? `You finished every goal! 🏆` : `${done}/${list.length} goals — finish them to reach level ${idx + 2}`;
-  openModal("🎯 Goals", `
+  const sub = allDone ? T("allGoalsDone", "You finished every goal! 🏆") : T("goalsProgress", "{done}/{total} goals — finish them to reach level {next}", { done, total: list.length, next: idx + 2 });
+  openModal(T("goalsTitle", "🎯 Goals"), `
     <div class="level-box">
-      <div class="level-top"><b>⭐ Level ${idx + 1}</b><span>“${lvl.name}”</span></div>
+      <div class="level-top"><b>⭐ ${T("levelLabel", "Level")} ${idx + 1}</b><span>“${lvl.name}”</span></div>
       <div class="xp-bar"><div class="xp-fill" style="width:${pct}%"></div></div>
       <p class="level-sub">${sub}</p>
     </div>
-    ${allDone ? `<p class="goal-done">🏆 You reached the top level! 🎉</p>` : ""}
+    ${allDone ? `<p class="goal-done">${T("topLevel", "🏆 You reached the top level! 🎉")}</p>` : ""}
     <div class="goal-list">${lines}</div>`);
 }
 

@@ -1,6 +1,6 @@
 ---
 name: release-deploy
-description: Publish a game built on this engine to production (static GitHub Pages site, deployed from main). Use when changes to engine.js / game.config.js / style.css / index.html / assets are ready to go live. Handles cache-busting (vN), commit, push to main, then verifies the GitHub Actions deploy succeeded. Triggers: "deploy", "publish", "ship it", "put it online", "release".
+description: Publish a game built on this engine to production (static GitHub Pages site, deployed from main). Use when changes to engine.js / engine.css / game.config.js / style.css / index.html / assets are ready to go live. Handles cache-busting (vN), commit, push to main, then verifies the GitHub Actions deploy succeeded. Triggers: "deploy", "publish", "ship it", "put it online", "release".
 ---
 
 # release-deploy
@@ -17,7 +17,7 @@ Cleanly publish a change to production.
 ## Procedure (Claude Code tools)
 1. **Bash**: `git status` + `git branch --show-current`. Work on the configured
    branch; don't switch branches or open a PR without permission.
-2. **Cache-bust** if a *site* file changed (engine.js / game.config.js / style.css /
+2. **Cache-bust** if a *site* file changed (engine.js / engine.css / game.config.js / style.css /
    index.html / assets) — **Bash**:
    ```bash
    node .claude/skills/_shared/bump-version.mjs

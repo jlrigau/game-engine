@@ -20,13 +20,19 @@ trail loops…) are added by **iterating** on the config, not shipped in the dem
   config-gated** feature (not tied to any one game), and document it in `ENGINE.md`.
 
 ## 3. Files
-- `index.html` — shell; loads `vendor/phaser.min.js` → `game.config.js` → `engine.js`.
-- `style.css` — theme (CSS variables at the top).
+- `index.html` — shell; loads `engine.css` → `style.css` → `vendor/phaser.min.js` →
+  `game.config.js` → `engine.js`.
+- `engine.css` — generic shell **structure** (HUD, panel, modal, close-up, animations).
+  Shared verbatim by every game — never theme it.
+- `style.css` — the game's **theme only** (CSS variables + `@font-face` + a few decorative rules).
 - `engine.js` — the engine (all systems, parameterised by `GAME`).
 - `game.config.js` — THE GAME (data + asset refs). The file you edit/replace per game.
 - `ENGINE.md` — full `GAME` config schema + capability list. **Read it before editing config.**
 - `assets/` — `img/` (single sprites), `sheet/` (spritesheets), `ui/` (thumbnails),
-  `CREDITS.md`. `vendor/phaser.min.js` — vendored dependency.
+  `CREDITS.md`. `vendor/phaser.min.js` + `vendor/fonts/` (Fredoka, OFL) — vendored.
+- `tools/art/<game>.cjs` — ALL the game's art as parametric SVG, rendered to PNG by
+  `node .claude/skills/_shared/render-svg.cjs tools/art/<game>.cjs [--only key]`.
+  Never hand-edit the PNGs: change the art module and re-render.
 - `.github/workflows/deploy.yml` — GitHub Pages deploy.
 - Cache-busting: `assetVersion: "vN"` in `game.config.js` (used by `av()` for every
   image) **and** every `?v=vN` in `index.html`. **Bump both** when JS/CSS/images change
@@ -44,14 +50,17 @@ trail loops…) are added by **iterating** on the config, not shipped in the dem
   tests don't need a CDN. **Always validate visually before pushing.**
 
 ## 6. Engine capabilities (all config-gated — see ENGINE.md)
-Tiled world + camera follow + adaptive zoom · player walkcycle (tap/keyboard, run on
-double-tap) + multiple characters + create screen · creatures: needs, mood, actions
+Tiled world + smooth camera + adaptive zoom + HiDPI canvas (pixel-art or smooth hi-res
+art, soft shadows, ambient particles, vignette) · player walkcycle (tap-to-move with A*
+pathfinding, keyboard, run on double-tap) + multiple characters + create screen · creatures: needs, mood, actions
 (effects/cost/reward/anim), variants (tint or sheet), customization, aging/growth,
 breeding, ride + fatigue + hop/jump over obstacles · stations (rest/shop/custom) ·
 economy + shop + capacity + buyable decorations (ghost placement) · AABB collisions
 (`jumpable`) · environment (fenced arena + trail loop in a forest band, scattered by a
 single declarative rule) · day/night with rest-gating · objectives/levels · localStorage
-save with backward-compatible load · PWA/iOS.
+save with backward-compatible load · PWA/iOS · procedural sound + music (no files) ·
+guide arrow · unlocks (milestones add scenery) · juice (toast queue, flying rewards,
+confetti, cinematic close-up zoom, before/after reveal).
 
 ## 7. Skills (`.claude/skills/`)
 Game-agnostic Claude Code skills operating on the config/assets. Orchestrators:
@@ -60,7 +69,11 @@ core loop) and **feedback-session** (non-technical playtester mode, silent work)
 Editing: add-character, add-creature-variant, add-decor-item, add-collision,
 place-scatter, state-migration. Assets: asset-search (content policy via
 `GAME.meta.audience` + license), asset-add. QA/ship: test-debug, map-verify,
-ios-pwa-check, release-deploy. Shared tooling in `_shared/`.
+ios-pwa-check, release-deploy. **capitalize-learnings** (run after every feature/bugfix:
+fold the learnings back into the engine/skills/docs and audit the separation).
+**sync-engine** (template-side: backport engine/skills/tooling FROM a game INTO the
+template). Shared tooling in `_shared/` (incl. `separation-audit.cjs`, `prune-assets.cjs`,
+`sync-engine.sh`).
 
 ## 8. Conventions
 - Engine, config and skills are in **English**. Clear commit messages.
@@ -71,3 +84,14 @@ ios-pwa-check, release-deploy. Shared tooling in `_shared/`.
 - Demo textures are **generated** and specific to the game's universe (no reuse from a
   different game's art). `meta.showCoins:false` hides the economy; the goals button
   auto-hides when there are no objective levels.
+- When a **mascot / character** appears in several places (app icon + in-scene signs +
+  close-up…), draw it with **one parametric function** in the art module (e.g. `tooth()`
+  / `critter()` in `tools/art/*.cjs`) so the versions never drift apart.
+- Art style: smooth cartoon vector (SVG → PNG), soft plum/navy outlines, gradients, 128-px
+  sprite frames, `render.pixelArt:false`. Look at a contact sheet of renders before wiring.
+- **Kids' games:** `guide` arrow + `creature.tapAction` (one tap = go + act) + `unlocks`
+  (progress without reading) + sound. Characters must stay big on a phone (check zoom).
+- Avoid CSS that old iOS Safari drops silently on critical rules (e.g. `color-mix()`).
+- **iOS / touch:** drag-over-touch interactions (close-up scrub…) must follow the
+  robustness pattern in `ENGINE.md` and be verified on the **real Safari engine**
+  (`playtest.cjs --engine webkit --device "iPhone 13"`) — Chromium-green is not enough.
