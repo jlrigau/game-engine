@@ -346,10 +346,13 @@ world, so the cured creature visibly rejoices when you return.
 
 #### iOS home-screen viewport (no bottom band)
 Standalone iOS apps with a `black-translucent` status bar get a viewport reported short
-by the status-bar height. `engine.js` sets `--vp-gap` (`screen.height - innerHeight` when
-`navigator.standalone`, else 0) and `engine.css` extends `html/body/.screen` and every
-full-screen fixed layer by it. New full-screen or bottom-anchored fixed elements must use
-it too. Test: `_shared/ios-standalone-check.cjs`.
+by the status-bar height at launch, which iOS may later correct WITHOUT a resize event —
+so measuring a gap is unreliable (it overshot: everything shifted down). `engine.js`
+adds `html.ios-app` + `--app-h` (the physical screen height) when `navigator.standalone`;
+`engine.css` pins `html/body/.screen` and every full-screen fixed layer to `top:0;
+height:var(--app-h)` and makes the panel `absolute` inside `#screen-game`. New full-screen
+layers must be added to that rule. Test: `_shared/ios-standalone-check.cjs` (launch +
+corrected + Safari must print identical values).
 
 #### iOS / touch robustness (why the close-up is built the way it is)
 A finger-scrub over disappearing targets hits two real Safari/iOS bugs. The engine and

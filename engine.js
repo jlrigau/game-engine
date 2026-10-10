@@ -17,7 +17,7 @@
     let el = document.getElementById("err-overlay");
     if (!el) {
       el = document.createElement("div"); el.id = "err-overlay";
-      el.style.cssText = "position:fixed;left:0;right:0;bottom:calc(0px - var(--vp-gap, 0px));z-index:99999;background:rgba(176,28,40,0.96);color:#fff;font:12px/1.45 ui-monospace,monospace;padding:10px 12px calc(10px + env(safe-area-inset-bottom));white-space:pre-wrap;max-height:45vh;overflow:auto";
+      el.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;background:rgba(176,28,40,0.96);color:#fff;font:12px/1.45 ui-monospace,monospace;padding:10px 12px calc(10px + env(safe-area-inset-bottom));white-space:pre-wrap;max-height:45vh;overflow:auto";
       el.addEventListener("click", function () { el.remove(); });
       (document.body || document.documentElement).appendChild(el);
     }
@@ -41,35 +41,24 @@
 })();
 
 // iOS home-screen apps (standalone + black-translucent status bar): WebKit reports a
-// viewport SHORTER than the screen by the status-bar height, so 100dvh / fixed inset:0
-// stop short and a plain band shows at the bottom. Measure that gap and expose it as
-// --vp-gap; engine.css extends every full-screen layer (and the bottom panel) by it.
+// viewport SHORTER than the screen by the status-bar height at launch (100dvh, fixed
+// inset:0 and innerHeight stop short → a plain band at the bottom), then may silently
+// correct it later without a resize event. So never trust the reported height there:
+// a standalone app always fills the whole screen → pin the full-screen layers to the
+// PHYSICAL screen height (`html.ios-app` + --app-h, see engine.css).
 (function () {
+  if (navigator.standalone !== true || !window.screen) return;
+  const root = document.documentElement;
+  root.classList.add("ios-app");
   function fit() {
-    let gap = 0;
-    if (navigator.standalone === true && window.screen) {
-      const portrait = window.innerHeight >= window.innerWidth;
-      const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
-      // the shortest of what iOS reports (innerHeight) and what CSS really gets (100dvh)
-      let seen = window.innerHeight;
-      try {
-        const m = document.createElement("div");
-        m.style.cssText = "position:absolute;left:-9px;top:0;width:1px;height:100vh;height:100dvh;visibility:hidden;pointer-events:none";
-        (document.body || document.documentElement).appendChild(m);
-        if (m.offsetHeight) seen = Math.min(seen, m.offsetHeight);
-        m.remove();
-      } catch (_) {}
-      const d = Math.round(full - seen);
-      if (d > 0 && d <= 80) gap = d;            // status-bar sized; ignore keyboards etc.
-    }
-    document.documentElement.style.setProperty("--vp-gap", gap + "px");
+    const portrait = window.matchMedia ? window.matchMedia("(orientation: portrait)").matches : window.innerHeight >= window.innerWidth;
+    const h = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+    root.style.setProperty("--app-h", h + "px");
   }
   fit();
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fit);
-  window.addEventListener("load", fit);
-  window.addEventListener("pageshow", fit);                 // back from the app switcher
   window.addEventListener("resize", fit);
   window.addEventListener("orientationchange", function () { setTimeout(fit, 300); });
+  window.addEventListener("pageshow", fit);
 })();
 
 // The whole game definition lives here (set by game.config.js, loaded first).

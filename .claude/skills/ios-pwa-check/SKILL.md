@@ -28,14 +28,15 @@ Keep the iPhone layout clean (fullscreen, no band, safe areas).
 
 ## Bottom band on the home-screen app (iOS standalone bug)
 Launched from the home screen with `black-translucent`, iOS reports a viewport **shorter
-than the screen by the status-bar height** (59 pt on Dynamic Island phones): `100dvh`,
-`position:fixed; inset:0` and `innerHeight` all stop short → a plain-colour band at the
-bottom. Safari tabs and Playwright never show it. The engine handles it (don't regress):
-`engine.js` measures `screen.height - innerHeight` when `navigator.standalone` → CSS var
-`--vp-gap`; `engine.css` adds it to `html/body/.screen` heights, sets `bottom: -gap` on the
-full-screen fixed layers, and the `.panel` bottom offset subtracts it. Any NEW
-full-screen fixed layer or bottom-anchored element must use `--vp-gap` too. Check with
-`node .claude/skills/_shared/ios-standalone-check.cjs [port]` (simulates the bug in WebKit).
+than the screen by the status-bar height** (59 pt on Dynamic Island phones) at launch:
+`100dvh`, `position:fixed; inset:0` and `innerHeight` stop short → a plain band at the
+bottom. iOS may then **correct it silently** (no resize event), so adding a measured gap
+overshoots (tried: everything ended up shifted down). Safari tabs and Playwright never
+show it. The engine's fix (don't regress): `html.ios-app` + `--app-h` = physical screen
+height; full-screen layers are `top:0; height:var(--app-h)`; the `.panel` is `absolute`
+inside `#screen-game`. Any NEW full-screen fixed layer must join that rule in engine.css.
+Check with `node .claude/skills/_shared/ios-standalone-check.cjs [port]`: the launch (785),
+corrected (844) and Safari runs must print identical values.
 
 ## Touch interactions (drag / scrub) on iOS
 The close-up scrub and any finger-drag must survive Safari's touch quirks. The engine
@@ -71,7 +72,7 @@ already guards these (see ENGINE.md "iOS / touch robustness") — **don't regres
 
 ## Guard-rails
 - Test a **real phone template** (not just desktop).
-- Don't reintroduce the bottom band: full-screen fixed layers use `--vp-gap` (above).
+- Don't reintroduce the bottom band: full-screen fixed layers use `html.ios-app` / `--app-h` (above).
 - Don't reintroduce the "overflow band" (body background showing): `#screen-game` fixed
   + `.panel` fixed.
 - Cache-busting is essential (else iOS keeps the old CSS).

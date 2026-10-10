@@ -24,7 +24,6 @@
   --vignette: 0;                      /* 0..1 dark edge on the world (render.vignette) */
   --home-bg: var(--deep);
   --closeup-bg: #000;
-  --vp-gap: 0px;                      /* iOS standalone viewport bug (set by engine.js) */
   --gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.08) 48%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.06) 100%);
 }
 
@@ -32,14 +31,14 @@
 /* Disable text selection / iOS callout globally: on Safari a tap-drag in the game
    starts a text selection that hijacks subsequent touches (the player stops moving).
    Text inputs re-enable selection just below. */
-html, body { height: 100%; height: calc(100% + var(--vp-gap)); touch-action: manipulation; -webkit-text-size-adjust: 100%;
+html, body { height: 100%; touch-action: manipulation; -webkit-text-size-adjust: 100%;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 input[type="text"], textarea { -webkit-user-select: text; user-select: text; }
 button, .btn, input, select, textarea { touch-action: manipulation; }
 img { -webkit-user-drag: none; }
 html { background: var(--deep); }
 body { margin: 0; color: var(--text); background: var(--deep); overflow: hidden; }
-.screen { height: 100vh; height: calc(100dvh + var(--vp-gap)); display: flex; flex-direction: column; }
+.screen { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 .hidden { display: none !important; }
 #screen-game { background: var(--deep); position: fixed; inset: 0; height: auto; }
 
@@ -211,7 +210,7 @@ input[type="text"]::placeholder { color: var(--muted); opacity: 0.65; }
 /* ===== Action panel: a floating card with a portrait, gauges and round action buttons ===== */
 .panel {
   position: fixed; left: 0; right: 0; margin: 0 auto; z-index: 5;
-  bottom: calc(12px + env(safe-area-inset-bottom) - var(--vp-gap)); width: calc(100% - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); max-width: 540px;
+  bottom: calc(12px + env(safe-area-inset-bottom)); width: calc(100% - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); max-width: 540px;
   padding: 14px 14px 14px; border-radius: 28px; border: 3px solid var(--panel-edge);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 40%), var(--panel);
   box-shadow: 0 6px 0 var(--panel-edge), var(--shadow), var(--glow);
@@ -447,9 +446,15 @@ div.cu-spot { border-radius: 50%; background: radial-gradient(circle at 35% 35%,
 @keyframes hintRub { 0%, 100% { transform: translate(-20%, 10%) rotate(-12deg); } 50% { transform: translate(10%, 10%) rotate(12deg); } }
 @keyframes shine { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
 
-/* iOS standalone: the reported viewport stops --vp-gap short of the screen bottom →
-   stretch every full-screen layer down to the real bottom edge (no plain band). */
-#screen-home, #screen-create, #screen-game, #night-veil, .modal, .closeup { bottom: calc(0px - var(--vp-gap)); }
+/* iOS home-screen app (html.ios-app, set by engine.js): the reported viewport is wrong
+   (short at launch, corrected later without notice) → pin every full-screen layer to the
+   physical screen height from the top, and anchor the panel to the game screen instead
+   of the viewport. Don't use 100dvh / bottom:0 for full-screen things there. */
+html.ios-app, html.ios-app body { height: var(--app-h); }
+html.ios-app .screen { height: var(--app-h); }
+html.ios-app #screen-home, html.ios-app #screen-create, html.ios-app #screen-game,
+html.ios-app #night-veil, html.ios-app .modal, html.ios-app .closeup { top: 0; bottom: auto; height: var(--app-h); }
+html.ios-app .panel { position: absolute; }
 
 @media (max-width: 380px) {
   .act-ico { width: 56px; height: 56px; } .act-ico .ico { width: 46px; height: 46px; }
