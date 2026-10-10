@@ -50,12 +50,24 @@
     if (navigator.standalone === true && window.screen) {
       const portrait = window.innerHeight >= window.innerWidth;
       const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
-      const d = Math.round(full - window.innerHeight);
+      // the shortest of what iOS reports (innerHeight) and what CSS really gets (100dvh)
+      let seen = window.innerHeight;
+      try {
+        const m = document.createElement("div");
+        m.style.cssText = "position:absolute;left:-9px;top:0;width:1px;height:100vh;height:100dvh;visibility:hidden;pointer-events:none";
+        (document.body || document.documentElement).appendChild(m);
+        if (m.offsetHeight) seen = Math.min(seen, m.offsetHeight);
+        m.remove();
+      } catch (_) {}
+      const d = Math.round(full - seen);
       if (d > 0 && d <= 80) gap = d;            // status-bar sized; ignore keyboards etc.
     }
     document.documentElement.style.setProperty("--vp-gap", gap + "px");
   }
   fit();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fit);
+  window.addEventListener("load", fit);
+  window.addEventListener("pageshow", fit);                 // back from the app switcher
   window.addEventListener("resize", fit);
   window.addEventListener("orientationchange", function () { setTimeout(fit, 300); });
 })();
