@@ -17,7 +17,7 @@
     let el = document.getElementById("err-overlay");
     if (!el) {
       el = document.createElement("div"); el.id = "err-overlay";
-      el.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;background:rgba(176,28,40,0.96);color:#fff;font:12px/1.45 ui-monospace,monospace;padding:10px 12px calc(10px + env(safe-area-inset-bottom));white-space:pre-wrap;max-height:45vh;overflow:auto";
+      el.style.cssText = "position:fixed;left:0;right:0;bottom:calc(0px - var(--vp-gap, 0px));z-index:99999;background:rgba(176,28,40,0.96);color:#fff;font:12px/1.45 ui-monospace,monospace;padding:10px 12px calc(10px + env(safe-area-inset-bottom));white-space:pre-wrap;max-height:45vh;overflow:auto";
       el.addEventListener("click", function () { el.remove(); });
       (document.body || document.documentElement).appendChild(el);
     }
@@ -29,6 +29,26 @@
   window.addEventListener("unhandledrejection", function (e) {
     show("promise rejection: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason || "?"));
   });
+})();
+
+// iOS home-screen apps (standalone + black-translucent status bar): WebKit reports a
+// viewport SHORTER than the screen by the status-bar height, so 100dvh / fixed inset:0
+// stop short and a plain band shows at the bottom. Measure that gap and expose it as
+// --vp-gap; engine.css extends every full-screen layer (and the bottom panel) by it.
+(function () {
+  function fit() {
+    let gap = 0;
+    if (navigator.standalone === true && window.screen) {
+      const portrait = window.innerHeight >= window.innerWidth;
+      const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+      const d = Math.round(full - window.innerHeight);
+      if (d > 0 && d <= 80) gap = d;            // status-bar sized; ignore keyboards etc.
+    }
+    document.documentElement.style.setProperty("--vp-gap", gap + "px");
+  }
+  fit();
+  window.addEventListener("resize", fit);
+  window.addEventListener("orientationchange", function () { setTimeout(fit, 300); });
 })();
 
 // The whole game definition lives here (set by game.config.js, loaded first).

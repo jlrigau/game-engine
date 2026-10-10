@@ -26,6 +26,17 @@ Keep the iPhone layout clean (fullscreen, no band, safe areas).
   - `.top-bar`: `padding-top: calc(... + env(safe-area-inset-top))` (notch).
   - `100dvh` (not just `vh`) for the screens.
 
+## Bottom band on the home-screen app (iOS standalone bug)
+Launched from the home screen with `black-translucent`, iOS reports a viewport **shorter
+than the screen by the status-bar height** (59 pt on Dynamic Island phones): `100dvh`,
+`position:fixed; inset:0` and `innerHeight` all stop short → a plain-colour band at the
+bottom. Safari tabs and Playwright never show it. The engine handles it (don't regress):
+`engine.js` measures `screen.height - innerHeight` when `navigator.standalone` → CSS var
+`--vp-gap`; `engine.css` adds it to `html/body/.screen` heights, sets `bottom: -gap` on the
+full-screen fixed layers, and the `.panel` bottom offset subtracts it. Any NEW
+full-screen fixed layer or bottom-anchored element must use `--vp-gap` too. Check with
+`node .claude/skills/_shared/ios-standalone-check.cjs [port]` (simulates the bug in WebKit).
+
 ## Touch interactions (drag / scrub) on iOS
 The close-up scrub and any finger-drag must survive Safari's touch quirks. The engine
 already guards these (see ENGINE.md "iOS / touch robustness") — **don't regress them**:
@@ -60,6 +71,7 @@ already guards these (see ENGINE.md "iOS / touch robustness") — **don't regres
 
 ## Guard-rails
 - Test a **real phone template** (not just desktop).
+- Don't reintroduce the bottom band: full-screen fixed layers use `--vp-gap` (above).
 - Don't reintroduce the "overflow band" (body background showing): `#screen-game` fixed
   + `.panel` fixed.
 - Cache-busting is essential (else iOS keeps the old CSS).

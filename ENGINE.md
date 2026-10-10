@@ -344,6 +344,13 @@ completions). The mood need reaching 100 via `effects` triggers `celebrate` in t
 world, so the cured creature visibly rejoices when you return.
 `meta.strings.closeLabel` localises the close button's `aria-label` (default `"Close"`).
 
+#### iOS home-screen viewport (no bottom band)
+Standalone iOS apps with a `black-translucent` status bar get a viewport reported short
+by the status-bar height. `engine.js` sets `--vp-gap` (`screen.height - innerHeight` when
+`navigator.standalone`, else 0) and `engine.css` extends `html/body/.screen` and every
+full-screen fixed layer by it. New full-screen or bottom-anchored fixed elements must use
+it too. Test: `_shared/ios-standalone-check.cjs`.
+
 #### iOS / touch robustness (why the close-up is built the way it is)
 A finger-scrub over disappearing targets hits two real Safari/iOS bugs. The engine and
 the generic `.closeup*` styles already guard against both — **keep these if you change

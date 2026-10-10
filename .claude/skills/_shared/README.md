@@ -15,6 +15,7 @@ run by Claude Code through the **Bash** tool.
 | `svg-kit.cjs` | Helpers for writing art as SVG: `svg/sheet/job`, gradients, glow/blur filters, `shade`/`mix`, `star`, `blob`, seeded `rng`. |
 | `icon-kit.cjs` | Illustrated UI icon set (star, heart, sound, help, avatar, goals, close, play, resume, check, calendar, gift, hand, sparkle, moon, bell, refresh, arrow, trophy, palette, ball, battery, faces…) themed by a palette: `IK.jobs(PAL, names, "assets/ui/icons")` in a game's art module. |
 | `art-check.cjs` | Automated art QA over `GAME.assets`: clipping at frame edges, empty frames, walk-cycle feet/centre jitter, detached parts; writes 2× review sheets on a checkerboard. Used by **visual-review**. |
+| `ios-standalone-check.cjs` | Simulates the iOS home-screen viewport bug in WebKit (viewport short by the status bar) and checks every full-screen layer reaches the real screen bottom. Used by **ios-pwa-check**. |
 | `contact-sheet.py` | Labelled contact sheet(s) of a folder of screenshots: `python3 contact-sheet.py DIR`. |
 | `probes/tour.cjs` | The standard regression tour (home, create, tap→walk, close-up→reveal→world responsive, help, stations, unlocks, guide, save) with screenshots; `probes/lib.cjs` = helpers for your own probes. |
 | `sync-engine.sh` | Backport the engine layer (`engine.js`, `ENGINE.md`, `.claude/skills/`) FROM a game repo INTO the template; runs the separation audit + syntax check; never commits. `bash .claude/skills/_shared/sync-engine.sh <game-url|remote> [ref]`. Used by **sync-engine**. |
