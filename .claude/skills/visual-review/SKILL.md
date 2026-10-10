@@ -70,6 +70,11 @@ Checklist:
 - **Buttons & icons proportion**: slim buttons (44–50 px pills), BIG icons (icon fills
   ~80 % of a tile, or overflows a pill). A fat button with a small icon looks amateur.
 - **Consistency**: one art style, one outline colour, one icon style, theme colours used.
+- **Animations** (unlock reveal, pop-ins): run `probes/reveal.cjs` (`REVEAL=<unlock id>`)
+  and look at the frames in order — no flicker / disappear-reappear, no two tweens on the
+  same property, item lands and settles before its idle loop.
+- **Worst case HUD**: the close-up at max spots (`reveal.cjs` asserts the progress bar
+  never overlaps the close button); longest names; short screen.
 - **Feedback**: every tap/action has a visible + audible response.
 
 ## 4. Report

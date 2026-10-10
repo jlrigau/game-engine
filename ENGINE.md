@@ -415,6 +415,11 @@ unlocks: [ { id, when: { stat, atLeast } | { coins } | (state)=>bool, scenery:{â
 ```
 Unlocks are progression without reading: when a milestone is met, the item pops into the
 world with sparkles + a jingle and stays (saved in `state.unlocked`, re-derived on load).
+The entrance (`revealScenery`): a light halo opens, the item drops in and squashes on
+landing (floor items fade + grow), sparkles, then its `anim` idle loop starts â€” never
+during the entrance. Unlocks earned inside a close-up are revealed when it closes.
+Engine-private fields on game objects use a `_sc` prefix (never `_alpha` etc.: Phaser
+uses those internally).
 
 ### `objectives` / `help`
 ```

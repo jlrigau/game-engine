@@ -621,22 +621,14 @@ function unlockMet(u) {
 }
 function checkUnlocks() {
   if (!state || !UNLOCKS.length) return;
+  if (closeupOpen) return;               // reveal once the world is visible again (closeCloseup re-checks)
   UNLOCKS.forEach((u, i) => {
     const id = u.id || ("u" + i);
     if (state.unlocked[id] || !unlockMet(u)) return;
     state.unlocked[id] = true;
     if (!sc) return;
     const o = addSceneryItem(u.scenery || u, true);
-    if (o) {
-      const s = o.scaleX;
-      o.setScale(0.01);
-      sc.tweens.add({ targets: o, scaleX: s, scaleY: s, duration: 520, delay: 450, ease: "Back.easeOut" });
-      sc.time.delayedCall(450, () => {
-        emitBurst(o.x, o.y, { shape: "star", colors: ["#fff2a8", "#ffd24a", "#ffffff", "#a8e6ff"], count: 12, y0: 40, spread: 50 });
-        Sound.play("unlock");
-      });
-      COLLISIONS_DIRTY = true;
-    }
+    if (o) { revealScenery(o, 450); COLLISIONS_DIRTY = true; }
     if (u.message) setTimeout(() => message(u.message), 600);
   });
 }
@@ -1054,22 +1046,61 @@ function addSceneryItem(raw, isNew) {
   if (!s || !s.sprite || !sc.textures.exists(s.sprite)) return null;
   const sc0 = s.scale || 1;
   const o = s.origin || (s.ground ? { x: 0.5, y: 0.5 } : { x: 0.5, y: 0.95 });
+  let glow = null;
   if (s.glow) {
     const gl = sc.add.image(s.x, s.y - (s.glowY != null ? s.glowY : 30 * sc0), ensureGlow()).setTint(hexInt(s.glow))
       .setBlendMode(Phaser.BlendModes.ADD).setScale((s.glowSize || 1.6) * sc0).setAlpha(0.55).setDepth(s.ground ? -16 : s.y - 1);
     sc.tweens.add({ targets: gl, alpha: 0.25, scale: gl.scale * 0.85, duration: randInt(1400, 2200), yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    glow = gl;
   }
   const img = sc.add.image(s.x, s.y, s.sprite).setOrigin(o.x, o.y).setScale(sc0 / RES(s.sprite))
     .setDepth(s.depth != null ? s.depth : (s.ground ? -17 : s.y));
   if (s.flip) img.setFlipX(true);
   if (s.alpha != null) img.setAlpha(s.alpha);
-  if (s.anim) animateScenery(img, s.anim);
+  img._scGround = !!s.ground; img._scAlpha = s.alpha; img._scAnim = s.anim;
+  if (s.anim && !isNew) animateScenery(img, s.anim);     // new items: started by revealScenery
+  img._scGlow = glow;
   if (s.ground) return img;
   const box = s.box;
   if (box === false) return img;
   if (box) COLLISIONS.push({ x: s.x + box.dx, y: s.y + box.dy, w: box.w, h: box.h, scen: isNew });
   else COLLISIONS.push({ x: s.x - 16 * sc0, y: s.y - 16, w: 32 * sc0, h: 20, scen: isNew });
   return img;
+}
+// Entrance of a newly unlocked item: a soft light halo opens, the item drops in with a
+// small squash on landing (floor items fade + grow), sparkles, then its idle animation
+// starts. One continuous motion — the idle tween must NOT run during the entrance (two
+// tweens fighting over the scale made items flicker in and out).
+function revealScenery(img, delay) {
+  const s = img.scaleX, y = img.y, ground = !!img._scGround, gl = img._scGlow;
+  img.setAlpha(0);
+  if (gl) gl.setVisible(false);
+  const halo = sc.add.image(img.x, ground ? y : y - img.displayHeight * 0.45, ensureGlow())
+    .setBlendMode(Phaser.BlendModes.ADD).setTint(0xfff2a8).setAlpha(0).setScale(0.3).setDepth(img.depth - 0.5);
+  sc.tweens.add({ targets: halo, alpha: 0.9, scale: Math.max(1.4, img.displayWidth / 70), duration: 380, delay, ease: "Sine.easeOut",
+    onComplete: () => sc.tweens.add({ targets: halo, alpha: 0, duration: 650, delay: 250, ease: "Sine.easeIn", onComplete: () => halo.destroy() }) });
+  const land = () => {
+    emitBurst(img.x, ground ? y + 20 : y, { shape: "star", colors: ["#fff2a8", "#ffd24a", "#ffffff", "#a8e6ff"], count: 12, y0: ground ? 20 : img.displayHeight * 0.5, spread: Math.max(40, img.displayWidth * 0.45) });
+    if (gl) { gl.setVisible(true); }
+    if (img._scAnim) animateScenery(img, img._scAnim);
+  };
+  sc.time.delayedCall(delay + 120, () => Sound.play("unlock"));
+  if (ground) {
+    img.setScale(s * 0.85);
+    sc.tweens.add({ targets: img, alpha: img._scAlpha != null ? img._scAlpha : 1, scaleX: s, scaleY: s, duration: 600, delay: delay + 150, ease: "Cubic.easeOut", onComplete: land });
+    return;
+  }
+  img.y = y - 70; img.setScale(s * 0.9, s * 1.08);
+  sc.tweens.add({ targets: img, alpha: img._scAlpha != null ? img._scAlpha : 1, duration: 200, delay: delay + 150 });
+  sc.tweens.add({ targets: img, y, scaleX: s * 0.96, scaleY: s * 1.04, duration: 420, delay: delay + 150, ease: "Quad.easeIn",
+    onComplete: () => {
+      land();
+      sc.tweens.chain({ targets: img, tweens: [
+        { scaleX: s * 1.12, scaleY: s * 0.88, duration: 90, ease: "Quad.easeOut" },
+        { scaleX: s * 0.97, scaleY: s * 1.03, duration: 140, ease: "Sine.easeInOut" },
+        { scaleX: s, scaleY: s, duration: 160, ease: "Sine.easeOut" },
+      ] });
+    } });
 }
 function animateScenery(img, anim) {
   const d = randInt(1800, 2800), s = img.scaleX;
@@ -2759,6 +2790,7 @@ function closeCloseup() {
   const stage = $("closeup-stage"); if (stage) stage.querySelectorAll(".cu-spot, .cu-emoji, .cu-foam, .cu-hint, .cu-ring").forEach((n) => n.remove());
   const bg2 = $("closeup-bg2"); if (bg2) bg2.classList.remove("show");
   closeupOpen = false; cuState = null; clearSelection();
+  setTimeout(checkUnlocks, 650);                         // unlocks earned in the close-up: reveal now, in view
   // Make sure the world is fully interactive again (belt-and-braces: clear any
   // transient input/movement state and re-assert camera follow + keyboard).
   moveTarget = null; navPath = []; pendingInteract = null; followCreature = null;

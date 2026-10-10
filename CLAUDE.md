@@ -131,4 +131,9 @@ like a game made by a studio — not a prototype. Concretely:
   overflow the pill; no oversized buttons with tiny icons.
 - **App icon redone with the art** (`icon-192`, 512, maskable, apple-touch) and remind the
   owner that iOS keeps the old one until the shortcut is removed and re-added.
+- **Animations are smooth and intentional**: no flicker, no pop in/out; one continuous
+  entrance (anticipation → motion → settle), idle loops start only after it. Judge them
+  on a FILMSTRIP (`probes/reveal.cjs`), never on a single screenshot.
+- **HUD elements never overlap**, at the worst case (max stars/spots, longest text, short
+  screen) — assert with bounding boxes in a probe.
 - New owner feedback → add it to this section (via **capitalize-learnings**).
