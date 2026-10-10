@@ -9,7 +9,7 @@
    This demo is the engine's SHOWCASE: it turns on (nearly)
    every system so you can see how each one is wired —
    needs/mood/close-up care, variants + happy faces, aging,
-   breeding, riding + jumps over an arena and a trail loop,
+   breeding, riding + jumps (Gravity Park arena, Star Ring road),
    economy + shop + decorations, station menus + paid
    restyle, a spawn portal, delivery missions with a chase,
    buyable models with stats and a pseudo-3D race.
@@ -104,7 +104,19 @@ window.GAME = {
   guide: { idle: 6, color: "#ff5db1", moodBelow: 55 },
 
   /* ---- World ---- */
-  world: { width: 2800, height: 2100, groundTile: "ground", bg: "#0b1029" },
+  // A space station: open space (void) all around, a metal deck island with a glowing rim,
+  // and districts painted as ground patches (plaza, walkways).
+  world: { width: 2800, height: 2100, groundTile: "void", bg: "#070a1f",
+    patches: [
+      { x: 440, y: 440, w: 1920, h: 1220, tile: "ground" },                                   // the deck island
+      { x: 428, y: 428, w: 1944, h: 14, tile: "rim" }, { x: 428, y: 1658, w: 1944, h: 14, tile: "rim" },
+      { x: 428, y: 428, w: 14, h: 1244, tile: "rim" }, { x: 2358, y: 428, w: 14, h: 1244, tile: "rim" },
+      { x: 1240, y: 820, w: 520, h: 450, tile: "plaza" },                                     // Delivery Plaza
+      { x: 1120, y: 720, w: 120, h: 72, tile: "walkway" },                                    // nursery gate → plaza
+      { x: 1465, y: 1270, w: 70, h: 180, tile: "walkway" },                                   // plaza → Energy Pad
+      { x: 1760, y: 1300, w: 60, h: 90, tile: "walkway" },                                    // → Gravity Park gate
+      { x: 1300, y: 680, w: 1060, h: 60, tile: "walkway" },                                   // the shop street
+    ] },
   camera: { fitW: 520, fitH: 620, min: 0.5, max: 1.2 },
 
   /* ---- Assets (all generated, CC0) ---- */
@@ -117,9 +129,13 @@ window.GAME = {
       // buildings
       market: { path: "assets/img/market.webp", res: 2 }, salon: { path: "assets/img/salon.webp", res: 2 }, dock: { path: "assets/img/dock.webp", res: 2 },
       hatchery: { path: "assets/img/hatchery.webp", res: 2 }, energy_pad: { path: "assets/img/energy_pad.webp", res: 2 }, portal: { path: "assets/img/portal.webp", res: 2 },
-      // environment: trail loop in a crystal-spire forest + the Hop Course
-      path: { path: "assets/img/path.webp", res: 2 }, arena_floor: { path: "assets/img/arena_floor.webp", res: 2 },
-      spire: { path: "assets/img/spire.webp", res: 2 }, shrub: { path: "assets/img/shrub.webp", res: 2 },
+      // space station: void, deck, plaza, road ring, asteroid belt, Gravity Park
+      void: { path: "assets/img/void.webp", res: 2 }, road: { path: "assets/img/road.webp", res: 2 }, plaza: { path: "assets/img/plaza.webp", res: 2 },
+      walkway: { path: "assets/img/walkway.webp", res: 2 }, rim: { path: "assets/img/rim.webp", res: 2 }, rail: { path: "assets/img/rail.webp", res: 2 },
+      rock: { path: "assets/img/rock.webp", res: 2 }, container: { path: "assets/img/container.webp", res: 2 }, neon_sign: { path: "assets/img/neon_sign.webp", res: 2 },
+      antenna: { path: "assets/img/antenna.webp", res: 2 }, shuttle: { path: "assets/img/shuttle.webp", res: 2 }, landing_pad: { path: "assets/img/landing_pad.webp", res: 2 },
+      arena_floor: { path: "assets/img/arena_floor.webp", res: 2 },
+      spire: { path: "assets/img/spire.webp", res: 2 },
       beam_v: { path: "assets/img/beam_v.webp", res: 2 }, comet_rock: { path: "assets/img/comet_rock.webp", res: 2 },
       // deliveries + race
       crate: { path: "assets/img/crate.webp", res: 2 }, target: { path: "assets/img/target.webp", res: 2 },
@@ -162,7 +178,7 @@ window.GAME = {
   player: {
     scale: 0.89,
     speed: { walk: 220, run: 390, rideWalk: 330, rideRun: 520 },
-    spawn: { x: 600, y: 880 },
+    spawn: { x: 1180, y: 760 },
     nameY: -112,                 // keep the name label above the keeper's antenna
     shadow: { w: 40, h: 12 },
   },
@@ -301,20 +317,20 @@ window.GAME = {
 
   /* ---- Zone (the nursery pen where critters roam; gates on both sides) ---- */
   zones: [
-    { id: "pen", home: true, rect: { x: 820, y: 640, w: 780, h: 640 }, floor: "pen_floor",
-      fence: true, gates: "both", gateA: 0.38, gateB: 0.62, label: "Nursery", labelLift: 26 },
+    { id: "pen", home: true, rect: { x: 520, y: 520, w: 600, h: 470 }, floor: "pen_floor",
+      fence: true, gates: "right", gateA: 0.32, gateB: 0.6, label: "Nursery", labelLift: 26 },
   ],
 
   /* ---- Stations: one of each kind the engine supports ---- */
   stations: [
     // rest → next cycle (also reachable while riding)
-    { type: "rest", x: 560, y: 660, sprite: "pod_rest", scale: 0.8, label: "Recharge Pod", labelY: 34, glow: "#3fe0e8", whileRiding: true,
+    { type: "rest", x: 640, y: 1190, sprite: "pod_rest", scale: 0.8, label: "Recharge Pod", labelY: 34, glow: "#3fe0e8", whileRiding: true,
       box: { dx: -78, dy: -44, w: 156, h: 46 }, action: "nextDay", actionLabel: "Rest", icon: "moon", color: "#7b6cff", hint: "Sleep until the next cycle" },
     // shop (on foot only: buying + placing decorations)
-    { type: "market", x: 560, y: 1090, sprite: "market", scale: 0.8, label: "Star Market", labelY: 34, glow: "#ffd24a",
+    { type: "market", x: 1850, y: 610, sprite: "market", scale: 0.8, label: "Star Market", labelY: 34, glow: "#ffd24a",
       box: { dx: -86, dy: -50, w: 172, h: 52 }, action: "openShop", actionLabel: "Shop", icon: "shop", color: "#ffb43a", hint: "Nectar, decorations, new critters" },
     // a MENU station: paid restyle (also shakes off the drones) + a custom bubble bath
-    { type: "salon", x: 900, y: 1580, sprite: "salon", scale: 0.8, label: "Glow Salon", labelY: 34, glow: "#ff5db1", whileRiding: true,
+    { type: "salon", x: 1000, y: 1190, sprite: "salon", scale: 0.8, label: "Glow Salon", labelY: 34, glow: "#ff5db1", whileRiding: true,
       box: { dx: -86, dy: -50, w: 172, h: 52 }, action: "menu", actionLabel: "Visit the salon", icon: "palette", color: "#ff5db1", hint: "Glow makeovers and bubble baths",
       menu: { title: "{i:palette} Glow Salon", subtitle: "What would you like?",
         items: [
@@ -331,13 +347,13 @@ window.GAME = {
             } },
         ] } },
     // missions: deliveries with a pickup then a ground target; the "rare" one brings the drones
-    { type: "dock", x: 1260, y: 1580, sprite: "dock", scale: 0.8, label: "Delivery Dock", labelY: 34, glow: "#6ef0a0", whileRiding: true,
+    { type: "dock", x: 1500, y: 960, sprite: "dock", scale: 0.8, label: "Delivery Dock", labelY: 34, glow: "#6ef0a0", whileRiding: true,
       box: { dx: -86, dy: -50, w: 172, h: 52 }, action: "missions", actionLabel: "Take a delivery", icon: "crate", color: "#6ef0a0", hint: "Deliver star crates for shards" },
     // models: buy special critters with mount stats
-    { type: "hatchery", x: 1620, y: 1580, sprite: "hatchery", scale: 0.8, label: "Hatchery", labelY: 34, glow: "#a97bff", whileRiding: true,
+    { type: "hatchery", x: 2220, y: 610, sprite: "hatchery", scale: 0.8, label: "Hatchery", labelY: 34, glow: "#a97bff", whileRiding: true,
       box: { dx: -80, dy: -48, w: 160, h: 50 }, action: "models", actionLabel: "See rare critters", icon: "egg", color: "#a97bff", hint: "Rare critters: faster, nimbler" },
     // custom station that ONLY works while riding: recharge the critter you ride
-    { type: "pad", x: 1980, y: 1560, sprite: "energy_pad", scale: 0.8, label: "Energy Pad", labelY: 30, glow: "#3fe0e8",
+    { type: "pad", x: 1500, y: 1530, sprite: "energy_pad", scale: 0.8, label: "Energy Pad", labelY: 30, glow: "#3fe0e8",
       box: false, requireMounted: true, needMountMessage: "{i:ride} Ride a critter onto the pad to recharge it!",
       action: "custom", actionLabel: "Recharge (6)", icon: "pad", color: "#3fe0e8", hint: "Recharge the critter you ride",
       onUse: (state, api) => {
@@ -349,9 +365,9 @@ window.GAME = {
         api.refreshHud(); api.save();
       } },
     // spawn: wild critters float in through the wormhole (up to a cap)
-    { type: "portal", x: 990, y: 530, sprite: "portal", scale: 0.8, label: "Wormhole", labelY: 30, glow: "#a97bff", anim: "pulse",
+    { type: "portal", x: 1450, y: 610, sprite: "portal", scale: 0.8, label: "Wormhole", labelY: 30, glow: "#a97bff", anim: "pulse",
       box: { dx: -80, dy: -40, w: 160, h: 42 }, action: "spawn", actionLabel: "Call a critter", icon: "portal", color: "#a97bff", hint: "A wild critter may float in",
-      spawn: { min: 1, max: 1, cap: "capacity", from: { x: 990, y: 570 }, message: "{i:portal} A wild critter floated in!", fullMessage: "The nursery is full, no more room for now." } },
+      spawn: { min: 1, max: 1, cap: "capacity", from: { x: 1450, y: 650 }, message: "{i:portal} A wild critter floated in!", fullMessage: "The nursery is full, no more room for now." } },
   ],
 
   /* ---- Economy + Star Market + decorations ---- */
@@ -374,15 +390,16 @@ window.GAME = {
     { id: "fountain", name: "Stardust fountain", sprite: "fountain", price: 40, scale: 0.75, collision: { dx: -66, dy: -28, w: 132, h: 32 } },
   ],
 
-  /* ---- Hop Course (arena with jump beams) + Comet Trail (loop in a spire forest) ---- */
+  /* ---- Gravity Park (arena with jump beams) + Star Ring (a road around the station, through an asteroid belt) ---- */
   environment: {
     band: 440,
-    arena: { rect: { x: 1760, y: 660, w: 560, h: 600 }, tile: "arena_floor", label: "Hop Course", fence: true, gates: "left", gateA: 0.36, gateB: 0.64,
+    arena: { rect: { x: 1820, y: 1100, w: 480, h: 500 }, tile: "arena_floor", label: "Gravity Park", fence: true, gates: "left", gateA: 0.35, gateB: 0.65,
              obstacleSprite: "beam_v", obstacleScale: 1, obstacleBox: { dx: -18, dy: -170, w: 36, h: 170 },
-             obstacles: [{ x: 1900, y: 900 }, { x: 2040, y: 900 }, { x: 2180, y: 900 }, { x: 1900, y: 1190 }, { x: 2040, y: 1190 }, { x: 2180, y: 1190 }] },
-    forest: { tree: "spire", bush: "shrub", step: 46, hedgeMargin: 80, treeScale: [0.85, 1.1], bushScale: [0.7, 0.9], hedgeBox: { dx: -22, dy: -10, w: 44, h: 14 } },
-    path: { width: 220, sand: 46, inset: 80, tile: "path", label: "Comet Trail", labelY: 190,
-            openings: [{ x: 200, y: 1300, w: 440, h: 200 }, { x: 2160, y: 1330, w: 440, h: 200 }],
+             obstacles: [{ x: 1950, y: 1300 }, { x: 2080, y: 1300 }, { x: 2210, y: 1300 }, { x: 1950, y: 1570 }, { x: 2080, y: 1570 }, { x: 2210, y: 1570 }] },
+    // the "forest" rule scatters an asteroid belt in the void, with guard rails along the road
+    forest: { tree: "rock", bush: "rail", step: 60, hedgeMargin: 70, treeScale: [0.55, 0.95], bushScale: [0.65, 0.75], hedgeBox: { dx: -24, dy: -10, w: 48, h: 14 } },
+    path: { width: 220, sand: 30, inset: 80, tile: "road", label: "Star Ring", labelY: 190,
+            openings: [{ x: 200, y: 1400, w: 440, h: 180 }, { x: 2160, y: 820, w: 440, h: 180 }],
             logs: { xs: [640, 1040, 1440, 1840, 2240], dec: 14, sprite: "comet_rock", scale: 1 } },
   },
 
@@ -392,13 +409,14 @@ window.GAME = {
     stat: "jobs", radius: 80, color: "#6ef0a0", marker: "crate", markerScale: 1,
     offers: [
       { label: "Easy delivery", sub: "Fetch the crate, drop it on the target: {i:shard} 15", icon: "crate", pay: 15 },
+      { label: "Express parcel", sub: "{i:shard} 25 — one drone will try to snatch it {i:drone}", icon: "crate", pay: 25, heat: 1 },
       { label: "Rare comet egg", sub: "{i:shard} 40 — but snatcher drones chase you once you hold it {i:drone}{i:drone}", icon: "drone", pay: 40, heat: 2 },
     ],
-    pickups: [{ x: 720, y: 520, name: "the north landing" }, { x: 2610, y: 1000, name: "the east trail" },
-              { x: 400, y: 1400, name: "the west gate" }, { x: 1700, y: 1910, name: "the south trail" }],
+    pickups: [{ x: 1000, y: 190, name: "the north ring" }, { x: 2610, y: 1300, name: "the east ring" },
+              { x: 420, y: 1490, name: "the west dock" }, { x: 2100, y: 1910, name: "the south ring" }, { x: 2050, y: 760, name: "the shop street" }],
     target: "target", targetScale: 1, cargoIcon: "crate", cargoLabel: "Crate",
-    dests: [{ x: 1500, y: 520, name: "the wormhole garden" }, { x: 190, y: 700, name: "the west trail" },
-            { x: 2040, y: 1420, name: "the course gate" }, { x: 600, y: 1910, name: "the south-west bend" }, { x: 2610, y: 400, name: "the north-east bend" }],
+    dests: [{ x: 760, y: 1400, name: "the habitat yard" }, { x: 190, y: 800, name: "the west ring" }, { x: 1300, y: 1180, name: "the plaza" },
+            { x: 1500, y: 1910, name: "the south ring" }, { x: 2610, y: 400, name: "the north-east ring" }, { x: 1700, y: 1450, name: "the park gate" }],
     takenMessage: "{i:crate} Fetch the crate at {p}. Follow the arrow!",
     pickedMessage: "{i:crate} Got it! Bring it to the target: {d}.",
     hotPickedMessage: "{i:drone} Got the egg… here come the drones! Hurry to {d}!",
@@ -431,31 +449,38 @@ window.GAME = {
 
   /* ---- Ambient scenery (crystals, alien plants) with a little life ---- */
   scenery: [
-    { x: 760, y: 560, sprite: "crystal", scale: 0.75, glow: "#ff8fd8", anim: "pulse", box: { dx: -36, dy: -16, w: 72, h: 20 } },
-    { x: 1700, y: 560, sprite: "crystal_b", scale: 0.8, glow: "#8ff6ff", anim: "pulse", box: { dx: -40, dy: -16, w: 80, h: 20 } },
-    { x: 560, y: 1400, sprite: "alienplant", scale: 0.8, anim: "sway", box: false },
-    { x: 1680, y: 1380, sprite: "alienplant", scale: 0.8, anim: "sway", box: false, flip: true },
-    { x: 1080, y: 1420, sprite: "crystal", scale: 0.6, glow: "#ff8fd8", anim: "pulse", box: { dx: -30, dy: -14, w: 60, h: 18 } },
-    { x: 1440, y: 1420, sprite: "crystal_b", scale: 0.6, glow: "#8ff6ff", anim: "pulse", box: { dx: -30, dy: -14, w: 60, h: 18 } },
-    { x: 760, y: 1240, sprite: "alienplant", scale: 0.7, anim: "sway", box: false },
-    { x: 1220, y: 500, sprite: "orblamp", scale: 0.6, glow: "#ffe68a", glowY: 80, box: { dx: -12, dy: -8, w: 24, h: 12 } },
-    { x: 1480, y: 500, sprite: "orblamp", scale: 0.6, glow: "#ffe68a", glowY: 80, box: { dx: -12, dy: -8, w: 24, h: 12 } },
+    // Delivery Plaza: landing pad with a parked shuttle, cargo, neon signs
+    { x: 1640, y: 1170, sprite: "landing_pad", ground: true, scale: 0.9 },
+    { x: 1640, y: 1200, sprite: "shuttle", scale: 0.7, box: { dx: -70, dy: -26, w: 140, h: 30 } },
+    { x: 1310, y: 960, sprite: "container", scale: 0.6, box: { dx: -56, dy: -24, w: 112, h: 28 } },
+    { x: 1700, y: 960, sprite: "container", scale: 0.55, flip: true, box: { dx: -52, dy: -22, w: 104, h: 26 } },
+    { x: 1270, y: 1250, sprite: "neon_sign", scale: 0.6, glow: "#ff5db1", glowY: 90, box: { dx: -12, dy: -8, w: 24, h: 12 } },
+    { x: 1270, y: 830, sprite: "neon_sign", scale: 0.6, glow: "#3fe0e8", glowY: 90, box: { dx: -12, dy: -8, w: 24, h: 12 } },
+    // shop street lamps + an antenna by the habitats
+    { x: 1660, y: 670, sprite: "orblamp", scale: 0.55, glow: "#ffe68a", glowY: 75, box: { dx: -12, dy: -8, w: 24, h: 12 } },
+    { x: 2050, y: 670, sprite: "orblamp", scale: 0.55, glow: "#ffe68a", glowY: 75, box: { dx: -12, dy: -8, w: 24, h: 12 } },
+    { x: 820, y: 1410, sprite: "antenna", scale: 0.65, anim: "sway", box: { dx: -20, dy: -12, w: 40, h: 16 } },
+    { x: 2280, y: 960, sprite: "container", scale: 0.55, box: { dx: -52, dy: -22, w: 104, h: 26 } },
+    // a little greenery in the habitat corner
+    { x: 500, y: 1050, sprite: "alienplant", scale: 0.65, anim: "sway", box: false },
+    { x: 1180, y: 1420, sprite: "crystal_b", scale: 0.55, glow: "#8ff6ff", anim: "pulse", box: { dx: -28, dy: -12, w: 56, h: 16 } },
+    { x: 1800, y: 1000, sprite: "crystal", scale: 0.5, glow: "#ff8fd8", anim: "pulse", box: { dx: -24, dy: -12, w: 48, h: 16 } },
   ],
 
   /* ---- Unlocks: the nursery grows richer as you play (no reading needed) ---- */
   unlocks: [
     { id: "ball", when: { stat: "play", atLeast: 3 }, message: "{i:gift} A new toy appeared in the nursery!",
-      scenery: { x: 1080, y: 860, sprite: "starball", scale: 0.6, anim: "bob", box: { dx: -18, dy: -10, w: 36, h: 14 } } },
+      scenery: { x: 820, y: 760, sprite: "starball", scale: 0.6, anim: "bob", box: { dx: -18, dy: -10, w: 36, h: 14 } } },
     { id: "lamps", when: { stat: "feed", atLeast: 4 }, message: "{i:gift} Cosy orb lamps light up the way!",
-      scenery: { x: 720, y: 760, sprite: "orblamp", scale: 0.7, glow: "#ffe68a", glowY: 90, box: { dx: -14, dy: -10, w: 28, h: 14 } } },
+      scenery: { x: 1180, y: 850, sprite: "orblamp", scale: 0.7, glow: "#ffe68a", glowY: 90, box: { dx: -14, dy: -10, w: 28, h: 14 } } },
     { id: "fountain", when: { stat: "polish", atLeast: 3 }, message: "{i:gift} A stardust fountain for the critters!",
-      scenery: { x: 1680, y: 1440, sprite: "fountain", scale: 0.7, glow: "#ff8fd8", glowY: 70, box: { dx: -62, dy: -28, w: 124, h: 32 } } },
-    { id: "spire", when: { stat: "jump", atLeast: 3 }, message: "{i:jump} A crystal spire grows by the Hop Course!",
-      scenery: { x: 2340, y: 640, sprite: "spire", scale: 1, glow: "#8ff6ff", glowY: 90, box: { dx: -18, dy: -12, w: 36, h: 16 } } },
+      scenery: { x: 1250, y: 1440, sprite: "fountain", scale: 0.7, glow: "#ff8fd8", glowY: 70, box: { dx: -62, dy: -28, w: 124, h: 32 } } },
+    { id: "spire", when: { stat: "jump", atLeast: 3 }, message: "{i:jump} A crystal spire grows by the Gravity Park!",
+      scenery: { x: 1760, y: 1640, sprite: "spire", scale: 1, glow: "#8ff6ff", glowY: 90, box: { dx: -18, dy: -12, w: 36, h: 16 } } },
     { id: "rich", when: { coins: 120 }, message: "{i:shard} So many shards — a golden crystal appears!",
-      scenery: { x: 380, y: 880, sprite: "crystal", scale: 0.8, glow: "#ffd24a", anim: "pulse", box: { dx: -36, dy: -16, w: 72, h: 20 } } },
+      scenery: { x: 520, y: 1100, sprite: "crystal", scale: 0.8, glow: "#ffd24a", anim: "pulse", box: { dx: -36, dy: -16, w: 72, h: 20 } } },
     { id: "family", when: (s) => (s.stats.births || 0) >= 1, message: "{i:egg} A glow plant blooms for the new hatchling!",
-      scenery: { x: 1500, y: 760, sprite: "alienplant", scale: 0.65, anim: "sway", box: false } },
+      scenery: { x: 1080, y: 560, sprite: "alienplant", scale: 0.65, anim: "sway", box: false } },
   ],
 
   /* ---- Objectives: four levels that walk through every system ---- */
@@ -468,36 +493,35 @@ window.GAME = {
         { id: "polish1", name: "Sparkle clean", desc: "Polish a critter {i:polish}", check: (s) => s.stats.polish >= 1 },
         { id: "happy", name: "All aglow", desc: "Get a critter's mood fully up", check: (s) => s.creatures.some((c) => (c.fuel + c.shine + c.joy) / 3 >= 85) },
       ] },
-      { name: "Rider", goals: [
-        { id: "ride1", name: "Hop on!", desc: "Ride a grown critter {i:ride}", check: (s) => (s.stats.ride || 0) >= 1 },
-        { id: "trail", name: "Comet Trail", desc: "Float along the Comet Trail", check: (s) => (s.stats.trailVisit || 0) >= 1 },
-        { id: "jump3", name: "Hop Course", desc: "Jump 3 obstacles {i:jump}", check: (s) => (s.stats.jump || 0) >= 3 },
-        { id: "decor1", name: "Decorator", desc: "Place a decoration {i:gift}", check: (s) => (s.stats.decor || 0) >= 1 },
-      ] },
       { name: "Courier", goals: [
-        { id: "job1", name: "First delivery", desc: "Deliver a crate {i:crate}", check: (s) => (s.stats.jobs || 0) >= 1 },
+        { id: "ride1", name: "Hop on!", desc: "Ride a grown critter {i:ride}", check: (s) => (s.stats.ride || 0) >= 1 },
+        { id: "job1", name: "First delivery", desc: "Fetch a crate and drop it on its target {i:crate}", check: (s) => (s.stats.jobs || 0) >= 1 },
+        { id: "trail", name: "Star Ring", desc: "Ride out onto the Star Ring", check: (s) => (s.stats.trailVisit || 0) >= 1 },
+        { id: "job3", name: "Busy courier", desc: "Make 3 deliveries {i:crate}", check: (s) => (s.stats.jobs || 0) >= 3 },
+      ] },
+      { name: "Racer", goals: [
         { id: "race1", name: "Comet racer", desc: "Win a race {i:flag}", check: (s) => (s.stats.raceWin || 0) >= 1 },
-        { id: "egg1", name: "A new hatchling", desc: "Have an egg hatch {i:egg}", check: (s) => (s.stats.births || 0) >= 1 },
+        { id: "jump3", name: "Gravity Park", desc: "Jump 3 obstacles {i:jump}", check: (s) => (s.stats.jump || 0) >= 3 },
+        { id: "decor1", name: "Decorator", desc: "Place a decoration {i:gift}", check: (s) => (s.stats.decor || 0) >= 1 },
         { id: "earn200", name: "Shard saver", desc: "Earn 200 {i:shard} in total", check: (s) => (s.stats.earned || 0) >= 200 },
       ] },
       { name: "Star Keeper", goals: [
         { id: "rare", name: "Rare friend", desc: "Get a critter from the Hatchery {i:egg}", check: (s) => (s.creatures || []).some((c) => c.model) },
-        { id: "job6", name: "Star courier", desc: "Make 6 deliveries {i:crate}", check: (s) => (s.stats.jobs || 0) >= 6 },
+        { id: "egg1", name: "A new hatchling", desc: "Have an egg hatch {i:egg}", check: (s) => (s.stats.births || 0) >= 1 },
+        { id: "job8", name: "Star courier", desc: "Make 8 deliveries {i:crate}", check: (s) => (s.stats.jobs || 0) >= 8 },
         { id: "race3", name: "Champion", desc: "Win 3 races {i:flag}", check: (s) => (s.stats.raceWin || 0) >= 3 },
-        { id: "family6", name: "Big family", desc: "Look after 6 critters {i:critter}", check: (s) => s.creatures.length >= 6 },
       ] },
     ],
   },
 
   /* ---- Help screen ---- */
   help: [
-    "<b>Welcome to your space nursery!</b> This demo shows everything the engine can do.",
+    "<b>Welcome to Nebula Station!</b> Look after your critters, ride them around the station and make deliveries. This demo shows everything the engine can do.",
     "{i:hand} <b>Move:</b> tap the floor — your keeper floats there, around obstacles (double-tap to run). Tap a critter or a building to use it. (Keyboard: arrows or WASD/ZQSD.)",
-    "{i:heart} <b>Three needs:</b> {i:battery} Energy (Feed, costs {i:nectar} nectar), {i:ball} Fun (Play) and {i:sparkle} Sparkle (Polish). A full Fun makes a critter beam with happy eyes!",
-    "{i:polish} <b>Polish:</b> a dusty critter pops a bubble. Tap Polish to zoom right in and rub the dust bunnies away with your finger!",
-    "{i:ride} <b>Ride:</b> hop on a grown critter, float along the <b>Comet Trail</b> and {i:jump} jump the comet rocks and the beams of the <b>Hop Course</b>. Riding uses Energy: recharge on the {i:pad} <b>Energy Pad</b>.",
+    "{i:heart} <b>Care:</b> {i:battery} Energy (Feed, costs {i:nectar} nectar), {i:ball} Fun (Play) and {i:sparkle} Sparkle (Polish — zoom in and rub the dust away). A full Fun makes a critter beam with happy eyes!",
+    "{i:crate} <b>Deliveries:</b> at the <b>Delivery Dock</b>, pick a job. Follow the arrow to the crate, pick it up, then drop it on the glowing target. Express and rare jobs pay more but {i:drone} drones chase you: outrun them, or get a makeover at the {i:palette} <b>Glow Salon</b>.",
+    "{i:ride} <b>Ride:</b> hop on a grown critter, cruise the <b>Star Ring</b> road and {i:jump} jump the comet rocks and the beams of the <b>Gravity Park</b>. Riding uses Energy: recharge on the {i:pad} <b>Energy Pad</b>.",
     "{i:flag} <b>Race:</b> while riding, tap Race — steer left and right, dodge the asteroids and reach the finish in time.",
-    "{i:crate} <b>Deliveries:</b> take one at the <b>Delivery Dock</b>, fetch the crate, then drop it on the target. A rare egg pays more but {i:drone} drones chase you: outrun them, or get a makeover at the {i:palette} <b>Glow Salon</b>.",
     "{i:shop} <b>Star Market:</b> nectar, a bigger nursery, decorations and new critters. {i:egg} <b>Hatchery:</b> rare, faster critters. {i:portal} <b>Wormhole:</b> call a wild critter.",
     "{i:moon} <b>Recharge Pod:</b> rest to reach the next cycle. Two happy grown critters may lay an egg overnight!",
     "{i:goals} <b>Goals:</b> four levels to complete. The game saves automatically.",
