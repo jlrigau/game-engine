@@ -231,6 +231,8 @@ function statKeys() {
   ACTIONS.forEach((a) => { if (a.stat) keys.add(a.stat); });
   keys.add("births"); keys.add("decor");
   (G.objectives && G.objectives.extraStats || []).forEach((k) => keys.add(k));
+  if (G.missions) keys.add(G.missions.stat || "missions");
+  if (G.race) keys.add(G.race.stat || "raceWin");
   return [...keys];
 }
 function freshStats() { const o = {}; statKeys().forEach((k) => (o[k] = 0)); return o; }
@@ -314,6 +316,9 @@ function newCreature(o = {}) {
     age: o.age != null ? o.age : randInt((CREATURE.aging && CREATURE.aging.adultAge) || 5, ((CREATURE.aging && CREATURE.aging.adultAge) || 5) + 4),
     x: 0, y: 0, tx: 0, ty: 0, nextStep: 0, obj: null,
   };
+  // optional per-creature mount stats (e.g. a faster car bought from `models`):
+  // speedMul (ride speed), grip (race steering), drainMul (ride fatigue rate), model (its id)
+  ["model", "speedMul", "grip", "drainMul"].forEach((k) => { if (o[k] != null) c[k] = o[k]; });
   NEEDS.forEach((n) => { c[n.id] = n.start != null ? n.start : 80; });
   placeInHome(c);
   return c;
@@ -342,7 +347,32 @@ function save() {
   const skip = { obj: 1, bodyT: 1, heartT: 1, wantT: 1, nameT: 1, shadowT: 1 };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(state, (k, v) => skip[k] ? undefined : v)); } catch (e) {}
 }
-function load() { try { const b = localStorage.getItem(SAVE_KEY); return b ? JSON.parse(b) : null; } catch (e) { return null; } }
+function load() {
+  try {
+    const b = localStorage.getItem(SAVE_KEY) || migrateLegacySave();
+    return b ? JSON.parse(b) : null;
+  } catch (e) { return null; }
+}
+// meta.legacySave = { key: "old-key" | ["k1","k2"], migrate: (old) => newStateLike }:
+// a game rebuilt on this engine keeps its players' progress. When there is no save under
+// SAVE_KEY yet, the first legacy save found is converted by the game's migrate() and
+// stored under SAVE_KEY (the legacy key is left untouched, so nothing is ever lost).
+// continueGame() then fills any missing field with its defaults, as for any old save.
+function migrateLegacySave() {
+  const L = META.legacySave; if (!L) return null;
+  for (const k of [].concat(L.key || [])) {
+    let old = null;
+    try { const raw = localStorage.getItem(k); old = raw ? JSON.parse(raw) : null; } catch (e) { old = null; }
+    if (!old) continue;
+    let s = null;
+    try { s = typeof L.migrate === "function" ? L.migrate(old) : old; } catch (e) { console.warn("legacy save migration failed", e); s = null; }
+    if (!s) continue;
+    const out = JSON.stringify(s);
+    try { localStorage.setItem(SAVE_KEY, out); } catch (e) {}
+    return out;
+  }
+  return null;
+}
 
 /* ===================== Sound (procedural WebAudio — no audio files) ===================== */
 // Config: GAME.audio = { volume, sfx:{name:false|{notes,type,vol,dur,gap}}, music:{...}|false }.
@@ -460,6 +490,9 @@ let pendingPlayer = null, placeNameTmp = META.startName || "My Place";
 
 function init() {
   applyStaticText();
+  // The panel stays hidden until it has something to show (an empty card would show as a
+  // bare strip at the bottom while the world loads).
+  const pn = $("panel"); if (pn) { pn.innerHTML = ""; pn.classList.add("idle"); }
   $("btn-start").addEventListener("click", () => {
     placeNameTmp = $("place-name-input").value.trim() || (META.startName || "My Place");
     openCreate({ avatar: CHARACTERS[0].id }, () => newGame(placeNameTmp, pendingPlayer));
@@ -492,7 +525,8 @@ function init() {
   document.addEventListener("click", (e) => {
     const btn = e.target.closest("button"); if (!btn) return;
     if (btn.id !== "btn-sound") Sound.play("click");
-    if (btn.dataset.creature) creatureAction(btn.dataset.creature);
+    if (btn.dataset.choice !== undefined) choicePick(+btn.dataset.choice);
+    else if (btn.dataset.creature) creatureAction(btn.dataset.creature);
     else if (btn.dataset.station) interact({ type: btn.dataset.station, station: true });
     else if (btn.dataset.shop) buy(btn.dataset.shop);
     else if (btn.dataset.decor) buyDecor(btn.dataset.decor);
@@ -576,6 +610,7 @@ function newGame(name, player) {
     day: 1, capacity: ECON.startCapacity || 4,
     creatures: [], decors: [], speed: 1, actionsSinceRest: 0, lastBirth: 0,
     stats: freshStats(), goalsDone: {}, level: 1, unlocked: {},
+    mission: null, heat: 0, lastRide: null,
   };
   const startN = (CREATURE && CREATURE.startCount) || 0;
   for (let i = 0; i < startN; i++) {
@@ -601,6 +636,11 @@ function continueGame() {
   state.stats = Object.assign(freshStats(), state.stats || {});
   if (!state.goalsDone) state.goalsDone = {};
   if (!state.unlocked) state.unlocked = {};
+  if (state.mission === undefined) state.mission = state.job || null;   // older engine builds called it "job"
+  delete state.job;
+  if (typeof state.heat !== "number") state.heat = 0;
+  if (state.lastRide === undefined) state.lastRide = state.lastCar != null ? state.lastCar : null;
+  delete state.lastCar;
   recalcLevel();
   state.creatures = (state.creatures || []).map((c) => {
     const base = newCreature({}); // ensures any new need fields exist with defaults
@@ -637,7 +677,9 @@ function buildHud() {
   if (META.showDay !== false) html += chip("chip-day", "calendar", T("dayLabel", "Day"), "hud-day");
   if (CREATURE && META.showCreatureCount !== false) html += chip("chip-cap", CREATURE.icon || "heart", CREATURE.label || "creatures", "hud-cap");
   if (LEVELS.length) html += chip("chip-level", "trophy", T("levelLabel", "Level"), "hud-level");
+  if (G.chase) html += `<span class="resource heat hidden" id="chip-heat" title="${esc(stripIcons(G.chase.label || ""))}"><span class="heat-icons"></span></span>`;
   bar.innerHTML = html;
+  if (G.chase) refreshHeat();
   bar.classList.toggle("hidden", !html);
   const pa = $("place-avatar");
   if (pa && state && state.player) pa.innerHTML = `<img src="${thumbSrc(charDef(state.player.avatar))}" alt="" />`;
@@ -831,7 +873,7 @@ let moveTarget = null, navPath = [], pendingInteract = null, followCreature = nu
 let placingDecor = null, ghostDecor = null, ghostSide = 1;
 let nightRunning = false;
 let running = false, lastTapT = 0, lastInputT = 0;
-let rideFatigueAcc = 0;
+let rideFatigueAcc = 0, playerMoving = false;
 let jumpRunning = false;
 const jumpAnim = { h: 0 };
 let activeTarget = null, panelId = null, mounted = null;
@@ -945,15 +987,48 @@ function buildAnims() {
     const w = CREATURE.walk || { start: 0, end: 3, frameRate: 6 };
     // One walk anim per distinct sheet (base + any variant with its own sheet), so
     // variants that ship a dedicated spritesheet animate instead of snapping back
-    // to the base sheet's frames.
+    // to the base sheet's frames. A directional sheet (creature.dirSheet) gets one
+    // anim per direction (rows up/left/down/right, like a character walkcycle).
     creatureSheets().forEach((sheet) => {
-      const key = "creature-walk-" + sheet;
-      if (!sc.anims.exists(key) && sc.textures.exists(sheet)) sc.anims.create({
-        key, frames: sc.anims.generateFrameNumbers(sheet, { start: w.start, end: w.end }),
-        frameRate: w.frameRate || 6, repeat: -1,
+      if (!sc.textures.exists(sheet)) return;
+      (DIR_SHEET ? Object.keys(DIRS) : [null]).forEach((dir) => {
+        const key = "creature-walk-" + sheet + (dir ? "-" + dir : "");
+        const base = dir ? DIRS[dir] * dirCols() : 0;
+        if (!sc.anims.exists(key)) sc.anims.create({
+          key, frames: sc.anims.generateFrameNumbers(sheet, { start: base + w.start, end: base + w.end }),
+          frameRate: w.frameRate || 6, repeat: -1,
+        });
       });
     });
   }
+}
+// creature.dirSheet: true | { cols } — the creature sheet has 4 rows (up, left, down, right)
+// instead of one side-view strip flipped left/right (e.g. vehicles seen from above).
+const DIR_SHEET = CREATURE && CREATURE.dirSheet ? (CREATURE.dirSheet === true ? {} : CREATURE.dirSheet) : null;
+function dirCols() { const w = (CREATURE && CREATURE.walk) || {}; return (DIR_SHEET && DIR_SHEET.cols) || ((w.end != null ? w.end : 3) + 1); }
+function dirOf(dx, dy) { return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down"); }
+// Turn a creature towards a direction of travel (or towards something it looks at).
+function faceCreature(c, dx, dy) {
+  if (!c || !c.bodyT) return;
+  if (!DIR_SHEET) { if (dx) c.bodyT.setFlipX(dx > 0); return; }
+  if (!dx && !dy) return;
+  const dir = dirOf(dx, dy);
+  if (c.facing === dir) return;
+  c.facing = dir;
+  const k = creatureWalkKey(c), playing = c.bodyT.anims.isPlaying;
+  c.bodyT.play(k, true);
+  if (!playing) { c.bodyT.anims.stop(); c.bodyT.setFrame(idleFrameOf(c)); }
+}
+// The ridden creature faces where the player drives it.
+function faceMount(c) {
+  if (DIR_SHEET) faceCreature(c, playerFacing === "left" ? -1 : playerFacing === "right" ? 1 : 0, playerFacing === "up" ? -1 : playerFacing === "down" ? 1 : 0);
+  else if (c.bodyT) c.bodyT.setFlipX(playerFacing === "right");
+}
+// creature.walk.idleFrame: frame (within the walk strip) shown while standing still;
+// omitted → the walk loop keeps playing (legacy behaviour).
+function idleFrameOf(c) {
+  const w = (CREATURE && CREATURE.walk) || {};
+  return (DIR_SHEET ? DIRS[c.facing || "down"] * dirCols() : 0) + (w.start || 0) + (w.idleFrame || 0);
 }
 
 /* ===================== Fences & zones ===================== */
@@ -1064,16 +1139,18 @@ function buildEnvironment() {
     const f = ENV.forest || {};
     const step = f.step || 44, tree = f.tree || "tree", bush = f.bush || "bush";
     const hedgeM = f.hedgeMargin || 80;
+    // sprite scales: [min, max] (defaults sized for the legacy 64-px pixel-art sprites)
+    const tS = f.treeScale || [1.5, 1.9], bS = f.bushScale || [1.1, 1.4], hb = f.hedgeBox || { dx: -22, dy: -10, w: 44, h: 14 };
     for (let gy = 24; gy <= WORLD.h; gy += step) {
       for (let gx = 24; gx <= WORLD.w; gx += step) {
         if (!inBand(gx, gy) || nearStation(gx, gy) || inProtectedZone(gx, gy)) continue;
         if (onPath(gx, gy, 6)) continue;                      // keep the path clear
         const x = gx + randInt(-7, 7), y = gy + randInt(-6, 6);
         if (onPath(gx, gy, hedgeM)) {                          // path edge → low hedge (bush)
-          sc.add.image(x, y, bush).setOrigin(0.5, 0.9).setScale(randInt(11, 14) / 10 / RES(bush)).setDepth(y);
-          COLLISIONS.push({ x: x - 22, y: y - 10, w: 44, h: 14 });
+          sc.add.image(x, y, bush).setOrigin(0.5, 0.9).setScale(rand(bS[0], bS[1]) / RES(bush)).setDepth(y);
+          COLLISIONS.push({ x: x + hb.dx, y: y + hb.dy, w: hb.w, h: hb.h });
         } else {                                               // farther → forest (trees, no tight collision)
-          sc.add.image(x, y, tree).setOrigin(0.5, 0.95).setScale(randInt(15, 19) / 10 / RES(tree)).setDepth(y);
+          sc.add.image(x, y, tree).setOrigin(0.5, 0.95).setScale(rand(tS[0], tS[1]) / RES(tree)).setDepth(y);
         }
       }
     }
@@ -1083,15 +1160,15 @@ function buildEnvironment() {
       for (let gx = -M; gx <= WORLD.w + M; gx += 90) {
         if (gx > -10 && gx < WORLD.w + 10 && gy > -10 && gy < WORLD.h + 10) continue;
         const x = gx + randInt(-13, 13), y = gy + randInt(-13, 13);
-        { const k = (gx + gy) % 4 === 0 ? bush : tree; sc.add.image(x, y, k).setOrigin(0.5, 0.95).setScale(randInt(15, 19) / 10 / RES(k)).setDepth(y); }
+        { const k = (gx + gy) % 4 === 0 ? bush : tree, r = k === bush ? bS : tS; sc.add.image(x, y, k).setOrigin(0.5, 0.95).setScale(rand(r[0], r[1]) * (k === bush ? 1.3 : 1) / RES(k)).setDepth(y); }
       }
     }
     // jumpable logs across the horizontal sides — centred on the visible path
     if (p.logs) {
-      const sprite = p.logs.sprite || "logs", scale = p.logs.scale || 1.3;
+      const sprite = p.logs.sprite || "logs", scale = p.logs.scale || 1.3, lb = p.logs.box || { dx: -22, dy: -50, w: 44, h: 100 };
       LOGS.forEach((r) => {
-        sc.add.image(r.x, r.y, sprite).setOrigin(0.5, 0.5).setScale(scale / RES(sprite)).setDepth(r.y + 30);
-        COLLISIONS.push({ x: r.x - 22, y: r.y - 50, w: 44, h: 100, jumpable: true });
+        sc.add.image(r.x, r.y, sprite).setOrigin(0.5, 0.5).setScale(scale / RES(sprite)).setDepth(r.y + (p.logs.depthLift != null ? p.logs.depthLift : 30));
+        COLLISIONS.push({ x: r.x + lb.dx, y: r.y + lb.dy, w: lb.w, h: lb.h, jumpable: true });
       });
     }
   }
@@ -1306,6 +1383,11 @@ function sceneCreate() {
   if (G.camera && G.camera.clampToWorld) this.cameras.main.setBounds(0, 0, WORLD.w, WORLD.h);
   else this.cameras.main.setBounds(-700, -700, WORLD.w + 1400, WORLD.h + 1400);
   this.cameras.main.setBackgroundColor((G.world && G.world.bg) || "#6fae4f");
+  // Reveal the canvas only once the world has been drawn (no black first frame while
+  // loading; #world shows the edge colour meanwhile, then the world fades in).
+  const wEl = $("world"), reveal = () => wEl && wEl.classList.add("ready");
+  this.game.events.once("postrender", () => requestAnimationFrame(reveal));
+  setTimeout(reveal, 2500);
   buildAnims();
   buildWorld();
   cursors = this.input.keyboard.createCursorKeys();
@@ -1335,6 +1417,8 @@ function buildWorld() {
   decorObjs = []; ambient = [];
   COLLISIONS = []; COLLISIONS_DIRTY = true;
   placingDecor = null; ghostDecor = null; jumpRunning = false; navPath = []; moveTarget = null;
+  if (R3.on) r3Teardown();
+  msRing = msMarker = msArrow = null; chasers = []; catchT = 0; evadeT = 0;
 
   // Ground: tiled, extending beyond the world so no gaps show at the edges.
   const ground = (G.world && G.world.groundTile) || "grass";
@@ -1485,7 +1569,7 @@ function creatureTexture(c) {
   if (happy && !(v && v.sheet) && CREATURE.happySheet && sc.textures.exists(CREATURE.happySheet)) return CREATURE.happySheet;
   return (v && v.sheet) ? v.sheet : CREATURE.sheet;
 }
-function creatureWalkKey(c) { return "creature-walk-" + creatureTexture(c); }
+function creatureWalkKey(c) { return "creature-walk-" + creatureTexture(c) + (DIR_SHEET ? "-" + (c.facing || "down") : ""); }
 
 function buildCreatureObj(c) {
   const scale = creatureScale(c);
@@ -1551,16 +1635,30 @@ function buildDecors() {
 // Animate the player by direction (or idle pose facing the last direction).
 function animatePlayer(mvx, mvy, t) {
   if (!playerSprite) return;
-  const sheet = charDef(state.player.avatar).sheet;
+  const ch = charDef(state.player.avatar), sheet = ch.sheet;
   const ps = ((G.player && G.player.scale) || 1.7) / RES(sheet);
   if (mounted) {
-    if (mvx) playerFacing = mvx < 0 ? "left" : "right";
+    const RIDE = (CREATURE && CREATURE.ride) || {};
+    if (DIR_SHEET) { if (mvx || mvy) playerFacing = dirOf(mvx, mvy); }       // a vehicle seen from above: 4 directions
+    else if (mvx) playerFacing = mvx < 0 ? "left" : "right";
     else if (playerFacing !== "left" && playerFacing !== "right") playerFacing = "right";
     playerSprite.anims.stop();
-    playerSprite.setFrame(DIRS[playerFacing] * 9);
-    playerSprite.setScale(ps);
+    playerSprite.setVisible(!RIDE.hideRider);                                // e.g. a driver hidden inside the car
+    // character.rideSheet: a seated pose (one frame, facing left) instead of the standing idle frame
+    const rs = ch.rideSheet && sc.textures.exists(ch.rideSheet) ? ch.rideSheet : null;
+    if (rs) {
+      if (playerSprite.texture.key !== rs) playerSprite.setTexture(rs, 0);
+      playerSprite.setFlipX(playerFacing === "right");
+      playerSprite.setScale(((G.player && G.player.scale) || 1.7) / RES(rs));
+    } else {
+      playerSprite.setFrame(DIRS[playerFacing] * 9);
+      playerSprite.setScale(ps);
+    }
     return;
   }
+  if (playerSprite.texture.key !== sheet) playerSprite.setTexture(sheet, DIRS[playerFacing] * 9);
+  if (playerSprite.flipX) playerSprite.setFlipX(false);
+  if (!playerSprite.visible) playerSprite.setVisible(true);
   if (mvx || mvy) {
     const dir = Math.abs(mvx) > Math.abs(mvy) * 0.9 ? (mvx < 0 ? "left" : "right") : (mvy < 0 ? "up" : "down");
     playerFacing = dir;
@@ -1583,7 +1681,7 @@ function animatePlayer(mvx, mvy, t) {
 function sceneUpdate(time, delta) {
   if (!player) return;
   const dt = Math.min(delta / 1000, 0.1);
-  const modalOpen = !$("modal").classList.contains("hidden") || nightRunning || closeupOpen;
+  const modalOpen = !$("modal").classList.contains("hidden") || nightRunning || closeupOpen || R3.on;
   if (COLLISIONS_DIRTY) buildNav();
 
   let vx = 0, vy = 0;
@@ -1610,7 +1708,7 @@ function sceneUpdate(time, delta) {
   let mvx = 0, mvy = 0;
   if (!jumpRunning) {
     const sp = (G.player && G.player.speed) || { walk: 200, run: 370, rideWalk: 340, rideRun: 560 };
-    const spd = mounted ? (running ? sp.rideRun : sp.rideWalk) : (running ? sp.run : sp.walk);
+    const spd = mounted ? (running ? sp.rideRun : sp.rideWalk) * (mounted.speedMul || 1) : (running ? sp.run : sp.walk);
     if (vx || vy) {
       moveTarget = null; navPath = []; pendingInteract = null; running = false;
       const n = Math.hypot(vx, vy); mvx = vx / n; mvy = vy / n;
@@ -1638,6 +1736,7 @@ function sceneUpdate(time, delta) {
   } else {
     animatePlayer(0, 0, time);
   }
+  playerMoving = !!(mvx || mvy) || jumpRunning;
   player.setDepth(player.y);
 
   // Decor placement: ghost stays beside the player, red if the spot is forbidden.
@@ -1653,11 +1752,11 @@ function sceneUpdate(time, delta) {
     const arc = jumpAnim.h * 70;
     mounted.obj.x = player.x; mounted.obj.y = player.y - arc; mounted.x = player.x; mounted.y = player.y;
     mounted.obj.setDepth(player.y - 1);
-    mounted.bodyT.setFlipX(playerFacing === "right");
+    faceMount(mounted);
     playerSprite.y = (RIDE.sitY || -58) - arc; playerShadow.setVisible(false);
     if (playerName) playerName.setPosition(player.x, player.y + (RIDE.nameY || -138) - arc);
     if (RIDE.fatigueNeed) {
-      const rate = (mvx || mvy) ? (running ? 2.4 : 1.1) : 0.3;
+      const rate = ((mvx || mvy) ? (running ? 2.4 : 1.1) : 0.3) * (mounted.drainMul || 1);
       rideFatigueAcc += rate * dt;
       if (rideFatigueAcc >= 1) {
         const dn = Math.floor(rideFatigueAcc); rideFatigueAcc -= dn;
@@ -1675,6 +1774,7 @@ function sceneUpdate(time, delta) {
     if (statKeys().includes("trailVisit")) { state.stats.trailVisit = 1; refreshHud(); }
   }
 
+  if (!modalOpen) { if (MISSIONS) missionTick(dt, time); if (CHASE) chaseTick(dt); }
   updateCreatures(time, dt);
   updateAmbient(time, dt);
   refreshInteraction();
@@ -1692,7 +1792,7 @@ function updateCreatures(now, dt) {
       const dp = (CREATURE && CREATURE.depart) || {};
       const sp = dp.speed || 110;
       const dx = c.exitX - c.x, dy = c.exitY - c.y, d = Math.hypot(dx, dy) || 1;
-      if (d > 6) { c.x += (dx / d) * sp * dt; c.y += (dy / d) * sp * dt; if (c.bodyT) c.bodyT.setFlipX(dx > 0); moving = true; }
+      if (d > 6) { c.x += (dx / d) * sp * dt; c.y += (dy / d) * sp * dt; faceCreature(c, dx, dy); moving = true; }
       c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
       c.departT = (c.departT || 0) + dt;
       // don't start fading until the creature has actually walked out of the home zone,
@@ -1707,10 +1807,10 @@ function updateCreatures(now, dt) {
         c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
       } else if (!c.arriving && distPlayer(c.x, c.y) < 115) {
         c.nextStep = now + 800;
-        c.bodyT.setFlipX(player.x > c.x);
+        if (!DIR_SHEET) faceCreature(c, player.x - c.x, 0);   // turn to look at the player (side-view sheets)
         c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
       } else {
-        if (!c.arriving && now > c.nextStep) {
+        if (!c.arriving && now > c.nextStep && CREATURE.wander !== false) {   // wander:false → stays put (parked cars)
           const p = freeSpotIn(homeRect(), 70);
           // only accept a target reachable in a straight line (no walking through furniture)
           if (lineFree(c.x, c.y, p.x, p.y)) { c.tx = p.x; c.ty = p.y; }
@@ -1718,7 +1818,7 @@ function updateCreatures(now, dt) {
         }
         const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy);
         const spd = c.arriving ? ((CREATURE.arrive && CREATURE.arrive.speed) || 120) : wanderSpeed;
-        if (d > 3) { c.x += (dx / d) * spd * dt; c.y += (dy / d) * spd * dt; if (Math.abs(dx) > 1) c.bodyT.setFlipX(dx > 0); moving = true; }
+        if (d > 3) { c.x += (dx / d) * spd * dt; c.y += (dy / d) * spd * dt; if (Math.abs(dx) > 1 || DIR_SHEET) faceCreature(c, Math.abs(dx) > 1 ? dx : 0, dy); moving = true; }
         else if (c.arriving) { c.arriving = false; c.nextStep = now + randInt(1200, 3000); }
         if (!c.arriving) {
           const o = { x: c.x, y: c.y }; pushOut(o, 12, 8); c.x = o.x; c.y = o.y;      // never sink into furniture
@@ -1726,7 +1826,8 @@ function updateCreatures(now, dt) {
         c.obj.x = c.x; c.obj.y = c.y; c.obj.setDepth(c.y);
       }
     } else {
-      c.bodyT.setFlipX(playerFacing === "right");
+      faceMount(c);
+      moving = playerMoving;
     }
     animateCreatureBody(c, now, moving);
     updateMood(c, now);
@@ -1756,6 +1857,10 @@ function animateCreatureBody(c, now, moving) {
   if (c.nameT && c.obj) { c.nameT.setPosition(c.obj.x, c.obj.y + (CREATURE.nameY != null ? CREATURE.nameY : 22)); c.nameT.setAlpha(c.obj.alpha); }
   const t = c.bodyT; if (!t || c.celebrating || (sc.tweens.isTweening && sc.tweens.isTweening(t))) return;
   const s = c.baseScale || 1, k = c.k || s, W = CREATURE.walk || {};
+  if (W.idleFrame != null) {                     // stand still on a pose instead of walking in place
+    if (moving) { const key = creatureWalkKey(c), cur = t.anims.currentAnim; if (!t.anims.isPlaying || !cur || cur.key !== key) t.play(key); }
+    else if (t.anims.isPlaying || t.frame.name !== idleFrameOf(c)) { t.anims.stop(); t.setFrame(idleFrameOf(c)); }
+  }
   if (moving && W.hop) {
     const ph = (now / (W.hopPeriod || 300)) * Math.PI + c.ph;
     const h = Math.abs(Math.sin(ph));
@@ -1868,6 +1973,9 @@ function spawnCreatures(st) {
 }
 
 function distPlayer(x, y) { return Math.hypot(player.x - x, player.y - y); }
+// Money in: coins + the lifetime "earned" stat (when a game tracks it in objectives.extraStats).
+function earn(n) { if (!n) return; state.coins += n; if (state.stats && statKeys().includes("earned")) state.stats.earned = (state.stats.earned || 0) + n; }
+function spend(n) { if (state.coins < n) { Sound.play("error"); message(META.notEnough || "Not enough coins!"); return false; } state.coins -= n; return true; }
 
 function refreshInteraction() {
   if (placingDecor) {
@@ -1890,7 +1998,7 @@ function refreshInteraction() {
     panelId = id; buildPanel();
     if (best && best !== prev) {
       Sound.play("select");
-      if (isCreature(best) && best.bodyT && sc && !best.celebrating) {           // a little "hello!" hop
+      if (isCreature(best) && best.bodyT && sc && !best.celebrating && CREATURE.hello !== false) {   // a little "hello!" hop
         sc.tweens.add({ targets: best.bodyT, y: -14 * (best.baseScale || 1), duration: 140, yoyo: true, ease: "Quad.easeOut" });
       }
     }
@@ -1959,7 +2067,7 @@ function guideEdgeEl() {
 /* ===================== Pointer ===================== */
 
 function onPointer(p) {
-  if (!$("modal").classList.contains("hidden") || closeupOpen || nightRunning) return;
+  if (!$("modal").classList.contains("hidden") || closeupOpen || nightRunning || R3.on) return;
   const wx = p.worldX, wy = p.worldY;
   const tnow = nowMs();
   running = (tnow - lastTapT) < 350;
@@ -2034,10 +2142,12 @@ function buildPanel() {
     if (isMounted) {
       const rideAct = ACTIONS.find((a) => a.type === "ride");
       const jumpAct = ACTIONS.find((a) => a.type === "jump");
-      actions = (jumpAct ? actBtn(`data-creature="${jumpAct.id}"`, jumpAct.icon, jumpAct.label, jumpAct.color) : "")
+      const raceAct = RACE && ACTIONS.find((a) => a.type === "race");
+      actions = (raceAct ? actBtn(`data-creature="${raceAct.id}"`, raceAct.icon, raceAct.label, raceAct.color, "act-primary") : "")
+        + (jumpAct ? actBtn(`data-creature="${jumpAct.id}"`, jumpAct.icon, jumpAct.label, jumpAct.color) : "")
         + actBtn(`data-creature="${rideAct.id}"`, rideAct.dismountIcon || "close", rideAct.dismountLabel || "Get off", "var(--bad)");
     } else {
-      const list = ACTIONS.filter((a) => a.type !== "jump");
+      const list = ACTIONS.filter((a) => a.type !== "jump" && a.type !== "race");
       const single = list.length === 1;
       actions = list.map((a) => actBtn(`data-creature="${a.id}"`, a.icon, a.label, a.color,
         (a.type === "closeup" ? "act-primary" : "") + (single ? " act-wide" : "") + (a.type === "customize" ? " act-soft" : ""))).join("");
@@ -2054,7 +2164,7 @@ function buildPanel() {
         </div>
       </div>
       ${CREATURE.showBars === false ? "" : '<div class="pc-needs" id="pc-bars"></div>'}
-      <div class="pc-actions${!isMounted && ACTIONS.length >= 3 ? " tiles" : ""}">${actions}</div>`;
+      <div class="pc-actions${(isMounted ? (RACE ? 3 : 2) : ACTIONS.filter((a) => a.type !== "jump" && a.type !== "race").length) >= 3 ? " tiles" : ""}">${actions}</div>`;
     refreshBars(c);
   } else {
     const s = activeTarget;
@@ -2109,7 +2219,10 @@ function interact(target) {
   if (st.action === "nextDay") nextDay();
   else if (st.action === "spawn") spawnCreatures(st);
   else if (st.action === "openShop") openShop();
-  else if (st.action === "custom" && typeof st.onUse === "function") st.onUse(state, { message, refreshHud, save });
+  else if (st.action === "menu") openStationMenu(st);
+  else if (st.action === "missions") openMissions();
+  else if (st.action === "models") openModels();
+  else if (st.action === "custom" && typeof st.onUse === "function") st.onUse(state, stationApi());
 }
 
 function creatureAction(actionId) {
@@ -2121,6 +2234,7 @@ function creatureAction(actionId) {
   if (a.type === "jump") { doJump(); return; }
   if (a.type === "customize") { openCustomize(c); return; }
   if (a.type === "closeup") { openCloseup(c, a); return; }
+  if (a.type === "race") { if (R3.on) endRace(false, true); else startRace(); return; }
 
   // resource cost
   if (a.cost) {
@@ -2135,7 +2249,7 @@ function creatureAction(actionId) {
   const moodBefore = MOOD_NEED ? (c[MOOD_NEED] || 0) : 0;
   // apply need effects
   Object.keys(a.effects || {}).forEach((k) => { c[k] = clamp01((c[k] || 0) + a.effects[k]); });
-  if (a.reward) { state.coins += a.reward; flyReward(c.x, c.y - 40, "+" + a.reward + " " + coinTok()); }
+  if (a.reward) { earn(a.reward); flyReward(c.x, c.y - 40, "+" + a.reward + " " + coinTok()); }
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (a.stat) state.stats[a.stat] = (state.stats[a.stat] || 0) + 1;
   if (a.anim) actionAnim(c, a.anim);
@@ -2143,7 +2257,7 @@ function creatureAction(actionId) {
 
   // celebrate when the mood need reaches max during this action (adults only)
   let celebrated = false;
-  if (MOOD_NEED && CREATURE.celebrate && (!CREATURE.celebrate.adultsOnly || !isYoung(c)) && moodBefore < 100 && (c[MOOD_NEED] || 0) >= 100) {
+  if (canCelebrate(c, a) && moodBefore < 100 && (c[MOOD_NEED] || 0) >= 100) {
     sc && sc.time.delayedCall(700, () => celebrate(c));
     celebrated = true;
   }
@@ -2157,7 +2271,7 @@ function toggleRide(c) {
   if (mounted === c) { dismount(c, false); return; }
   if (RIDE.adultsOnly && isYoung(c)) { message((RIDE.tooYoung || "{name} is too young to ride.").replace("{name}", c.name)); return; }
   if (RIDE.minEnergy && RIDE.fatigueNeed && (c[RIDE.fatigueNeed] || 0) < RIDE.minEnergy) { message((RIDE.tooTired || "{name} is too tired.").replace("{name}", c.name)); return; }
-  mounted = c;
+  mounted = c; state.lastRide = c.id;
   if (RIDE.onMount) Object.keys(RIDE.onMount).forEach((k) => (c[k] = clamp01((c[k] || 0) + RIDE.onMount[k])));
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (statKeys().includes("ride")) state.stats.ride = (state.stats.ride || 0) + 1;
@@ -2176,10 +2290,15 @@ function doJump() {
   rideFatigueAcc = 0; state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (statKeys().includes("jump")) state.stats.jump = (state.stats.jump || 0) + 1;
   jumpRunning = true; moveTarget = null; navPath = []; followCreature = null;
-  const dir = (playerFacing === "left") ? -1 : 1;
-  const targetX = clamp(player.x + dir * (J.distance || 165), 40, WORLD.w - 40);
+  // leap forward where the player faces (left/right for side views, 4 ways for dirSheet vehicles)
+  const dx = playerFacing === "left" ? -1 : playerFacing === "right" ? 1 : 0, dy = playerFacing === "up" ? -1 : playerFacing === "down" ? 1 : 0;
+  const fx = (dx || dy) ? dx : 1, dist = J.distance || 165;
+  const targetX = clamp(player.x + fx * dist, 40, WORLD.w - 40), targetY = clamp(player.y + dy * dist, 40, WORLD.h - 40);
   Sound.play("whoosh");
-  sc.tweens.add({ targets: player, x: targetX, duration: 560, ease: "Quad.easeOut", onComplete: () => { jumpRunning = false; } });
+  sc.tweens.add({ targets: player, x: targetX, y: targetY, duration: 560, ease: "Quad.easeOut", onComplete: () => {
+    jumpRunning = false;
+    if (J.reward) { earn(J.reward); flyReward(player.x, player.y - 60, "+" + J.reward + " " + coinTok()); if (J.rewardMessage) message(J.rewardMessage.replace("{r}", J.reward)); refreshHud(); }
+  } });
   jumpAnim.h = 0;
   sc.tweens.add({ targets: jumpAnim, h: 1, duration: 290, yoyo: true, ease: "Sine.easeOut" });
   if (MOOD_NEED) c[MOOD_NEED] = clamp01((c[MOOD_NEED] || 0) + 4);
@@ -2188,7 +2307,7 @@ function doJump() {
 
 function dismount(c, exhausted) {
   mounted = null; moveTarget = null; navPath = []; running = false; rideFatigueAcc = 0; jumpRunning = false;
-  if (playerSprite) playerSprite.y = 0;
+  if (playerSprite) { playerSprite.y = 0; playerSprite.setVisible(true); }
   if (playerShadow) playerShadow.setVisible(true);
   c.x = clamp(player.x + 135, 40, WORLD.w - 40);
   c.y = clamp(player.y, 40, WORLD.h - 40);
@@ -2316,6 +2435,14 @@ function actionAnim(c, anim) {
   }
 }
 
+// Does reaching the max mood with this action trigger the celebration? celebrate.adultsOnly,
+// and celebrate.actions:[ids] to reserve it to some actions (e.g. only when playing).
+function canCelebrate(c, a) {
+  const cel = CREATURE && CREATURE.celebrate;
+  if (!MOOD_NEED || !cel) return false;
+  if (cel.adultsOnly && isYoung(c)) return false;
+  return !cel.actions || cel.actions.includes(a.id);
+}
 // Celebration: a happy hop (or rear) + a configurable particle burst.
 function celebrate(c) {
   if (!c.bodyT || !sc || c.celebrating) return;
@@ -2396,7 +2523,7 @@ function applyDay() {
     if (lowMood || firstNeed) neglected.push(c.name);
   });
   mounted = null;
-  if (playerSprite) playerSprite.y = 0;
+  if (playerSprite) { playerSprite.y = 0; playerSprite.setVisible(true); }
   if (playerShadow) playerShadow.setVisible(true);
   const baby = tryBirth();
   refreshHud(); save();
@@ -2441,28 +2568,29 @@ function closeModal() { $("modal").classList.add("hidden"); lastInputT = nowMs()
 
 function openShop() {
   const room = state.creatures.length < state.capacity;
-  let html = "";
+  // rows share the choice-list look (icon tile, title, subtitle, price pill)
+  const row = (attr, icon, name, sub, price, img) => `<button class="choice" ${attr}><span class="ch-ico">${img ? `<img src="${av(img)}" alt="" draggable="false" />` : iconHTML(icon || "gift")}</span>
+      <span class="ch-txt"><b>${fmt(name)}</b>${sub ? `<small>${fmt(sub)}</small>` : ""}</span><span class="ch-price">${iconHTML(META.coinIcon || "star")}<b>${price}</b></span></button>`;
+  let html = `<div class="choice-list">`;
   (SHOP.resources || []).forEach((r) => {
-    html += `<div class="shop-row"><div class="desc"><b>${r.icon || ""} ${r.name}</b><small>${r.desc || ""}</small></div>
-      <button class="btn" data-shop="res:${r.id}">${r.price} ${fmt(coinTok())}</button></div>`;
+    html += row(`data-shop="res:${r.id}"`, r.icon, r.name + (r.amount > 1 ? " x" + r.amount : ""), r.desc, r.price);
   });
   if (SHOP.capacity && CREATURE) {
-    html += `<div class="shop-row"><div class="desc"><b>${SHOP.capacity.name}</b><small>${state.creatures.length}/${state.capacity} ${CREATURE.label || ""}.</small></div>
-      <button class="btn" data-shop="capacity">${SHOP.capacity.price} ${fmt(coinTok())}</button></div>`;
+    html += row(`data-shop="capacity"`, SHOP.capacity.icon || CREATURE.icon, SHOP.capacity.name, `${state.creatures.length}/${state.capacity} ${CREATURE.label || ""}`, SHOP.capacity.price);
   }
+  html += `</div>`;
   if (DECOR.length) {
     html += `<h3>${fmt(SHOP.decorHeading || "{i:gift} Decorations")}</h3><div class="decor-grid">`;
     DECOR.forEach((d) => {
       html += `<button class="decor-card" data-decor="${d.id}">
-        <img class="d-img" src="${av(assetPath(d.sprite) || ("assets/img/" + d.sprite + ".png"))}" alt="" /><span>${d.name}</span><span class="d-price">${d.price} ${fmt(coinTok())}</span></button>`;
+        <img class="d-img" src="${av(d.thumb || assetPath(d.sprite) || ("assets/img/" + d.sprite + ".png"))}" alt="" /><span>${fmt(d.name)}</span><span class="d-price">${iconHTML(META.coinIcon || "star")}${d.price}</span></button>`;
     });
     html += `</div>`;
   }
   if (SHOP.buyCreature && CREATURE) {
     html += `<h3>${fmt(SHOP.buyCreature.heading || "{i:heart} Adopt")}</h3>`;
-    if (!room) html += `<p>${fmt(SHOP.fullMessage || "No room! Expand first.")}</p>`;
-    else html += `<p>${SHOP.buyCreature.hint || ""}</p>
-      <button class="btn btn-giant" data-shop="creature">${fmt(SHOP.buyCreature.label || "Adopt")} (${SHOP.buyCreature.price} ${fmt(coinTok())})</button>`;
+    if (!room) html += `<p class="choice-sub">${fmt(SHOP.fullMessage || "No room! Expand first.")}</p>`;
+    else html += `<div class="choice-list">${row(`data-shop="creature"`, SHOP.buyCreature.icon || CREATURE.icon, SHOP.buyCreature.label || "Adopt", SHOP.buyCreature.hint || "", SHOP.buyCreature.price, SHOP.buyCreature.img)}</div>`;
   }
   openModal(SHOP.title || "{i:gift} Shop", html);
 }
@@ -2474,7 +2602,7 @@ function buy(what) {
     const r = (SHOP.resources || []).find((x) => x.id === id); if (!r) return;
     if (state.coins < r.price) return notEnough();
     state.coins -= r.price; state.resources[id] = (state.resources[id] || 0) + (r.amount || 1);
-    message(`${r.icon || ""} +${r.amount || 1} ${r.name}!`);
+    message(r.boughtMessage || `${r.icon && (ICONS[r.icon] || ICON_SVG[r.icon]) ? "{i:" + r.icon + "} " : ""}+${r.amount || 1} ${r.name}`);
   } else if (what === "capacity") {
     if (state.coins < SHOP.capacity.price) return notEnough();
     state.coins -= SHOP.capacity.price; state.capacity++;
@@ -2836,11 +2964,11 @@ function cuFinish() {
 function cuApply(c, a) {
   const moodBefore = MOOD_NEED ? (c[MOOD_NEED] || 0) : 0;
   Object.keys(a.effects || {}).forEach((k) => { c[k] = clamp01((c[k] || 0) + a.effects[k]); });
-  if (a.reward) { state.coins += a.reward; setTimeout(() => flyReward(c.x, c.y - 50, "+" + a.reward + " " + coinTok()), 350); }
+  if (a.reward) { earn(a.reward); setTimeout(() => flyReward(c.x, c.y - 50, "+" + a.reward + " " + coinTok()), 350); }
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (a.stat) state.stats[a.stat] = (state.stats[a.stat] || 0) + 1;
   let celebrated = false;
-  if (MOOD_NEED && CREATURE.celebrate && (!CREATURE.celebrate.adultsOnly || !isYoung(c)) && moodBefore < 100 && (c[MOOD_NEED] || 0) >= 100) {
+  if (canCelebrate(c, a) && moodBefore < 100 && (c[MOOD_NEED] || 0) >= 100) {
     if (sc) sc.time.delayedCall(350, () => celebrate(c)); celebrated = true;
     if (CREATURE.depart) c.leaving = true;   // cured & about to leave → stop selecting it (panel clears now, not 250ms later)
   }
@@ -2877,6 +3005,495 @@ function closeCloseup() {
   }
 }
 
+/* ===================== Choice menus (generic modal list) ===================== */
+// A mobile-game list of options in the modal: icon/thumbnail tile, title, subtitle, price
+// pill. Used by station menus, missions, models and restyle. items: [{ label, sub, icon,
+// img, price, disabled, accent, tag, onPick }] — label/sub may carry {i:key} tokens.
+let choiceOpts = null;
+function openChoice(title, subtitle, items) {
+  choiceOpts = items;
+  let html = subtitle ? `<p class="choice-sub">${fmt(subtitle)}</p>` : "";
+  html += `<div class="choice-list">`;
+  items.forEach((o, i) => {
+    const ico = o.img ? `<img src="${av(o.img)}" alt="" draggable="false" />` : iconHTML(o.icon || "check");
+    const right = o.tag ? `<span class="ch-tag">${iconHTML(o.tag)}</span>`
+      : (o.price != null ? `<span class="ch-price">${iconHTML(META.coinIcon || "star")}<b>${o.price}</b></span>` : "");
+    html += `<button class="choice${o.accent ? " accent" : ""}${o.disabled ? " off" : ""}" data-choice="${i}"${o.disabled ? " disabled" : ""}${o.color ? ` style="--c:${o.color}"` : ""}>
+      <span class="ch-ico">${ico}</span><span class="ch-txt"><b>${fmt(o.label)}</b>${o.sub ? `<small>${fmt(o.sub)}</small>` : ""}</span>${right}</button>`;
+  });
+  openModal(title, html + `</div>`);
+}
+function choicePick(i) { const o = choiceOpts && choiceOpts[i]; if (!o || o.disabled) return; if (o.onPick) o.onPick(); }
+
+// Station "menu": { title, subtitle, items:[{ label, sub, icon, price?, do, … }] } where
+// do = "nextDay" | "openShop" | "missions" | "models" | "restyle" | "spawn" | "custom" (onPick(state, api)).
+// highlight:"chase" accents an item while a chase is on (e.g. a repaint that loses pursuers).
+function openStationMenu(st) {
+  const M = st.menu || {};
+  openChoice(M.title || st.label || "", M.subtitle || "", (M.items || []).map((it) => ({
+    label: it.label, sub: it.sub, icon: it.icon, img: it.img, price: it.price, color: it.color,
+    accent: it.highlight === "chase" ? (state.heat || 0) > 0 : !!it.accent,
+    onPick: () => runMenuItem(st, it),
+  })));
+}
+function runMenuItem(st, it) {
+  const d = it.do;
+  if (d === "restyle") { openRestyle(it); return; }
+  if (d === "missions") { openMissions(); return; }
+  if (d === "models") { openModels(); return; }
+  closeModal();
+  if (d === "nextDay") nextDay();
+  else if (d === "openShop") openShop();
+  else if (d === "spawn") spawnCreatures(st);
+  else if (typeof it.onPick === "function") it.onPick(state, stationApi());
+}
+// The helper API handed to config callbacks (station.onUse, menu item onPick).
+function stationApi() {
+  return { message, refreshHud, save, earn, spend, addHeat, clearHeat, fx: (x, y) => emitBurst(x, y, { shape: "star", colors: ["#fff2a8", "#ffffff"], count: 8, y0: 40, spread: 40 }) };
+}
+
+/* ---- Restyle: change the look (variant) of the creature you last rode, for a price ---- */
+// menu item { do:"restyle", price, title, subtitle, clearsChase, message, chaseMessage }
+function openRestyle(it) {
+  const c = state.creatures.find((x) => x.id === state.lastRide) || state.creatures[0];
+  if (!c) { closeModal(); message(it.noneMessage || "Nothing to restyle yet."); return; }
+  const price = it.price || 0;
+  openChoice(it.title || it.label, (it.subtitle || "").replace("{name}", esc(c.name)), VARIANTS.map((v) => {
+    const cur = variantId(c) === v.id;
+    return {
+      label: v.name, img: v.thumb, icon: v.icon || "palette", color: v.color, tag: cur ? "check" : null, price: cur ? null : price, disabled: cur,
+      onPick: () => {
+        if (!spend(price)) return;
+        c.variant = v.id; refreshCreatureVisual(c);
+        const had = (state.heat || 0) > 0 && it.clearsChase;
+        if (it.clearsChase) clearHeat();
+        closeModal(); Sound.play("unlock");
+        if (c.obj) actionAnim(c, { motion: "hop", particle: "spark", colors: [v.color || "#ffffff", "#ffffff"], count: 10 });
+        message(((had && it.chaseMessage) || it.message || "{i:sparkle} {name}").replace("{name}", c.name).replace("{v}", v.name));
+        refreshHud(); save();
+      },
+    };
+  }));
+}
+
+/* ===================== Missions: go to a destination on the map (config: GAME.missions) ===================== */
+// missions = { title, subtitle, radius, color, marker:"<image key>", stat:"missions",
+//   offers:[{ label, sub, icon, pay, heat? }], dests:[{ x, y, name }],
+//   takenMessage("{d}"), hotMessage("{d}"), doneMessage("{p}"), busyMessage }
+// Take one at a station (action:"missions" or a menu item) → a pulsing ring + marker at the
+// destination and an arrow around the player; reach it to be paid. heat>0 starts a chase.
+const MISSIONS = G.missions || null;
+let msRing = null, msMarker = null, msArrow = null;
+function openMissions() {
+  if (!MISSIONS) return;
+  if (state.mission) { closeModal(); message(MISSIONS.busyMessage || "Finish your current mission first!"); return; }
+  openChoice(MISSIONS.title || "Missions", MISSIONS.subtitle || "", (MISSIONS.offers || []).map((of) => ({
+    label: of.label, sub: of.sub, icon: of.icon, accent: !!of.heat, price: null, tag: null,
+    onPick: () => { closeModal(); takeMission(of); },
+  })));
+}
+function takeMission(of) {
+  const ds = (MISSIONS.dests || []).filter((d) => Math.hypot(d.x - player.x, d.y - player.y) > 300);
+  const d = pick(ds.length ? ds : (MISSIONS.dests || [{ x: WORLD.w / 2, y: WORLD.h / 2, name: "" }]));
+  state.mission = { x: d.x, y: d.y, name: d.name || "", pay: of.pay || 30, heat: of.heat || 0 };
+  buildMissionVisual();
+  Sound.play("open");
+  if (of.heat) { addHeat(of.heat); message((MISSIONS.hotMessage || MISSIONS.takenMessage || "Go to {d}!").replace("{d}", state.mission.name)); }
+  else message((MISSIONS.takenMessage || "Go to {d}!").replace("{d}", state.mission.name));
+  refreshHud(); save();
+}
+function clearMissionVisual() { [msRing, msMarker, msArrow].forEach((o) => o && o.destroy()); msRing = msMarker = msArrow = null; }
+function buildMissionVisual() {
+  clearMissionVisual(); if (!state.mission || !sc || !MISSIONS) return;
+  const col = hexInt(MISSIONS.color || "#4fe0a0"), m = state.mission;
+  msRing = sc.add.graphics().setDepth(-15);
+  if (MISSIONS.marker && sc.textures.exists(MISSIONS.marker)) {
+    msMarker = sc.add.image(m.x, m.y, MISSIONS.marker).setOrigin(0.5, 0.9).setScale((MISSIONS.markerScale || 1) / RES(MISSIONS.marker)).setDepth(m.y + 1);
+  }
+  msArrow = sc.add.image(0, 0, ensureShape("arrow")).setTint(col).setScale(0.6).setDepth(99996);
+}
+function missionTick(dt, now) {
+  const m = state.mission; if (!m || !sc || !player) return;
+  if (!msRing) buildMissionVisual();
+  const col = hexInt(MISSIONS.color || "#4fe0a0"), R = (MISSIONS.radius || 80);
+  const r = R * 0.8 + Math.sin(now / 260) * 6;
+  msRing.clear();
+  msRing.fillStyle(col, 0.16); msRing.fillEllipse(m.x, m.y, r * 2.2, r * 1.2);
+  msRing.lineStyle(5, col, 0.9); msRing.strokeEllipse(m.x, m.y, r * 2.2, r * 1.2);
+  if (msMarker) msMarker.y = m.y - 6 + Math.sin(now / 300) * 6;
+  const ang = Math.atan2(m.y - player.y, m.x - player.x), dist = Math.hypot(m.x - player.x, m.y - player.y);
+  if (msArrow) {
+    msArrow.setVisible(dist > R * 1.4);
+    msArrow.x = player.x + Math.cos(ang) * 70; msArrow.y = player.y - 40 + Math.sin(ang) * 46;
+    msArrow.rotation = ang - Math.PI / 2;                    // the arrow shape points down (+y)
+  }
+  if (dist < R) completeMission();
+}
+function completeMission() {
+  const m = state.mission; if (!m) return;
+  state.mission = null; clearMissionVisual();
+  earn(m.pay); flyReward(player.x, player.y - 60, "+" + m.pay + " " + coinTok());
+  const st = MISSIONS.stat || "missions";
+  state.stats[st] = (state.stats[st] || 0) + 1;
+  state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
+  emitBurst(player.x, player.y, { shape: "star", colors: ["#fff2a8", "#ffd24a", "#ffffff"], count: 12, y0: 50, spread: 50 });
+  Sound.play("goal");
+  message((MISSIONS.doneMessage || "{i:check} +{p}").replace("{p}", m.pay));
+  refreshHud(); save();
+}
+
+/* ===================== Chase: a "heat" level with pursuers (config: GAME.chase) ===================== */
+// chase = { sprite, dirSheet?:{cols}, scale, icon, maxLevel, maxUnits, speed, catchRadius, catchSeconds,
+//   loseRadius, loseAfter, fine, spawnDist, escapedMessage, caughtMessage("{f}") }
+// Missions with heat raise the level; pursuers spawn around the player and home in; staying
+// close for catchSeconds = caught (a fine + the mission is lost). Lose them by staying far
+// for loseAfter seconds (−1 level each time), or clear it (e.g. a restyle with clearsChase).
+const CHASE = G.chase || null;
+let chasers = [], catchT = 0, evadeT = 0;
+function chaseMax() { return (CHASE && CHASE.maxLevel) || 3; }
+function addHeat(n) { if (!CHASE || !n) return; state.heat = clamp((state.heat || 0) + n, 0, chaseMax()); evadeT = 0; refreshHeat(); }
+function clearHeat() { if (!state) return; state.heat = 0; clearChasers(); catchT = 0; evadeT = 0; refreshHeat(); }
+function refreshHeat() {
+  const el = $("chip-heat"); if (!el) return;
+  const h = (state && state.heat) || 0;
+  el.classList.toggle("hidden", h <= 0);
+  const html = Array.from({ length: chaseMax() }, (_, i) => iconHTML(CHASE.icon || "star", i < h ? "on" : "off")).join("");
+  const box = el.querySelector(".heat-icons"); if (box && box.dataset.h !== html) { box.innerHTML = html; box.dataset.h = html; }
+}
+function clearChasers() { chasers.forEach((u) => u.obj && u.obj.destroy()); chasers = []; }
+function chaserFrame(u) {
+  if (!CHASE.dirSheet) return 0;
+  const cols = CHASE.dirSheet.cols || 2;
+  return DIRS[u.dir || "down"] * cols + (Math.floor(u.blink * (CHASE.blinkRate || 6)) % cols);
+}
+function spawnChaser() {
+  const key = CHASE.sprite || "chaser"; if (!sc.textures.exists(key)) return;
+  const a = rand(0, Math.PI * 2), d = CHASE.spawnDist || 640;
+  const x = clamp(player.x + Math.cos(a) * d, 60, WORLD.w - 60), y = clamp(player.y + Math.sin(a) * d, 60, WORLD.h - 60);
+  const u = { x, y, dir: "down", blink: rand(0, 1) };
+  u.obj = sc.add.sprite(x, y, key, chaserFrame(u)).setOrigin(0.5, CHASE.originY || 0.6).setScale((CHASE.scale || 1) / RES(key)).setDepth(y);
+  chasers.push(u);
+}
+function chaseTick(dt) {
+  if (!CHASE || !sc || !player) return;
+  const heat = state.heat || 0;
+  const want = heat > 0 ? Math.min(heat, CHASE.maxUnits || 3) : 0;
+  while (chasers.length < want) spawnChaser();
+  while (chasers.length > want) { const u = chasers.pop(); if (u.obj) u.obj.destroy(); }
+  if (!chasers.length) { catchT = 0; return; }
+  const speed = (CHASE.speed || 230) * (1 + (heat - 1) * 0.12);
+  let nearest = 1e9;
+  chasers.forEach((u) => {
+    const dx = player.x - u.x, dy = player.y - u.y, d = Math.hypot(dx, dy) || 1;
+    if (d > 34) { u.x += (dx / d) * speed * dt; u.y += (dy / d) * speed * dt; }
+    const o = { x: u.x, y: u.y }; pushOut(o, 18, 10); u.x = clamp(o.x, 40, WORLD.w - 40); u.y = clamp(o.y, 40, WORLD.h - 40);
+    u.dir = dirOf(dx, dy); u.blink += dt;
+    u.obj.setPosition(u.x, u.y).setDepth(u.y);
+    if (CHASE.dirSheet) u.obj.setFrame(chaserFrame(u)); else u.obj.setFlipX(dx > 0);
+    nearest = Math.min(nearest, d);
+  });
+  if (nearest < (CHASE.catchRadius || 66)) { catchT += dt; evadeT = 0; if (catchT >= (CHASE.catchSeconds || 3.5)) caught(); }
+  else catchT = Math.max(0, catchT - dt * 0.7);
+  if (nearest > (CHASE.loseRadius || 820)) {
+    evadeT += dt;
+    if (evadeT >= (CHASE.loseAfter || 7)) {
+      state.heat = Math.max(0, heat - 1); evadeT = 0; refreshHeat();
+      if (!state.heat) { clearChasers(); Sound.play("goal"); message(CHASE.escapedMessage || "You got away!"); save(); }
+    }
+  } else evadeT = 0;
+}
+function caught() {
+  const fine = Math.min(state.coins, CHASE.fine || 40);
+  state.coins -= fine;
+  if (state.mission) { state.mission = null; clearMissionVisual(); }
+  clearHeat(); Sound.play("error");
+  if (sc) sc.cameras.main.shake(260, 0.006);
+  message((CHASE.caughtMessage || "Caught! −{f}").replace("{f}", fine));
+  refreshHud(); save();
+}
+
+/* ===================== Models: buy creatures with stats (config: GAME.models) ===================== */
+// models = { title, subtitle, items:[{ id, name, price, variant, speedMul, grip, drainMul, desc, img? }],
+//   stats:[{ key:"speedMul", icon:"speed" }, …], boughtMessage("{name}"), fullMessage, ownedTag:"check" }
+// Each model is bought once; the new creature appears next to the player with the model's stats.
+const MODELS = G.models || null;
+function openModels() {
+  if (!MODELS) return;
+  openChoice(MODELS.title || "Shop", MODELS.subtitle || "", (MODELS.items || []).map((m) => {
+    const owned = state.creatures.some((c) => c.model === m.id);
+    const v = variantDef(m.variant);
+    const statTxt = (MODELS.stats || []).map((s) => `{i:${s.icon}} ${Math.round((m[s.key] != null ? (s.invert ? 2 - m[s.key] : m[s.key]) : 1) * 100)}%`).join("  ");
+    return {
+      label: m.name, sub: statTxt + (m.desc ? "<br>" + m.desc : ""), img: m.img || (v && v.thumb), icon: m.icon || (CREATURE && CREATURE.icon), color: v && v.color,
+      price: owned ? null : m.price, tag: owned ? (MODELS.ownedTag || "check") : null, disabled: owned,
+      onPick: () => buyModel(m),
+    };
+  }));
+}
+function buyModel(m) {
+  if (state.creatures.some((c) => c.model === m.id)) return;
+  if (state.creatures.length >= state.capacity) { Sound.play("error"); message(MODELS.fullMessage || "No room!"); return; }
+  if (!spend(m.price)) return;
+  const c = newCreature({ variant: m.variant, name: m.name, model: m.id, speedMul: m.speedMul, grip: m.grip, drainMul: m.drainMul });
+  const p = freeSpotNear(player.x + 110, player.y);
+  c.x = p.x; c.y = p.y; c.tx = c.x; c.ty = c.y;
+  state.creatures.push(c);
+  if (sc) { buildCreatureObj(c); actionAnim(c, { motion: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#ffffff"], count: 12 }); }
+  Sound.play("unlock"); confetti(24);
+  closeModal();
+  message((MODELS.boughtMessage || "{name} is yours!").replace("{name}", c.name));
+  refreshHud(); save();
+}
+function freeSpotNear(x, y) {
+  for (let r = 0; r < 260; r += 30) for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4, px = clamp(x + Math.cos(a) * r, 60, WORLD.w - 60), py = clamp(y + Math.sin(a) * r, 60, WORLD.h - 60);
+    if (freeAt(px, py)) return { x: px, y: py };
+  }
+  return { x: clamp(x, 60, WORLD.w - 60), y: clamp(y, 60, WORLD.h - 60) };
+}
+
+/* ===================== Race: pseudo-3D "behind the vehicle" mini-game (config: GAME.race) ===================== */
+// Mounted action type:"race". The top-down world is covered by a full-screen canvas: the road
+// recedes to a horizon, your ride (race.sprite, tinted to its variant) sits at the bottom, and
+// you steer (left/right half of the screen, or arrow keys) to reach the finish before the
+// timer runs out while dodging obstacles. The HUD (timer, distance, speed, quit) is DOM with
+// the game's icons. Track, colours, sprites, obstacles, reward and strings come from config:
+// race = { time, reward, stat:"raceWin", hitPenalty, sprite, roadside:[keys], spriteZoom,
+//   track:{ segments, speed, steer, centrifugal, curveEvery, seed },
+//   obstacles:[{ sprite, every, phase, scale, hw, spread }],
+//   colors:{ sky:[top,mid,horizon], sun:[top,bottom]|false, skyline, ground, grass:[a,b], road:[a,b], rumble:[a,b], lane, finish:[a,b] },
+//   icons:{ time, distance, speed, quit, left, right }, speedUnit, distUnit,
+//   startMessage, hitMessage("{n}"), winMessage("{r}"), loseMessage, quitMessage, hint }
+const RACE = G.race || null;
+const R3 = { on: false, canvas: null, ctx: null, W: 0, H: 0, segLen: 200, roadW: 1100, camH: 1100, camD: 0.84, draw: 240,
+  segs: [], finishZ: 0, pos: 0, prevPos: 0, playerX: 0, speed: 0, maxSpeed: 0, time: 0, over: false, raf: 0, last: 0,
+  shake: 0, hitFlash: 0, input: { left: false, right: false }, img: {}, car: null, listeners: [], hud: null };
+function raceColors() {
+  return Object.assign({ sky: ["#241a4d", "#5b2a6e", "#e0566e"], sun: ["#ffd36a", "#ff5d7a"], skyline: "#2a1c4a", ground: "#203524",
+    grass: ["#243d2b", "#203524"], road: ["#3b404c", "#33373f"], rumble: ["#eef2f7", "#c8405d"], lane: "#e7ecf2", finish: ["#e9edf2", "#1a1330"] },
+  (RACE && RACE.colors) || {});
+}
+function r3Rng(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function r3Img(key) { return key && sc && sc.textures.exists(key) ? sc.textures.get(key).getSourceImage() : null; }
+function r3Tint(img, hex) {
+  const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+  const x = c.getContext("2d"); x.drawImage(img, 0, 0);
+  if (hex) { x.globalCompositeOperation = "multiply"; x.fillStyle = hex; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = "destination-in"; x.drawImage(img, 0, 0); }
+  return c;
+}
+function startRace() {
+  if (!RACE || R3.on || !mounted || !sc) return;
+  let cv = $("race3d");
+  if (!cv) { cv = document.createElement("canvas"); cv.id = "race3d"; cv.className = "race3d"; document.body.appendChild(cv); }
+  R3.canvas = cv; R3.ctx = cv.getContext("2d");
+  R3.img = { roadside: (RACE.roadside || []).map(r3Img).filter(Boolean), obst: (RACE.obstacles || []).map((o) => r3Img(o.sprite)) };
+  const base = r3Img(RACE.sprite), v = variantDef(variantId(mounted)) || {};
+  R3.car = base ? r3Tint(base, v.tint || null) : null;
+  r3Track();
+  const T = RACE.track || {};
+  R3.pos = R3.prevPos = R3.playerX = R3.speed = 0;
+  R3.grip = mounted.grip || 1;
+  R3.maxSpeed = R3.segLen * 60 * (T.speed || 1) * (mounted.speedMul || 1);
+  R3.time = RACE.time || 60; R3.over = false; R3.shake = R3.hitFlash = 0;
+  R3.input = { left: false, right: false };
+  const kd = (e) => r3Key(e, true), ku = (e) => r3Key(e, false);
+  const set = (e) => { const r = cv.getBoundingClientRect(); const x = e.clientX - r.left; R3.input.left = x < r.width / 2; R3.input.right = x >= r.width / 2; };
+  const pd = (e) => { try { cv.setPointerCapture(e.pointerId); } catch (_) {} set(e); };
+  const pm = (e) => { if (R3.input.left || R3.input.right) set(e); };
+  const pu = (e) => { R3.input.left = R3.input.right = false; try { if (cv.hasPointerCapture(e.pointerId)) cv.releasePointerCapture(e.pointerId); } catch (_) {} };
+  R3.listeners = [["keydown", kd, window], ["keyup", ku, window], ["resize", r3Resize, window], ["pointerdown", pd, cv], ["pointermove", pm, cv], ["pointerup", pu, cv], ["pointercancel", pu, cv]];
+  R3.listeners.forEach(([t, fn, tg]) => tg.addEventListener(t, fn));
+  r3Hud(true);
+  cv.classList.remove("hidden"); r3Resize();
+  document.documentElement.dataset.screen = "race";
+  navPath = []; moveTarget = null;
+  Sound.play("whoosh");
+  message(RACE.startMessage || "Go!");
+  R3.on = true; R3.last = 0; R3.raf = requestAnimationFrame(r3Loop);
+  panelId = PANEL_DIRTY; refreshInteraction();
+}
+function r3Key(e, down) {
+  const k = e.key;
+  if (k === "ArrowLeft" || k === "a" || k === "A" || k === "q" || k === "Q") { R3.input.left = down; e.preventDefault(); }
+  else if (k === "ArrowRight" || k === "d" || k === "D") { R3.input.right = down; e.preventDefault(); }
+  else if (down && k === "Escape") endRace(false, true);
+}
+function r3Resize() {
+  const cv = R3.canvas; if (!cv) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  R3.W = cv.clientWidth || window.innerWidth; R3.H = cv.clientHeight || window.innerHeight;
+  cv.width = Math.floor(R3.W * dpr); cv.height = Math.floor(R3.H * dpr);
+  R3.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function r3Track() {
+  const T = RACE.track || {}, N = T.segments || 900, rnd = r3Rng(T.seed || 1234567), C = raceColors(), every = T.curveEvery || 55;
+  R3.segs = []; let curve = 0;
+  for (let i = 0; i < N; i++) {
+    if (i % every === 0) curve = (i > 40 && rnd() < 0.7) ? (rnd() < 0.5 ? -1 : 1) * (0.6 + rnd() * 2.4) : 0;
+    const light = Math.floor(i / 3) % 2 === 0;
+    R3.segs.push({ i, z: i * R3.segLen, curve: curve * 0.5, road: C.road[light ? 0 : 1], grass: C.grass[light ? 0 : 1],
+      rumble: C.rumble[light ? 0 : 1], lane: light, sprites: [], obstacles: [] });
+  }
+  const road = R3.img.roadside;
+  if (road.length) for (let i = 18; i < N - 6; i += 7) {
+    const side = rnd() < 0.5 ? -1 : 1;
+    R3.segs[i].sprites.push({ img: road[Math.floor(rnd() * road.length)], offset: side * (1.4 + rnd() * 1.7), scale: 3.4 });
+  }
+  (RACE.obstacles || []).forEach((ob, k) => {
+    const img = R3.img.obst[k]; if (!img) return;
+    const ev = ob.every || 30, ph = (ob.phase || 0) % ev, spread = ob.spread != null ? ob.spread : 0.55;
+    for (let i = 60; i < N - 24; i++) if (i % ev === ph) R3.segs[i].obstacles.push({ img, offset: (rnd() * 2 - 1) * spread, scale: ob.scale || 3.5, hw: ob.hw != null ? ob.hw : 0.3 });
+  });
+  R3.finishZ = (N - 12) * R3.segLen;
+  for (let i = N - 14; i < N - 10; i++) R3.segs[i].finish = true;
+}
+function r3Loop(ts) {
+  if (!R3.on) return;
+  if (!R3.last) R3.last = ts;
+  const dt = Math.min((ts - R3.last) / 1000, 0.05); R3.last = ts;
+  r3Update(dt); if (!R3.on) return;
+  r3Render(); r3Hud(false);
+  R3.raf = requestAnimationFrame(r3Loop);
+}
+function r3Update(dt) {
+  if (R3.over) return;
+  const T = RACE.track || {};
+  R3.time -= dt; R3.prevPos = R3.pos;
+  R3.speed += (R3.maxSpeed - R3.speed) * Math.min(1, dt * 0.8);
+  if (Math.abs(R3.playerX) > 1) R3.speed *= (1 - dt * 1.1);              // off-road drag
+  R3.pos += R3.speed * dt;
+  const steer = dt * (T.steer || 2.4) * R3.grip * (0.35 + R3.speed / R3.maxSpeed);
+  if (R3.input.left) R3.playerX -= steer;
+  if (R3.input.right) R3.playerX += steer;
+  const seg = R3.segs[Math.floor(R3.pos / R3.segLen)] || R3.segs[0];
+  R3.playerX -= dt * (R3.speed / R3.maxSpeed) * (seg.curve || 0) * (T.centrifugal || 0.7);
+  R3.playerX = clamp(R3.playerX, -2.2, 2.2);
+  for (let i = Math.floor(R3.prevPos / R3.segLen); i <= Math.floor(R3.pos / R3.segLen) + 1 && i < R3.segs.length; i++) {
+    const s = R3.segs[i]; if (!s || !s.obstacles.length || s.z <= R3.prevPos || s.z > R3.pos) continue;
+    s.obstacles.forEach((o) => {
+      if (o.dead || Math.abs(R3.playerX - o.offset) >= o.hw + 0.16) return;
+      o.dead = true; R3.speed *= 0.32; R3.time -= (RACE.hitPenalty || 3); R3.shake = 0.4; R3.hitFlash = 0.5;
+      Sound.play("error");
+      message((RACE.hitMessage || "−{n}s").replace("{n}", RACE.hitPenalty || 3));
+    });
+  }
+  if (R3.shake > 0) R3.shake = Math.max(0, R3.shake - dt);
+  if (R3.hitFlash > 0) R3.hitFlash = Math.max(0, R3.hitFlash - dt * 1.6);
+  if (R3.pos >= R3.finishZ) { R3.over = true; endRace(true); }
+  else if (R3.time <= 0) { R3.time = 0; R3.over = true; endRace(false); }
+}
+function r3Project(p, camX) {
+  const sc0 = R3.camD / Math.max(p.z - R3.pos, 1);
+  p.sc = sc0; p.sx = R3.W / 2 - sc0 * camX * R3.W / 2; p.sy = R3.H / 2 + sc0 * R3.camH * R3.H / 2; p.sw = sc0 * R3.roadW * R3.W / 2;
+}
+function r3Render() {
+  const ctx = R3.ctx, W = R3.W, H = R3.H, C = raceColors();
+  ctx.save(); ctx.translate(R3.shake > 0 ? (Math.random() - 0.5) * 18 * R3.shake : 0, 0);
+  r3Sky(C);
+  ctx.fillStyle = C.ground; ctx.fillRect(0, H * 0.5, W, H * 0.5);
+  const base = Math.floor(R3.pos / R3.segLen), drawn = []; let x = 0, dx = 0, maxy = H;
+  for (let n = 0; n < R3.draw; n++) {
+    const seg = R3.segs[base + n]; if (!seg) break;
+    const camX = R3.playerX * R3.roadW - x, p1 = { z: seg.z }, p2 = { z: seg.z + R3.segLen };
+    r3Project(p1, camX); r3Project(p2, camX - dx);
+    x += dx; dx += seg.curve; seg._p1 = p1; seg._clip = maxy;
+    if (p1.z - R3.pos < R3.camD || p2.sy >= maxy) continue;
+    r3Segment(seg, p1, p2, C); maxy = p2.sy; drawn.push(seg);
+  }
+  for (let n = drawn.length - 1; n >= 0; n--) { const s = drawn[n]; s.sprites.forEach((sp) => r3Billboard(s, sp)); s.obstacles.forEach((o) => { if (!o.dead) r3Billboard(s, o); }); }
+  if (R3.car) {
+    const w = W * 0.32, h = w * (R3.car.height / R3.car.width), bob = Math.sin(R3.pos * 0.05) * 2;
+    const lean = R3.playerX * 16 + (R3.input.left ? -10 : 0) + (R3.input.right ? 10 : 0);
+    ctx.drawImage(R3.car, W / 2 - w / 2 + lean, H - h - Math.max(90, H * 0.12) + bob, w, h);
+  }
+  ctx.restore();
+  if (R3.hitFlash > 0) { ctx.fillStyle = "rgba(255,60,60," + (R3.hitFlash * 0.4).toFixed(3) + ")"; ctx.fillRect(0, 0, W, H); }
+}
+function r3Sky(C) {
+  const ctx = R3.ctx, W = R3.W, H = R3.H, hz = H * 0.5, g = ctx.createLinearGradient(0, 0, 0, hz);
+  g.addColorStop(0, C.sky[0]); g.addColorStop(0.55, C.sky[1]); g.addColorStop(1, C.sky[2]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, hz);
+  if (C.sun) {
+    const cx = W / 2 - R3.playerX * 46, cy = hz * 0.82, r = Math.min(W, H) * 0.15, sg = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+    sg.addColorStop(0, C.sun[0]); sg.addColorStop(1, C.sun[1]);
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  }
+  if (C.skyline) {
+    ctx.fillStyle = C.skyline; const bx = -((R3.playerX * 60) % 90);
+    for (let i = -1; i < W / 90 + 1; i++) { const bh = 22 + ((i * 53 + 7) % 6) * 9; ctx.fillRect(bx + i * 90, hz - bh, 66, bh); }
+  }
+}
+function r3Trap(x1, y1, w1, x2, y2, w2, col) {
+  const ctx = R3.ctx; ctx.fillStyle = col; ctx.beginPath();
+  ctx.moveTo(x1 - w1, y1); ctx.lineTo(x1 + w1, y1); ctx.lineTo(x2 + w2, y2); ctx.lineTo(x2 - w2, y2); ctx.closePath(); ctx.fill();
+}
+function r3Segment(seg, p1, p2, C) {
+  const ctx = R3.ctx;
+  ctx.fillStyle = seg.grass; ctx.fillRect(0, p2.sy, R3.W, p1.sy - p2.sy + 1);
+  r3Trap(p1.sx, p1.sy, p1.sw * 1.15, p2.sx, p2.sy, p2.sw * 1.15, seg.rumble);
+  if (seg.finish) {
+    const n = 10;
+    for (let c = 0; c < n; c++) { const t = (c + 0.5) / n - 0.5; r3Trap(p1.sx + t * p1.sw * 2, p1.sy, p1.sw / n, p2.sx + t * p2.sw * 2, p2.sy, p2.sw / n, C.finish[(c + seg.i) % 2]); }
+  } else {
+    r3Trap(p1.sx, p1.sy, p1.sw, p2.sx, p2.sy, p2.sw, seg.road);
+    if (seg.lane) r3Trap(p1.sx, p1.sy, p1.sw * 0.03, p2.sx, p2.sy, p2.sw * 0.03, C.lane);
+  }
+}
+function r3Billboard(seg, sp) {
+  const p = seg._p1; if (!p || p.sc <= 0 || !sp.img) return;
+  const w = p.sw * (sp.scale || 1) * (RACE.spriteZoom || 0.045), h = w * (sp.img.height / sp.img.width);
+  if (w < 1 || h < 1 || w > R3.W * 4) return;
+  const ctx = R3.ctx; ctx.save();
+  if (seg._clip != null) { ctx.beginPath(); ctx.rect(0, 0, R3.W, seg._clip); ctx.clip(); }
+  ctx.drawImage(sp.img, p.sx + sp.offset * p.sw - w / 2, p.sy - h, w, h);
+  ctx.restore();
+}
+// DOM HUD over the race canvas: chips with the game's icons + a quit button + steering hints.
+function r3Hud(build) {
+  const I = RACE.icons || {};
+  if (build) {
+    let h = $("race-hud");
+    if (!h) { h = document.createElement("div"); h.id = "race-hud"; h.className = "race-hud"; document.body.appendChild(h); }
+    h.innerHTML = `<div class="rh-top"><span class="resource" id="rh-time"><span class="r-ico">${iconHTML(I.time || "calendar")}</span><b>0</b></span>
+        <span class="resource" id="rh-dist"><span class="r-ico">${iconHTML(I.distance || "arrow")}</span><b>0</b></span>
+        <span class="resource" id="rh-speed"><span class="r-ico">${iconHTML(I.speed || "star")}</span><b>0</b></span>
+        <button class="mini-btn rh-quit" id="rh-quit" aria-label="${esc(stripIcons(RACE.quitLabel || "Quit"))}">${iconHTML(I.quit || "close")}</button></div>
+      <div class="rh-steer"><span class="rh-l">${iconHTML(I.left || "arrow")}</span><span class="rh-hint">${fmt(RACE.hint || "")}</span><span class="rh-r">${iconHTML(I.right || "arrow")}</span></div>`;
+    $("rh-quit").addEventListener("click", (e) => { e.stopPropagation(); endRace(false, true); });
+    h.classList.remove("hidden"); R3.hud = h;
+    return;
+  }
+  const set = (id, v) => { const b = $(id) && $(id).querySelector("b"); if (b && b.textContent !== v) b.textContent = v; };
+  set("rh-time", Math.max(0, R3.time).toFixed(1) + "s");
+  set("rh-dist", Math.max(0, Math.round((R3.finishZ - R3.pos) / 100)) + " " + (RACE.distUnit || "m"));
+  set("rh-speed", Math.round((R3.speed / R3.maxSpeed) * (RACE.topSpeed || 210)) + " " + (RACE.speedUnit || "km/h"));
+  const t = $("rh-time"); if (t) t.classList.toggle("warn", R3.time <= 8);
+  R3.hud.classList.toggle("steer-l", R3.input.left); R3.hud.classList.toggle("steer-r", R3.input.right);
+}
+function r3Teardown() {
+  R3.on = false; if (R3.raf) cancelAnimationFrame(R3.raf); R3.raf = 0;
+  R3.listeners.forEach(([t, fn, tg]) => tg.removeEventListener(t, fn)); R3.listeners = [];
+  if (R3.canvas) R3.canvas.classList.add("hidden");
+  if (R3.hud) R3.hud.classList.add("hidden");
+  syncEdge();
+}
+// End the race: win → reward + stat; quit → neutral; else → time-out.
+function endRace(win, quit) {
+  if (!R3.on) return;
+  r3Teardown();
+  if (win) {
+    const r = RACE.reward || 0; earn(r);
+    const st = RACE.stat || "raceWin"; state.stats[st] = (state.stats[st] || 0) + 1;
+    state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
+    Sound.play("celebrate"); confetti();
+    message((RACE.winMessage || "{i:trophy} +{r}").replace("{r}", r));
+    if (r && player) setTimeout(() => flyReward(player.x, player.y - 60, "+" + r + " " + coinTok()), 300);
+  } else if (quit) message(RACE.quitMessage || "");
+  else { Sound.play("error"); message(RACE.loseMessage || "Time's up!"); }
+  lastInputT = nowMs(); refreshHud(); save();
+  panelId = PANEL_DIRTY; refreshInteraction();
+}
+
 /* ===================== Goals / help ===================== */
 
 function openGoals() {
@@ -2891,7 +3508,7 @@ function openGoals() {
   const lines = list.map((o) => {
     const ok = !!state.goalsDone[o.id];
     return `<div class="goal-row ${ok ? "goal-ok" : ""}"><span class="goal-check">${ok ? iconHTML("check") : ""}</span>
-      <span class="goal-txt"><b>${o.name}</b><small>${o.desc}</small></span></div>`;
+      <span class="goal-txt"><b>${fmt(o.name)}</b><small>${fmt(o.desc)}</small></span></div>`;
   }).join("");
   const sub = allDone ? T("allGoalsDone", "You finished every goal!") : T("goalsProgress", "{done}/{total} goals — finish them to reach level {next}", { done, total: list.length, next: idx + 2 });
   openModal(T("goalsTitle", "{i:goals} Goals"), `

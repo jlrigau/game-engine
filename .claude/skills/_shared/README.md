@@ -18,6 +18,7 @@ run by Claude Code through the **Bash** tool.
 | `probes/reveal.cjs` | Filmstrip of an unlock's entrance (`REVEAL=<id>`, frame every 80 ms) + close-up progress bar at the easiest and max level: same width + no overlap with the close button. Used by **visual-review**. |
 | `ios-standalone-check.cjs` | Simulates the iOS home-screen viewport bug in WebKit (viewport short by the status bar) and checks every full-screen layer reaches the real screen bottom. Used by **ios-pwa-check**. |
 | `contact-sheet.py` | Labelled contact sheet(s) of a folder of screenshots: `python3 contact-sheet.py DIR`. |
+| `probes/systems.cjs` | Functional checks of the optional systems a game enables (ride + facing, jump, station menu + restyle, missions, chase, models, race, legacy save) with a screenshot each; blocks skip themselves when a system is off. |
 | `probes/tour.cjs` | The standard regression tour (home, create, tap→walk, close-up→reveal→world responsive, help, stations, unlocks, guide, save) with screenshots; `probes/lib.cjs` = helpers for your own probes. |
 | `sync-engine.sh` | Backport the engine layer (`engine.js`, `ENGINE.md`, `.claude/skills/`) FROM a game repo INTO the template; runs the separation audit + syntax check; never commits. `bash .claude/skills/_shared/sync-engine.sh <game-url|remote> [ref]`. Used by **sync-engine**. |
 

@@ -60,7 +60,10 @@ economy + shop + capacity + buyable decorations (ghost placement) · AABB collis
 single declarative rule) · day/night with rest-gating · objectives/levels · localStorage
 save with backward-compatible load · PWA/iOS · procedural sound + music (no files) ·
 guide arrow · unlocks (milestones add scenery) · juice (toast queue, flying rewards,
-confetti, cinematic close-up zoom, before/after reveal).
+confetti, cinematic close-up zoom, before/after reveal) · vehicles & city systems
+(top-down `dirSheet` creatures, hidden/seated riders, station menus + paid restyle,
+missions, chase/wanted level, buyable models with stats, pseudo-3D race) · legacy save
+migration (`meta.legacySave`).
 
 ## 7. Skills (`.claude/skills/`)
 Game-agnostic Claude Code skills operating on the config/assets. Orchestrators:

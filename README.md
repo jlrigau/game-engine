@@ -157,12 +157,12 @@ For example, the demo's creature is described — not coded — like this:
 creature: {
   label: "critters", sheet: "critter", scale: 1.0,
   moodNeed: "joy", moodFrom: ["fuel", "joy"],
-  needs: [ { id: "fuel", icon: "🔋", start: 70, perDay: -22 }, { id: "joy", icon: "😊", start: 80 } ],
+  needs: [ { id: "fuel", icon: "battery", start: 70, perDay: -22 }, { id: "joy", icon: "joy", start: 80 } ],
   actions: [
-    { id: "feed", label: "Feed", icon: "🔋", effects: { fuel: 35, joy: 8 },
-      anim: { motion: "nod", particle: "spark", colors: ["#9fe8ff", "#ffffff"] }, message: "{name} recharged! 🔋" },
-    { id: "play", label: "Play", icon: "🎮", effects: { joy: 22, fuel: -6 },
-      anim: { motion: "hop", particle: "star", colors: ["#fff2a8", "#a8e6ff"] }, message: "{name} had fun! 🎮" },
+    { id: "feed", label: "Feed", icon: "battery", effects: { fuel: 35, joy: 8 },
+      anim: { motion: "nod", particle: "spark", colors: ["#9fe8ff", "#ffffff"] }, message: "{i:battery} {name} recharged!" },
+    { id: "play", label: "Play", icon: "ball", effects: { joy: 22, fuel: -6 },
+      anim: { motion: "hop", particle: "star", colors: ["#fff2a8", "#a8e6ff"] }, message: "{i:ball} {name} had fun!" },
   ],
   names: ["Zib", "Lumi", "Pulse"], startCount: 3,
 },
@@ -170,7 +170,8 @@ creature: {
 
 Handy to know:
 - **Every UI string** has an engine fallback — override only what you want in `meta`.
-  Strings interpolate `{name}`, `{day}`, `{names}`, `{item}`.
+  Strings interpolate `{name}`, `{day}`, `{names}`, `{item}`; `{i:key}` inserts an
+  illustrated icon from `GAME.icons` (never emoji).
 - **Actions** are data: needs they change, a coin reward, a cost, and a **theme-driven
   animation** (`motion` + a particle `shape` + `colors`). Stars, sparks, hearts… are
   chosen here, not hard-coded.
@@ -183,9 +184,10 @@ Handy to know:
 **Everything the engine can do** (all optional, switched on from config): tiled world +
 camera/zoom · walkcycle avatars + create screen · creatures with
 needs/actions/variants/customize/aging/breeding · ride + hop-over obstacles · stations
-(rest/shop) · economy + shop + placeable decor · AABB collisions · arena + trail-loop
-environment · day/night · objectives/levels · theme-driven particle effects ·
-localStorage save · PWA/iOS. **The full field-by-field schema is in
+(rest/shop/menus) · economy + shop + placeable decor · AABB collisions · arena + trail-loop
+environment · day/night · objectives/levels · theme-driven particle effects · close-up
+mini-scene · vehicles (top-down sheets, missions, chase, buyable models, pseudo-3D race) ·
+localStorage save (+ legacy save migration) · PWA/iOS. **The full field-by-field schema is in
 [ENGINE.md](ENGINE.md).**
 
 > **Golden rule:** never put game content in `engine.js`. If the engine truly lacks a

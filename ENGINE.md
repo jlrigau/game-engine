@@ -37,6 +37,12 @@ of the fields below — every system is optional, so start small and add as you 
 - **Environment**: fenced **arena** with obstacles + a **trail loop** of sand paths in
   a forest band, scattered by a single declarative rule (no bare edges/corners).
 - **Day/night** cycle with rest-gating; **objectives/levels** gamification.
+- **Vehicles & city systems** (all optional): directional top-down sheets for creatures
+  (`dirSheet`), hidden or **seated riders** (`ride.hideRider`, `character.rideSheet`), per-creature
+  mount stats (`speedMul`/`grip`/`drainMul`), **station menus** (`action:"menu"`, incl. paid
+  **restyle**), **missions** (go-to-destination jobs), a **chase** (heat level + pursuers),
+  **models** (buy creatures with stats) and a pseudo-3D **race** mini-game.
+- **Legacy save migration** (`meta.legacySave`) so a game rebuilt on the engine keeps its players' progress.
 - **Juice**: toast queue, rewards that fly to the HUD, confetti, cinematic zoom into the
   close-up, particle bursts, squash & stretch.
 - **Sound**: procedural WebAudio SFX + generative background music (no audio files), mute
@@ -54,6 +60,7 @@ window.GAME = {
   zones, stations,
   economy, shop, decor,
   environment,         // arena + trail loop (optional)
+  missions, chase, models, race,   // city / vehicle systems (optional)
   scenery,             // [[x,y,sprite,scale], ...] or [{x,y,sprite,…}, ...]
   unlocks,             // milestones that add scenery (optional)
   objectives, help,
@@ -65,6 +72,7 @@ Identity, theming and **all UI strings** (every label has an engine fallback, so
 can override only what you want).
 ```
 title, titleIcon, logo ("assets/img/logo.png" — big home-screen image), shortName, tagline, saveKey, assetVersion: "vN",
+legacySave: { key: "old-key" | ["k1","k2"], migrate: (old) => stateLike },   // see below
 audience: { minAge, notes },          // used by the asset skills' content policy
 theme: { home, play, closeup },        // iOS theme-color per screen
 showCoins,                             // false → hide the coins HUD (no economy)
@@ -78,6 +86,13 @@ refundMessage, noOnBuilding, noInHome, nameLabel, confirm, nameTaken, closeLabel
 ```
 Strings with `{name}`, `{day}`, `{names}`, `{item}` are interpolated by the engine, and
 `{i:key}` tokens become icons (see Icons). User-typed names are HTML-escaped.
+
+**`meta.legacySave`** — when there is no save under `saveKey` yet, the first legacy key found
+is parsed and passed to `migrate(old)`, whose result is stored under `saveKey` (the legacy key
+is never touched). Return the engine's state shape (`placeName, player:{avatar,name}, coins,
+resources, day, capacity, creatures:[{id,name,variant,age,<need ids>,x,y}], decors:[{id,x,y}],
+stats, goalsDone, level, idCounter…`); any missing field gets its default on load. Write it as
+an arrow function inside `meta` (the separation audit rejects top-level functions in the config).
 
 `meta.strings` overrides any **engine** UI label (each has an English fallback):
 `closeLabel, soundLabel, coinsLabel, dayLabel, levelLabel, noSave, refreshLabel,
@@ -186,14 +201,20 @@ Everything in `assets` is preloaded automatically (with cache-busting via `av()`
 ```
 player: { scale, speed:{walk,run,rideWalk,rideRun}, spawn:{x,y}, nameY, shadow:{w,h},
           frameRate, originY, showName }  // nameY = y offset of the name label above the head (default -80)
-characters: [ { id, name, sheet, thumb } ]   // sheet = LPC walkcycle (9 cols × 4 rows: up,left,down,right;
+characters: [ { id, name, sheet, thumb, rideSheet? } ]   // sheet = LPC walkcycle (9 cols × 4 rows: up,left,down,right;
                                              // col 0 = idle) at any frame size; thumb in assets/ui/
+                                             // rideSheet = ONE frame, the character SEATED (side view facing
+                                             // left; flipped for right) shown while riding (ride.sitY places it)
 ```
 
 ### `creature` (optional system)
 ```
 label, icon, sheet, origin:{x,y}, moodIcon,  // moodIcon = particle shape of the floating mood indicator (default "heart")
-walk: { start, end, frameRate, speed:40, hop:0, hopPeriod:300, squash:0.08 },  // hop>0 → bouncy hop-walk (px)
+walk: { start, end, frameRate, speed:40, hop:0, hopPeriod:300, squash:0.08, idleFrame? },  // hop>0 → bouncy hop-walk (px)
+                                       // idleFrame: frame shown while standing still (omit → walks in place)
+dirSheet: true | { cols },             // sheet has 4 rows up/left/down/right (top-down vehicles) instead of
+                                       // one side-view strip flipped left/right; cols = frames per row
+wander: false, hello: false,           // stay put (parked cars) / no "hello" hop when approached
 headY,                                 // px from feet to head top at scale 1 (default: derived from frame size)
 shadow:{w,h}, spacing:46, breathe:0.025, nameY, nameSize, showName, showMood, moodScale,
 moodColors:[low,mid,high], moodFaces:["sad","meh","smile","joy"],   // icon keys: a face in the panel by mood (default: 4 hearts)
@@ -220,9 +241,13 @@ actions: [ {
 wantBubble: { sprite, need?, below?, withMood?, scale?, lift? },  // see below — "needs action" image bubble (replaces, or with withMood sits beside, the mood shape)
 allHappy: { mood, message, celebrate? },   // day-arc reward: rest with EVERYONE happy → synchronized celebration + special morning line
 customize: { rename, variant },
-ride: { adultsOnly, minEnergy, fatigueNeed, sitY, nameY, onMount:{...}, *Message,
-        jump:{ distance, cost, minEnergy, tooTired } },
-celebrate: { mode:"hop"|"rear", adultsOnly, message, particle, colors:[hex], count },
+ride: { adultsOnly, minEnergy, fatigueNeed, sitY, nameY, onMount:{...}, *Message, hideRider?,
+        jump:{ distance, cost, minEnergy, tooTired, reward?, rewardMessage?("{r}") } },
+   // hideRider: the player disappears while riding (a driver inside a car). The jump leaps the way the
+   // player faces (4 ways with dirSheet). Per-creature fields speedMul (ride speed), drainMul (fatigue
+   // rate) and grip (race steering) — set by `models`, or in startCreatures — scale the ride.
+celebrate: { mode:"hop"|"rear", adultsOnly, actions?:[ids], message, particle, colors:[hex], count },
+   // actions: only these action ids can trigger it (e.g. the rear of joy only when playing)
 ```
 
 ### Theme-driven animations (`action.anim`)
@@ -392,8 +417,14 @@ zones: [ { id, home, rect:{x,y,w,h}, fence, gates:"both"|"left"|"right",
 zones[].floor: "<image key>"          // an image stretched over the rect (rug, mat…) instead of a tint
 zones[].labelLift: 14                  // label offset above the rect
 stations: [ { type, x, y, sprite, label, labelY?, scale?, box?, action, actionLabel,
-              onUse?, spawn?, glow?, anim?, reach?:110, tapRadius?:80, sfx? } ]
-// action: "nextDay" | "spawn" | "openShop" | "custom"
+              onUse?, spawn?, menu?, glow?, anim?, reach?:110, tapRadius?:80, sfx?, icon?, color?, hint? } ]
+// action: "nextDay" | "spawn" | "openShop" | "menu" | "missions" | "models" | "custom"
+// action:"custom" → onUse(state, api) with api = { message, refreshHud, save, earn(n), spend(n)→bool,
+//   addHeat(n), clearHeat(), fx(x,y) }
+// action:"menu" → menu: { title, subtitle, items:[{ label, sub, icon, img?, price?, do, highlight?:"chase" }] }
+//   do: "nextDay" | "openShop" | "spawn" | "missions" | "models" | "restyle" | "custom" (item.onPick(state, api))
+//   do:"restyle" → pick a new variant for the creature you last rode, for `price`; fields: title,
+//   subtitle("{name}"), clearsChase, message("{name}","{v}"), chaseMessage, noneMessage
 // action:"spawn" → brings a random number of fresh creatures up to a cap:
 //   spawn: { min, max, cap, from?:{x,y}, message?("{n}"), fullMessage? }   // from = they walk in from a door
 ```
@@ -401,18 +432,66 @@ stations: [ { type, x, y, sprite, label, labelY?, scale?, box?, action, actionLa
 ### `economy` / `shop` / `decor`
 ```
 economy: { startCoins, startResources:{id:n}, startCapacity, dayReward }
-shop: { title, resources:[{id,name,desc,icon,price,amount}], capacity:{name,price,boughtMessage},
-        decorHeading, buyCreature:{price,heading,hint,label,boughtMessage}, fullMessage }
-decor: [ { id, name, sprite, price, scale?, collision:{dx,dy,w,h}?, allowInHome? } ]
+shop: { title, resources:[{id,name,desc,icon,price,amount,boughtMessage}], capacity:{name,icon,price,boughtMessage},
+        decorHeading, buyCreature:{price,heading,hint,label,icon,img,boughtMessage}, fullMessage }
+decor: [ { id, name, sprite, thumb?, price, scale?, collision:{dx,dy,w,h}?, allowInHome? } ]
+```
+The shop, station menus, missions and models share one **choice list** look (engine.css
+`.choice`): an icon/thumbnail tile, a title + subtitle (both accept `{i:key}`), a price pill
+with the coin icon, or a check tag when owned. Coins earned anywhere go through `earn()`,
+which also counts the `earned` stat when it is listed in `objectives.extraStats`.
+
+### `missions` (go to a destination)
+```
+missions: { title, subtitle, stat:"missions", radius:80, color, marker:"<image key>", markerScale,
+  offers:[{ label, sub, icon, pay, heat? }], dests:[{ x, y, name }],
+  takenMessage("{d}"), hotMessage("{d}"), doneMessage("{p}"), busyMessage }
+```
+Taken at a station (`action:"missions"` or a menu item): a pulsing ring + bobbing marker
+appear at a random destination (not the nearest one) and an arrow orbits the player towards
+it; reaching it pays `pay`, counts `stat`, and saves. `heat` > 0 starts a chase.
+
+### `chase` (heat level + pursuers)
+```
+chase: { sprite, dirSheet?:{cols}, scale, originY, icon, label, maxLevel:3, maxUnits:3, speed,
+  catchRadius, catchSeconds, loseRadius, loseAfter, fine, spawnDist, escapedMessage, caughtMessage("{f}") }
+```
+The HUD shows `maxLevel` icons (lit = current level). Up to `maxUnits` pursuers spawn
+`spawnDist` away and home in (sliding along collisions; a dirSheet sprite turns and blinks
+between its frames). Staying within `catchRadius` for `catchSeconds` = caught (fine, mission
+lost); staying beyond `loseRadius` for `loseAfter` s lowers the level by one. A restyle with
+`clearsChase` (or `api.clearHeat()`) ends it.
+
+### `models` (buy creatures with stats)
+```
+models: { title, subtitle, items:[{ id, name, price, variant, speedMul, grip, drainMul, desc, img? }],
+  stats:[{ key, icon, invert? }], boughtMessage("{name}"), fullMessage, ownedTag:"check" }
+```
+Each model is bought once (station `action:"models"`); it appears next to the player with its
+stats; `stats` renders `{i:icon} NN%` per key (`invert` for lower-is-better, e.g. fuel drain).
+
+### `race` (pseudo-3D behind-the-vehicle mini-game)
+A mounted action `type:"race"` covers the world with a full-screen canvas: the road recedes
+to a horizon, your ride (`sprite`, multiplied by its variant tint) sits at the bottom, and
+you steer (left/right half of the screen, or arrow keys) to reach the finish before the timer
+runs out while dodging obstacles. The ride's `speedMul` / `grip` change top speed / steering.
+The HUD (timer, distance, speed, quit, steering hints) is DOM with the game's icons.
+```
+race: { time, reward, stat:"raceWin", hitPenalty, sprite, roadside:[image keys], spriteZoom,
+  track:{ segments, speed, steer, centrifugal, curveEvery, seed },
+  obstacles:[{ sprite, every, phase, scale, hw, spread }],
+  colors:{ sky:[top,mid,horizon], sun:[top,bottom]|false, skyline|false, ground, grass:[a,b], road:[a,b], rumble:[a,b], lane, finish:[a,b] },
+  icons:{ time, distance, speed, quit, left, right }, speedUnit, distUnit, topSpeed, quitLabel, hint,
+  startMessage, hitMessage("{n}"), winMessage("{r}"), loseMessage, quitMessage }
 ```
 
 ### `environment` (optional)
 ```
 band,                                  // forest band thickness around the world
 arena: { rect, tile, label, fence, obstacleSprite, obstacleScale, obstacleBox, obstacles:[{x,y}] },
-forest: { tree, bush, step, hedgeMargin },
+forest: { tree, bush, step, hedgeMargin, treeScale:[min,max], bushScale:[min,max], hedgeBox:{dx,dy,w,h} },
 path: { width, sand, inset, tile, label, labelY,
-        openings:[{x,y,w,h}], logs:{ xs:[...], dec, sprite, scale } },
+        openings:[{x,y,w,h}], logs:{ xs:[...], dec, sprite, scale, box:{dx,dy,w,h}, depthLift } },
 ```
 See the **place-scatter** skill for the single-rule vegetation system.
 
