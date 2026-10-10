@@ -841,6 +841,293 @@ function beacon() {   // glowing traffic beacon (space buoy cone)
   return job("assets/img/beacon.png", W, H, g, defs);
 }
 
+/* ---------------- 10. Space-station world (void, road, districts, city props) ---------------- */
+// Seamless tiles: every element is drawn at the 9 wrap offsets (wrapAll) or kept on the
+// tile grid, and nothing is directional (tiles are laid in horizontal AND vertical strips).
+function voidTile() {   // deep space around the station (512, darker than the deck `ground`)
+  const S = 512, R = rng(41);
+  const defs = blur("vdb", 26) + glow("vdg", 1.6);
+  let wisps = "", stars = "", twinkles = "";
+  [["#6a3fc0", 0.24], ["#1f8fb0", 0.18], ["#6a3fc0", 0.15], ["#2a5fd0", 0.15], ["#1f8fb0", 0.12], ["#a97bff", 0.1]].forEach(([c, o]) => {
+    const x = R() * S, y = R() * S, rx = 60 + R() * 90, ry = 26 + R() * 46, a = f2(R() * 180);
+    wisps += `<ellipse cx="0" cy="0" rx="${f2(rx)}" ry="${f2(ry)}" fill="${c}" opacity="${o}" transform="translate(${f2(x)} ${f2(y)}) rotate(${a})"/>`;
+  });
+  for (let i = 0; i < 260; i++) {
+    const big = R() < 0.12, r = big ? 1.2 + R() * 0.9 : 0.35 + R() * 0.8;
+    const col = R() < 0.2 ? "#bff6ff" : R() < 0.15 ? "#ffd6f0" : "#ffffff";
+    stars += `<circle cx="${f2(R() * S)}" cy="${f2(R() * S)}" r="${f2(r)}" fill="${col}" opacity="${f2(big ? 0.75 + R() * 0.25 : 0.25 + R() * 0.5)}"/>`;
+  }
+  for (let i = 0; i < 6; i++) {
+    const x = R() * S, y = R() * S, s = 5 + R() * 4;
+    twinkles += `<path d="${star(x, y, s, 1.1, 4)}" fill="#ffffff" opacity=".9" filter="url(#vdg)"/><circle cx="${f2(x)}" cy="${f2(y)}" r="1.5" fill="#fff"/>`;
+  }
+  let g = `<rect width="${S}" height="${S}" fill="#0a0e29"/>`;
+  g += `<g filter="url(#vdb)">${wrapAll(S, S, (ox, oy) => `<g transform="translate(${ox} ${oy})">${wisps}</g>`)}</g>`;
+  g += wrapAll(S, S, (ox, oy) => `<g transform="translate(${ox} ${oy})">${stars}${twinkles}</g>`);
+  return job("assets/img/void.png", S, S, g, defs);
+}
+function roadTile() {   // glowing space highway: hex paving with cyan seams (256, 8 hex columns × 7 rows)
+  const S = 256, R = rng(57), cw = 32, hh = S / 7, rr = cw / 1.5;   // column step, row height, hex radius
+  const defs = glow("rdg", 2.2) + lin("rdh", [[0, "#2c3478"], [1, "#1f2559"]]) + glow("rds", 1.2);
+  const hex = (x, y, k) => { const a = rr * k, b = (hh / 2) * k;
+    return `M${f2(x - a)} ${f2(y)} L${f2(x - a / 2)} ${f2(y - b)} L${f2(x + a / 2)} ${f2(y - b)} L${f2(x + a)} ${f2(y)} L${f2(x + a / 2)} ${f2(y + b)} L${f2(x - a / 2)} ${f2(y + b)} Z`; };
+  let seams = "", cells = "", sparks = "";
+  const cols = ["#262d6a", "#232a63", "#20275c", "#2a3170"];
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 7; j++) {
+    const x = i * cw, y = j * hh + (i % 2 ? hh / 2 : 0), c = cols[Math.floor(R() * cols.length)];
+    seams += `<path d="${hex(x, y, 1)}" fill="none" stroke="#3fe0e8" stroke-width="2.2" opacity=".42"/>`;
+    cells += `<path d="${hex(x, y, 0.86)}" fill="${c}" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>` +
+      `<path d="${hex(x, y, 0.62)}" fill="#ffffff" opacity=".035"/>`;
+  }
+  for (let i = 0; i < 9; i++) sparks += `<path d="${star(R() * S, R() * S, 2.6 + R() * 1.8, 0.8, 4)}" fill="#dffcff" opacity="${f2(0.55 + R() * 0.4)}" filter="url(#rds)"/>`;
+  let g = `<rect width="${S}" height="${S}" fill="#141a48"/>`;
+  g += `<g filter="url(#rdg)">${wrapAll(S, S, (ox, oy) => `<g transform="translate(${ox} ${oy})">${seams}</g>`)}</g>`;
+  g += wrapAll(S, S, (ox, oy) => `<g transform="translate(${ox} ${oy})">${cells}</g>`);
+  g += wrapAll(S, S, (ox, oy) => `<g transform="translate(${ox} ${oy})"><g opacity=".9">${seams.replace(/stroke-width="2.2" opacity=".42"/g, 'stroke-width="0.8" opacity=".35"').replace(/#3fe0e8/g, "#d8fdff")}</g>${sparks}</g>`);
+  return job("assets/img/road.png", S, S, g, defs);
+}
+function plazaTile() {   // warm-lit plaza floor: 2×2 big rounded panels, gold inlay, light studs at the corners
+  const S = 256, P = 128;
+  const defs = rad("plp", [[0, "#3f6a8c"], [0.7, "#365a80"], [1, "#344672"]], 0.5, 0.5, 0.75) +
+    rad("plw", [[0, "#ffc86a", 0.2], [1, "#ffd24a", 0]]) + glow("plg", 2.5);
+  let g = `<rect width="${S}" height="${S}" fill="#1a2350"/>`;
+  for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) {
+    const X = x * P, Y = y * P;
+    g += `<rect x="${X + 5}" y="${Y + 5}" width="${P - 10}" height="${P - 10}" rx="20" fill="url(#plp)"/>`;
+    g += `<rect x="${X + 5}" y="${Y + 5}" width="${P - 10}" height="${P - 10}" rx="20" fill="url(#plw)"/>`;
+    g += `<rect x="${X + 5}" y="${Y + 5}" width="${P - 10}" height="${P - 10}" rx="20" fill="none" stroke="#5a78b4" stroke-width="2" opacity=".55"/>`;
+    g += `<rect x="${X + 18}" y="${Y + 18}" width="${P - 36}" height="${P - 36}" rx="12" fill="none" stroke="#ffd24a" stroke-width="1.6" opacity=".55"/>`;
+    g += `<path d="${star(X + 64, Y + 64, 10, 3.6, 4)}" fill="none" stroke="#ffd24a" stroke-width="1.4" opacity=".5"/>`;
+    [[18, 64], [110, 64], [64, 18], [64, 110]].forEach(([a, b]) => { g += `<circle cx="${X + a}" cy="${Y + b}" r="2" fill="#ffd24a" opacity=".6"/>`; });
+  }
+  // round light studs where four panels meet (0 and S are halves of the same stud)
+  [0, P, S].forEach((x) => [0, P, S].forEach((y) => {
+    g += `<circle cx="${x}" cy="${y}" r="7" fill="#141a44"/><circle cx="${x}" cy="${y}" r="4.2" fill="#ffe69a" filter="url(#plg)"/><circle cx="${x}" cy="${y}" r="1.8" fill="#fff"/>`;
+  }));
+  return job("assets/img/plaza.png", S, S, g, defs);
+}
+function walkwayTile() {   // light walkway: pale lilac-grey panels with a dotted grip pattern (128)
+  const S = 128, P = 64;
+  const defs = lin("wwp", [[0, "#7d8cc8"], [1, "#6b7ab8"]], 0, 0, 1, 1);
+  let g = `<rect width="${S}" height="${S}" fill="#4a5795"/>`;
+  for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) {
+    const X = x * P, Y = y * P;
+    g += `<rect x="${X + 2}" y="${Y + 2}" width="${P - 4}" height="${P - 4}" rx="7" fill="${(x + y) % 2 ? "#7383c0" : "#6f7fbc"}"/>`;
+    g += `<rect x="${X + 2.5}" y="${Y + 2.5}" width="${P - 5}" height="${P - 5}" rx="6.5" fill="none" stroke="#97a5dc" stroke-width="1.2" opacity=".6"/>`;
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
+      const cx = X + 12 + i * 8, cy = Y + 12 + j * 8;
+      g += `<circle cx="${cx}" cy="${cy + 0.6}" r="1.6" fill="#9eacdf" opacity=".7"/><circle cx="${cx}" cy="${cy}" r="1.5" fill="#56639f"/>`;
+    }
+  }
+  return job("assets/img/walkway.png", S, S, g, defs);
+}
+function rimTile() {   // glowing teal metal trim (64): symmetric cells so it reads the same in H and V strips
+  const S = 64, P = 32;
+  const defs = rad("rmh", [[0, "#8ef0f6"], [0.55, "#3fcdd8"], [1, "#2a9fb0"]], 0.5, 0.5, 0.72);
+  let g = `<rect width="${S}" height="${S}" fill="#1e8f9e"/>`;
+  for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) {
+    const X = x * P, Y = y * P;
+    g += `<rect x="${X + 1}" y="${Y + 1}" width="${P - 2}" height="${P - 2}" rx="4" fill="url(#rmh)"/>`;
+    g += `<circle cx="${X + 16}" cy="${Y + 16}" r="3.2" fill="#167a88"/><circle cx="${X + 16}" cy="${Y + 16}" r="2.3" fill="#9cf2f6"/><circle cx="${X + 15.3}" cy="${Y + 15.3}" r="0.9" fill="#ffffff"/>`;
+  }
+  return job("assets/img/rim.png", S, S, g, defs);
+}
+function rail() {   // road guard-rail segment: two chunky posts + a glowing bar, amber lights on the caps (base y≈64)
+  const W = 110, H = 72, u = "rl";
+  const defs = lin(`${u}p`, [[0, "#e4e8ff"], [1, "#7480c4"]], 0, 0, 1, 0) + lin(`${u}b`, [[0, "#c8fbff"], [0.5, "#3fe0e8"], [1, "#1f9fb0"]]) +
+    glow(`${u}g`, 2.5) + blur(`${u}s`, 2.5) + rad(`${u}a`, [[0, "#ffd24a", 0.7], [1, "#ffd24a", 0]]);
+  let g = `<ellipse cx="55" cy="63" rx="50" ry="5" fill="#0b1030" opacity=".45" filter="url(#${u}s)"/>`;
+  g += `<rect x="16" y="34" width="78" height="14" rx="7" fill="#3fe0e8" opacity=".5" filter="url(#${u}g)"/>`;
+  const post = (x) => `<ellipse cx="${x}" cy="61" rx="12" ry="4.5" fill="#3a4790" ${stk(3)}/>` +
+    `<rect x="${x - 8}" y="22" width="16" height="39" rx="6" fill="url(#${u}p)" ${stk(3)}/>` +
+    `<path d="M${x - 3.5} 28 V55" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".6"/>` +
+    `<circle cx="${x}" cy="20" r="11" fill="url(#${u}a)"/><circle cx="${x}" cy="20" r="6" fill="#ffb43a" ${stk(2.6)} filter="url(#${u}g)"/><circle cx="${x - 1.8}" cy="18.2" r="1.8" fill="#fff6c8"/>`;
+  g += post(18) + post(92);
+  g += `<rect x="20" y="33" width="70" height="13" rx="6.5" fill="url(#${u}b)" ${stk(3)}/>`;
+  g += `<path d="M26 37.5 H84" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
+  [38, 55, 72].forEach((x) => { g += `<circle cx="${x}" cy="42" r="1.6" fill="#0f6b78" opacity=".7"/>`; });
+  return job("assets/img/rail.png", W, H, g, defs);
+}
+function bollard() {   // road-edge light post, the same in every direction (hedge along the road; base y≈64)
+  const W = 48, H = 72, u = "bo";
+  const defs = lin(`${u}p`, [[0, "#e4e8ff"], [1, "#7480c4"]], 0, 0, 1, 0) + glow(`${u}g`, 2.5) + blur(`${u}s`, 2.5) +
+    rad(`${u}a`, [[0, "#ffd24a", 0.7], [1, "#ffd24a", 0]]) + rad(`${u}r`, [[0, "#3fe0e8", 0.55], [1, "#3fe0e8", 0]]);
+  let g = `<ellipse cx="24" cy="62" rx="22" ry="7" fill="url(#${u}r)"/>`;
+  g += `<ellipse cx="24" cy="61" rx="13" ry="4.5" fill="#3a4790" ${stk(3)}/>`;
+  g += `<rect x="16" y="24" width="16" height="37" rx="6" fill="url(#${u}p)" ${stk(3)}/>`;
+  g += `<rect x="16" y="40" width="16" height="6" fill="#3fe0e8" opacity=".85"/><rect x="16" y="24" width="16" height="37" rx="6" fill="none" ${stk(3)}/>`;
+  g += `<path d="M20.5 29 V55" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".6"/>`;
+  g += `<circle cx="24" cy="20" r="12" fill="url(#${u}a)"/><circle cx="24" cy="20" r="6.5" fill="#ffb43a" ${stk(2.6)} filter="url(#${u}g)"/><circle cx="22" cy="18" r="2" fill="#fff6c8"/>`;
+  return job("assets/img/bollard.png", W, H, g, defs);
+}
+function rock() {   // floating asteroid cluster with a teal rim light and a glow under it (base y≈100)
+  const W = 130, H = 110, u = "rk";
+  const defs = rad(`${u}r`, [[0, "#c9c3ee"], [0.5, "#8a84c2"], [1, "#4b4c8a"]], 0.4, 0.32, 0.85) +
+    rad(`${u}h`, [[0, "#3fe0e8", 0.38], [0.6, "#a97bff", 0.14], [1, "#a97bff", 0]]) + blur(`${u}b`, 3);
+  let g = `<ellipse cx="64" cy="98" rx="54" ry="10" fill="url(#${u}h)"/>`;
+  g += `<ellipse cx="64" cy="98" rx="30" ry="4" fill="#3fe0e8" opacity=".25" filter="url(#${u}b)"/>`;
+  const one = (x, y, rx, ry, seed, k) => {
+    const d = K.blob(x, y, rx, ry, 9, 0.11, rng(seed)), id = `${u}c${k}`;
+    let s = `<clipPath id="${id}"><path d="${d}"/></clipPath><g clip-path="url(#${id})">`;
+    s += `<path d="${d}" fill="#7ff3ff"/><path d="${d}" fill="url(#${u}r)" transform="translate(${f2(-rx * 0.13)} ${f2(ry * 0.13)})"/>`;
+    const Rc = rng(seed + 5);
+    [[-0.3, 0.05, 0.28], [0.25, 0.35, 0.2], [0.05, -0.35, 0.16]].forEach(([a, b, r]) => {
+      const cx = x + a * rx, cy = y + b * ry, cr = r * rx * (0.85 + Rc() * 0.3);
+      s += `<ellipse cx="${f2(cx)}" cy="${f2(cy + 1.2)}" rx="${f2(cr + 1.2)}" ry="${f2(cr * 0.72 + 1.2)}" fill="#d6d2f2" opacity=".55"/><ellipse cx="${f2(cx)}" cy="${f2(cy)}" rx="${f2(cr)}" ry="${f2(cr * 0.72)}" fill="#55578f"/><ellipse cx="${f2(cx + cr * 0.2)}" cy="${f2(cy + cr * 0.2)}" rx="${f2(cr * 0.6)}" ry="${f2(cr * 0.4)}" fill="#66689f"/>`;
+    });
+    s += `</g><path d="${d}" fill="none" ${stk(3.5)}/>`;
+    s += `<path d="M${f2(x - rx * 0.62)} ${f2(y - ry * 0.12)} Q${f2(x - rx * 0.5)} ${f2(y - ry * 0.62)} ${f2(x - rx * 0.05)} ${f2(y - ry * 0.7)}" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".55"/>`;
+    return s;
+  };
+  g += one(100, 46, 15, 13, 31, 1) + one(58, 52, 36, 31, 17, 0) + one(26, 74, 14, 12, 23, 2);
+  [[112, 18], [14, 40]].forEach(([x, y], i) => { g += `<path d="${star(x, y, 5 - i, 1.5, 4)}" fill="#dffcff" opacity=".9"/>`; });
+  return job("assets/img/rock.png", W, H, g, defs);
+}
+// 3/4 box: front face (x..x+w, bottom y, height h), oblique top/side of depth d
+function cargoBox(x, y, w, h, d, c, u, k, logo) {
+  const cD = shade(c, -0.25), cL = shade(c, 0.35), id = `${u}f${k}`;
+  let s = `<path d="M${x + w} ${y} V${y - h} L${x + w + d} ${y - h - d} V${y - d} Z" fill="${cD}" ${stk(3.2)}/>`;
+  s += `<path d="M${x} ${y - h} L${x + d} ${y - h - d} H${x + w + d} L${x + w} ${y - h} Z" fill="${cL}" ${stk(3.2)}/>`;
+  s += `<clipPath id="${id}"><rect x="${x}" y="${y - h}" width="${w}" height="${h}" rx="5"/></clipPath>`;
+  s += `<rect x="${x}" y="${y - h}" width="${w}" height="${h}" rx="5" fill="${c}"/>`;
+  s += `<g clip-path="url(#${id})">`;
+  for (let rx = x + 9; rx < x + w - 4; rx += 9) s += `<path d="M${rx} ${y - h + 5} V${y - 5}" stroke="${cD}" stroke-width="2.6" stroke-linecap="round" opacity=".55"/><path d="M${rx + 2.2} ${y - h + 6} V${y - 6}" stroke="${cL}" stroke-width="1.2" opacity=".6"/>`;
+  // hazard stripes along the bottom-left
+  s += `<rect x="${x}" y="${y - 9}" width="${Math.min(30, w * 0.4)}" height="9" fill="#ffd24a"/>`;
+  for (let i = -1; i < 6; i++) s += `<path d="M${x + i * 7} ${y} L${x + i * 7 + 9} ${y - 9} L${x + i * 7 + 12.5} ${y - 9} L${x + i * 7 + 3.5} ${y} Z" fill="${INK}" opacity=".85"/>`;
+  s += `<rect x="${x + Math.min(30, w * 0.4)}" y="${y - 10}" width="${w}" height="10" fill="${c}"/>`;
+  for (let rx = x + 9; rx < x + w - 4; rx += 9) if (rx > x + Math.min(30, w * 0.4)) s += `<path d="M${rx} ${y - 10} V${y - 5}" stroke="${cD}" stroke-width="2.6" stroke-linecap="round" opacity=".55"/>`;
+  s += `<rect x="${x}" y="${y - h}" width="${w}" height="5" fill="${cL}" opacity=".5"/></g>`;
+  s += `<rect x="${x}" y="${y - h}" width="${w}" height="${h}" rx="5" fill="none" ${stk(3.2)}/>`;
+  if (logo) { const lx = x + w * 0.62, ly = y - h * 0.52;
+    s += `<circle cx="${lx}" cy="${ly}" r="${h * 0.26}" fill="#fff8ec" ${stk(2.6)}/><path d="${star(lx, ly, h * 0.19, h * 0.08)}" fill="${logo}" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round" filter="url(#${u}g)"/>`; }
+  return s;
+}
+function container() {   // stack of three cargo containers (base y≈164, H 176 keeps the soft shadow inside)
+  const W = 200, H = 176, u = "ct";
+  const defs = glow(`${u}g`, 2.2) + blur(`${u}s`, 3);
+  let g = `<ellipse cx="100" cy="161" rx="94" ry="9" fill="#0b1030" opacity=".45" filter="url(#${u}s)"/>`;
+  g += cargoBox(10, 158, 112, 44, 14, "#ff5db1", u, 0, "#ffd24a");
+  g += cargoBox(28, 107, 86, 40, 14, "#3fe0e8", u, 1, "#ff5db1");
+  g += cargoBox(126, 163, 54, 38, 13, "#ffc23a", u, 2, "#3fe0e8");
+  [[176, 70], [16, 40]].forEach(([x, y], i) => { g += `<path d="${star(x, y, 7 - i * 2, 2.3, 4)}" fill="#fff6c8" filter="url(#${u}g)"/>`; });
+  return job("assets/img/container.png", W, H, g, defs);
+}
+function neonSign() {   // holographic sign on a post showing the critter mascot (base y≈204)
+  const W = 140, H = 210, u = "ns";
+  const c = critter({ c: "#3fe0e8", uid: `${u}c`, look: 0 });
+  const defs = c.defs + glow(`${u}g`, 3.5) + glow(`${u}g2`, 2) + lin(`${u}p`, [[0, "#e4e8ff"], [1, "#7480c4"]], 0, 0, 1, 0) +
+    rad(`${u}h`, [[0, "#ff5db1", 0.35], [1, "#ff5db1", 0]]) + lin(`${u}f`, [[0, "#1d2458"], [1, "#11163e"]]) + blur(`${u}s`, 2.5) +
+    `<clipPath id="${u}cl"><rect x="18" y="18" width="104" height="102" rx="20"/></clipPath>`;
+  let g = `<ellipse cx="70" cy="70" rx="70" ry="68" fill="url(#${u}h)"/>`;
+  g += `<ellipse cx="70" cy="201" rx="28" ry="5" fill="#0b1030" opacity=".45" filter="url(#${u}s)"/>`;
+  g += `<ellipse cx="70" cy="199" rx="20" ry="6" fill="#3a4790" ${stk(3)}/>`;
+  g += `<rect x="62" y="120" width="16" height="80" rx="6" fill="url(#${u}p)" ${stk(3)}/><path d="M66 128 V192" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>`;
+  [140, 160, 180].forEach((y) => { g += `<circle cx="70" cy="${y}" r="2.6" fill="#ff5db1" filter="url(#${u}g2)"/>`; });
+  // frame: dark screen, pink neon tube, teal inner tube
+  g += `<rect x="12" y="12" width="116" height="114" rx="24" fill="url(#${u}f)" ${stk(4)}/>`;
+  g += `<g clip-path="url(#${u}cl)"><ellipse cx="70" cy="74" rx="46" ry="42" fill="#3fe0e8" opacity=".18" filter="url(#${u}g)"/>`;
+  g += `<g opacity=".92" transform="translate(70 72) scale(0.66) translate(-64 -60)">${c.body}</g>`;
+  for (let y = 22; y < 122; y += 5) g += `<path d="M18 ${y} H122" stroke="#bff6ff" stroke-width="1" opacity=".1"/>`;
+  g += `<path d="M28 34 Q34 24 48 22" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity=".35"/></g>`;
+  g += `<rect x="18" y="18" width="104" height="102" rx="20" fill="none" stroke="#ff5db1" stroke-width="5" filter="url(#${u}g)"/>`;
+  g += `<rect x="18" y="18" width="104" height="102" rx="20" fill="none" stroke="#ffd6ef" stroke-width="1.8"/>`;
+  g += `<rect x="25" y="25" width="90" height="88" rx="15" fill="none" stroke="#3fe0e8" stroke-width="1.6" opacity=".6" stroke-dasharray="6 6"/>`;
+  g += `<rect x="54" y="118" width="32" height="12" rx="5" fill="#3a4790" ${stk(3)}/>`;   // bracket frame → post
+  return job("assets/img/neon_sign.png", W, H, g, defs);
+}
+function antenna() {   // satellite dish on a lattice mast with a blinking tip light (base y≈212)
+  const W = 150, H = 224, u = "an";
+  const defs = lin(`${u}d`, [[0, "#ffffff"], [0.6, "#d4dcff"], [1, "#8d98d6"]], 0, 0, 1, 1) + lin(`${u}b`, [[0, "#5a67a8"], [1, "#2a3270"]]) +
+    glow(`${u}g`, 3) + blur(`${u}s`, 3) + rad(`${u}t`, [[0, "#ff5db1", 0.75], [1, "#ff5db1", 0]]);
+  let g = `<ellipse cx="75" cy="210" rx="46" ry="7" fill="#0b1030" opacity=".45" filter="url(#${u}s)"/>`;
+  // base block
+  g += `<path d="M40 196 V206 A35 8 0 0 0 110 206 V196 Z" fill="url(#${u}b)" ${stk(3)}/><ellipse cx="75" cy="196" rx="35" ry="8" fill="#3a4790" ${stk(3)}/>`;
+  g += `<circle cx="58" cy="205" r="2.4" fill="#3fe0e8" filter="url(#${u}g)"/><circle cx="92" cy="205" r="2.4" fill="#3fe0e8" filter="url(#${u}g)"/>`;
+  // lattice mast (tapering), bars drawn ink-then-colour so the joints read as one frame
+  const L = 54, Rr = 96, Lt = 66, Rt = 84, yb = 196, yt = 104, n = 4;
+  let bars = `M${L} ${yb} L${Lt} ${yt} M${Rr} ${yb} L${Rt} ${yt}`;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, y = yb + (yt - yb) * t, xl = L + (Lt - L) * t, xr = Rr + (Rt - Rr) * t;
+    bars += ` M${f2(xl)} ${f2(y)} L${f2(xr)} ${f2(y)}`;
+    if (i < n) { const t2 = (i + 1) / n, y2 = yb + (yt - yb) * t2, xl2 = L + (Lt - L) * t2, xr2 = Rr + (Rt - Rr) * t2;
+      bars += ` M${f2(xl)} ${f2(y)} L${f2(xr2)} ${f2(y2)} M${f2(xr)} ${f2(y)} L${f2(xl2)} ${f2(y2)}`; }
+  }
+  g += `<path d="${bars}" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="${bars}" fill="none" stroke="#9aa6e6" stroke-width="3" stroke-linecap="round"/>`;
+  // mount + dish (tilted to the upper left)
+  g += `<rect x="66" y="88" width="18" height="22" rx="5" fill="url(#${u}b)" ${stk(3)}/>`;
+  g += `<g transform="translate(75 68) rotate(-24)">`;
+  g += `<ellipse cx="0" cy="6" rx="52" ry="28" fill="#6d79bd" ${stk(3.5)}/>`;
+  g += `<ellipse cx="0" cy="0" rx="52" ry="28" fill="url(#${u}d)" ${stk(3.5)}/>`;
+  g += `<ellipse cx="0" cy="0" rx="38" ry="19" fill="none" stroke="#b4bfef" stroke-width="2"/><ellipse cx="0" cy="0" rx="22" ry="10" fill="none" stroke="#b4bfef" stroke-width="2"/>`;
+  g += `<path d="M-30 -10 Q-16 -20 6 -22" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"/>`;
+  g += `<path d="M0 0 L4 -40 M-26 8 L4 -40 M26 8 L4 -40" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;
+  g += `<circle cx="4" cy="-40" r="12" fill="url(#${u}t)"/><circle cx="4" cy="-40" r="6" fill="#ff5db1" ${stk(2.4)} filter="url(#${u}g)"/><circle cx="2.4" cy="-41.6" r="1.8" fill="#fff"/>`;
+  g += `<circle cx="0" cy="0" r="5" fill="#3fe0e8" ${stk(2.2)}/></g>`;
+  [[20, 30], [132, 120]].forEach(([x, y], i) => { g += `<path d="${star(x, y, 6 - i, 2, 4)}" fill="#fff6c8" filter="url(#${u}g)"/>`; });
+  return job("assets/img/antenna.png", W, H, g, defs);
+}
+function shuttle() {   // cute parked space van, 3/4 top-down, nose to the right (base y≈160)
+  const W = 240, H = 174, u = "sh";
+  const defs = lin(`${u}b`, [[0, "#ffffff"], [0.45, "#eef3ff"], [1, "#a9b6e6"]]) + lin(`${u}w`, [[0, "#c8fbff"], [0.5, "#3fb8e8"], [1, "#24306e"]], 0, 0, 1, 1) +
+    rad(`${u}p`, [[0, "#bff8ff"], [0.6, "#3fb8e8"], [1, "#24306e"]], 0.35, 0.3, 0.8) + glow(`${u}g`, 3) + blur(`${u}s`, 3.5) +
+    rad(`${u}j`, [[0, "#3fe0e8", 0.8], [1, "#3fe0e8", 0]]) + lin(`${u}l`, [[0, "#e4e8ff"], [1, "#7480c4"]], 0, 0, 1, 0);
+  const body = "M30 92 Q28 48 84 44 H160 Q214 46 220 96 Q222 136 186 138 H58 Q30 136 30 92 Z";
+  let g = `<ellipse cx="124" cy="156" rx="102" ry="10" fill="#0b1030" opacity=".45" filter="url(#${u}s)"/>`;
+  g += `<ellipse cx="124" cy="152" rx="70" ry="9" fill="#3fe0e8" opacity=".18" filter="url(#${u}s)"/>`;
+  // far legs (behind the body)
+  const leg = (x0, x1, c) => `<path d="M${x0} 128 L${x1} 150" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M${x0} 128 L${x1} 150" stroke="${c}" stroke-width="4" stroke-linecap="round"/><ellipse cx="${x1}" cy="152" rx="10" ry="4.5" fill="#3a4790" ${stk(2.8)}/>`;
+  g += leg(80, 74, "#8d98d6") + leg(170, 176, "#8d98d6");
+  // rear thruster
+  g += `<ellipse cx="18" cy="96" rx="14" ry="18" fill="url(#${u}j)"/><rect x="16" y="78" width="22" height="36" rx="9" fill="#3a4790" ${stk(3)}/><ellipse cx="20" cy="96" rx="4" ry="11" fill="#bff8ff" filter="url(#${u}g)"/>`;
+  // body + side band
+  g += `<clipPath id="${u}cl"><path d="${body}"/></clipPath>`;
+  g += `<path d="${body}" fill="url(#${u}b)"/>`;
+  g += `<g clip-path="url(#${u}cl)"><path d="M20 98 Q120 108 230 98 V150 H20 Z" fill="#cfd8f6"/><path d="M20 98 Q120 108 230 98" fill="none" stroke="#9aa6e0" stroke-width="2.5"/>`;
+  g += `<path d="M20 118 Q120 128 230 116 V128 Q120 140 20 130 Z" fill="#ff5db1"/><path d="M20 118 Q120 128 230 116" fill="none" stroke="#ffd6ef" stroke-width="1.6"/>`;
+  g += `<path d="M20 134 Q120 144 230 132 V150 H20 Z" fill="#3fe0e8"/></g>`;
+  g += `<path d="${body}" fill="none" ${stk(4)}/>`;
+  // roof: hatch + beacon, highlight
+  g += `<path d="M58 66 Q60 52 84 50 H128" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".95"/>`;
+  g += `<rect x="86" y="58" width="56" height="24" rx="10" fill="#e3e9fb" ${stk(2.8)}/><path d="M94 66 H134" stroke="#b4bfef" stroke-width="2.5" stroke-linecap="round"/>`;
+  g += `<rect x="108" y="38" width="16" height="10" rx="4" fill="#3a4790" ${stk(2.5)}/><ellipse cx="116" cy="36" rx="9" ry="7" fill="#ffd24a" ${stk(2.5)} filter="url(#${u}g)"/><circle cx="113.5" cy="34" r="2" fill="#fff"/>`;
+  // windshield (nose, right)
+  g += `<path d="M164 54 Q206 58 212 96 H176 Q174 72 160 58 Z" fill="url(#${u}w)" ${stk(3.2)}/><path d="M172 62 Q190 66 196 80" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity=".85"/>`;
+  // portholes
+  [66, 104, 142].forEach((x) => { g += `<circle cx="${x}" cy="103" r="11" fill="#eef3ff" ${stk(3)}/><circle cx="${x}" cy="103" r="7" fill="url(#${u}p)"/><circle cx="${x - 2.4}" cy="100.6" r="2.2" fill="#fff"/>`; });
+  // headlight + tail light
+  g += `<ellipse cx="214" cy="112" rx="5" ry="7" fill="#fff6c8" ${stk(2.4)} filter="url(#${u}g)"/><circle cx="34" cy="116" r="4" fill="#ff5db1" ${stk(2.2)}/>`;
+  // near legs (front)
+  g += leg(62, 52, "#c4ccf4") + leg(190, 202, "#c4ccf4");
+  [[10, 30], [228, 36]].forEach(([x, y], i) => { g += `<path d="${star(x, y, 6 - i, 2, 4)}" fill="#fff6c8" filter="url(#${u}g)"/>`; });
+  return job("assets/img/shuttle.png", W, H, g, defs);
+}
+function landingPad() {   // flat top-down landing-pad decal: rings, chevron lights, gold centre (260×160)
+  const W = 260, H = 160, cx = 130, cy = 80, ry = 0.56, u = "lp";
+  const defs = glow(`${u}g`, 2.6) + rad(`${u}d`, [[0, "#2c3878"], [0.75, "#1d2660"], [1, "#161d4e"]]) + rad(`${u}o`, [[0, "#3fe0e8", 0], [0.8, "#3fe0e8", 0.08], [1, "#3fe0e8", 0]]) +
+    rad(`${u}c`, [[0, "#fff1a8"], [0.6, "#ffd24a"], [1, "#e0a020"]], 0.45, 0.4, 0.7);
+  const E = (r, a) => `cx="${cx}" cy="${cy}" rx="${r}" ry="${f2(r * ry)}" ${a}`;
+  let g = `<ellipse ${E(128, `fill="url(#${u}o)"`)}/>`;
+  g += `<ellipse ${E(118, `fill="url(#${u}d)" ${stk(4)}`)}/>`;
+  g += `<ellipse ${E(108, `fill="none" stroke="#3fe0e8" stroke-width="4" opacity=".9" filter="url(#${u}g)"`)}/>`;
+  g += `<ellipse ${E(86, `fill="none" stroke="#8fa0e6" stroke-width="2.5" stroke-dasharray="12 9" opacity=".7"`)}/>`;
+  g += `<ellipse ${E(62, `fill="none" stroke="#ff5db1" stroke-width="3.5" opacity=".85" filter="url(#${u}g)"`)}/>`;
+  // chevrons pointing to the centre (8 directions, on the ring between 62 and 108)
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2, rr = 97, s = 7;
+    const ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux;   // radial / tangent (circle space)
+    const P = (r, t) => `${f2(cx + (ux * r + px * t))} ${f2(cy + (uy * r + py * t) * ry)}`;
+    g += `<path d="M${P(rr + s * 0.6, -s)} L${P(rr - s * 0.6, 0)} L${P(rr + s * 0.6, s)}" fill="none" stroke="#ffd24a" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#${u}g)"/>`;
+  }
+  // edge lights
+  for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2 + Math.PI / 16; g += `<circle cx="${f2(cx + Math.cos(a) * 113)}" cy="${f2(cy + Math.sin(a) * 113 * ry)}" r="2.2" fill="${i % 2 ? "#ff5db1" : "#bff8ff"}" filter="url(#${u}g)"/>`; }
+  // gold centre
+  g += `<ellipse ${E(34, `fill="url(#${u}c)" ${stk(3.5)}`)}/>`;
+  g += `<ellipse ${E(24, `fill="none" stroke="#fff6c8" stroke-width="2.4" opacity=".9"`)}/>`;
+  g += `<g transform="translate(${cx} ${cy}) scale(1 ${ry})"><path d="${star(0, 0, 14, 6)}" fill="#fff6c8" stroke="#b07a10" stroke-width="2" stroke-linejoin="round"/></g>`;
+  return job("assets/img/landing_pad.png", W, H, g, defs);
+}
+
 /* ---------------- 9. Game icons (128 grid, bold outline, glossy) ---------------- */
 const IP = Object.assign({}, IK.DEF, PAL);
 const ist = (w) => IK.st(IP, w);
@@ -959,10 +1246,12 @@ function build(jobs) {
   Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v), critterThumb(v), closeup(v, false), closeup(v, true)); });
   Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v, true), critterBack(v)); });
   Object.entries(KEEPERS).forEach(([n, p]) => jobs.push(keeperSheet(n, p), keeperThumb(n, p), keeperRide(n, p)));
-  jobs.push(pathTile(), arenaFloor(), spire(), shrub(), beamV(), cometRock(),
+  jobs.push(arenaFloor(), spire(), beamV(), cometRock(),
     market(), salon(), dock(), hatchery(), energyPad(), portal(),
     crateMarker(), target(), droneSheet(), asteroid(), beacon(), ...gameIcons());
-  jobs.push(ground(), penFloor(780, 640), fence(), pod(),
+  jobs.push(voidTile(), roadTile(), plazaTile(), walkwayTile(), rimTile(),
+    bollard(), rock(), container(), neonSign(), antenna(), shuttle(), landingPad());
+  jobs.push(ground(), penFloor(600, 470), fence(), pod(),
     crystal("crystal", "#ff8fd8", "#a45bff"), crystal("crystal_b", "#8ff6ff", "#3a7cff"),
     alienPlant(), orbLamp(), starBall(), fountain(),
     dust("dust", "#b7a9cf"), dust("dust_b", "#9fb0d8"), cloth(), wantBubble(),

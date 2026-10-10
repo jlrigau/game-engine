@@ -6,10 +6,11 @@ config file (`game.config.js`) + assets — or just run the **`/new-game`** skil
 answer a few questions.
 
 It ships with a working demo, **Nebula Nursery** (a keeper robot tends glowing alien
-critters in a space nursery). The demo is the engine's **showcase**: care actions and a
-close-up "polish" scene, variants and growth, eggs, riding with jumps on an arena and a
-trail loop, a shop with decorations, a salon menu, a wormhole that brings new critters,
-deliveries chased by drones, rare critters with stats and a pseudo-3D race — every system
+critters on a space station). The demo is the engine's **showcase**: care actions and a
+close-up "polish" scene, variants and growth, eggs, riding with jumps in the Gravity Park
+and on the Star Ring road, a shop with decorations, a salon menu, a wormhole that brings new
+critters, pick-up → drop-off deliveries chased by drones, rare critters with stats and a
+pseudo-3D race — every system
 switched on in `game.config.js`. A new game starts from a small seed instead
 (`.claude/skills/new-game/references/minimal-seed.config.js`).
 
