@@ -19,10 +19,10 @@ module.exports = async (page) => {
     for (const [dx, dy] of [[300, 4], [6, 320], [220, 230]]) {
       running = true; walkTo(player.x + dx, player.y + dy);
       const f = [], t0 = performance.now(); let frames = 0;
-      await new Promise((ok) => { const g = () => { frames++; running = true; f.push([playerFacing, mounted && mounted.bodyT ? (mounted.bodyT.flipX ? 1 : 0) : 0, Math.round(player.x), Math.round(player.y)]); if (performance.now() - t0 < 3500) requestAnimationFrame(g); else ok(); }; g(); });
+      await new Promise((ok) => { const g = () => { frames++; running = true; f.push([playerFacing, mounted && mounted.bodyT ? (mounted.bodyT.flipX ? 1 : 0) : 0, Math.round(player.x), Math.round(player.y)]); if (performance.now() - t0 < 8000 && (moveTarget || performance.now() - t0 < 300)) requestAnimationFrame(g); else ok(); }; g(); });   // a detour through a gate may take a while at 10 fps
       let flips = 0; for (let i = 1; i < f.length; i++) if (f[i][0] !== f[i - 1][0] || f[i][1] !== f[i - 1][1]) flips++;
-      res.push({ fps: Math.round(frames / 3.5), flips, arrived: !moveTarget });
+      res.push({ fps: Math.round(frames / ((performance.now() - t0) / 1000)), flips, arrived: !moveTarget });
     }
     return res;
-  }).then((res) => ({ trips: res, errors: res.filter((t) => t.flips > 4 || !t.arrived).map((t, i) => `trip ${i}: ${t.flips} flips, arrived=${t.arrived}`) }));
+  }).then((res) => ({ trips: res, errors: res.map((t, i) => [t, i]).filter(([t]) => t.flips > 4 || !t.arrived).map(([t, i]) => `trip ${i}: ${t.flips} flips, arrived=${t.arrived}`) }));
 };

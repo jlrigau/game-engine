@@ -72,7 +72,9 @@ module.exports = async (page) => {
     const gas = await page.evaluate(async () => {
       const st = (GAME.stations || []).find((s) => s.requireMounted && s.action === "custom"); if (!st || !mounted) return { skipped: true };
       const need = GAME.creature.ride.fatigueNeed;
-      player.x = st.x; player.y = st.y + 110; await new Promise((res) => setTimeout(res, 300));
+      moveTarget = null; navPath = [];
+      player.x = st.x; player.y = st.y + 110;
+      for (let k = 0; k < 15 && activeTarget !== st; k++) await new Promise((res) => setTimeout(res, 100));   // slow WebKit frames
       const targeted = activeTarget === st;
       interact({ type: st.type, station: true }); closeModal();
       return { targeted, refilled: mounted[need] > 50, notEmpty: rideEmptyMul() === 1 };
@@ -254,11 +256,14 @@ module.exports = async (page) => {
     const out = await page.evaluate(async () => {
       const d = GAME.decor[0], b = state.decors.length, z = (GAME.zones || []).find((q) => q.home);
       // stand in a free spot: left of the home zone, away from stations
+      if (mounted) dismount(mounted);
+      moveTarget = null; navPath = [];
       player.x = z ? z.rect.x - 160 : player.x; player.y = z ? z.rect.y + z.rect.h / 2 : player.y;
-      buyDecor(d.id); const ghost = !!ghostDecor;
+      playerFacing = "right"; buyDecor(d.id); const ghost = !!ghostDecor;   // ghost on the zone side (never over a station)
       await new Promise((res) => setTimeout(res, 200));
+      const g = ghostXY(), err = placementError(d, g.x, g.y);
       placeDecor();
-      return { ghost, placed: state.decors.length - b, placing: !!placingDecor };
+      return { ghost, placed: state.decors.length - b, placing: !!placingDecor, at: [Math.round(player.x), Math.round(player.y)], err, mounted: !!mounted };
     });
     if (out.placing) await page.evaluate(() => cancelPlacement());
     check(out.ghost && out.placed === 1, "decor: buy + place failed");

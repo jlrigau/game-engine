@@ -32,7 +32,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v46",
+    assetVersion: "v47",
     theme: { home: "#120c34", play: "#0b1029", closeup: "#1b1150" },
     showCoins: true,
     coinIcon: "shard",                // the currency: star shards
@@ -180,7 +180,7 @@ window.GAME = {
     shadow: { w: 66, h: 18 },
     spacing: 70,
     // Critters hatch tiny and grow over a few cycles; grown ones are big enough to ride.
-    aging: { adultAge: 4, scaleBaby: 0.55, scaleAdult: 0.95 },
+    aging: { adultAge: 4, scaleBaby: 0.55, scaleAdult: 1.05 },
     // Two happy grown critters resting well → an egg hatches overnight.
     breeding: { enabled: true, minMood: 75, cooldown: 2, message: "{i:egg} An egg hatched overnight: welcome, {name}!" },
     // The panel shows a face for the mood (instead of hearts), and a critter whose Fun is
@@ -257,7 +257,7 @@ window.GAME = {
     // → float to the Energy Pad (a station that only works while riding).
     ride: {
       adultsOnly: true, minEnergy: 15, fatigueNeed: "fuel", empty: "slow", emptySpeed: 0.3,
-      sitY: -62, sitX: 6, nameY: -150,
+      sitY: -59, sitX: 4, nameY: -158,
       onMount: { joy: 8 },
       tooYoung: "{name} is still a hatchling, too small to ride.",
       tooTired: "{name} is too low on energy to carry you.",
@@ -288,7 +288,7 @@ window.GAME = {
       { sprite: "beacon", every: 30, phase: 0, scale: 2.2, hw: 0.2, spread: 0.6 },
       { sprite: "asteroid", every: 46, phase: 18, scale: 3.2, hw: 0.3, spread: 0.45 },
     ],
-    colors: { sky: ["#0b1029", "#2a1d6e", "#7a3fc0"], sun: ["#ffd6ef", "#ff5db1"], skyline: "#1b1150", ground: "#0e1430",
+    colors: { sky: ["#0b1029", "#2a1d6e", "#7a3fc0"], sun: ["#ffd6ef", "#ff5db1"], skyline: false, ground: "#0e1430",
               grass: ["#18214a", "#141c43"], road: ["#2e3b78", "#283470"], rumble: ["#3fe0e8", "#ff5db1"], lane: "#bff6ff", finish: ["#ffffff", "#1d2147"] },
     icons: { time: "timer", distance: "distance", speed: "speed", quit: "quit", left: "left", right: "right" },
     quitLabel: "Quit", hint: "Tap left or right to steer",
@@ -349,9 +349,9 @@ window.GAME = {
         api.refreshHud(); api.save();
       } },
     // spawn: wild critters float in through the wormhole (up to a cap)
-    { type: "portal", x: 1210, y: 530, sprite: "portal", scale: 0.8, label: "Wormhole", labelY: 30, glow: "#a97bff", anim: "pulse",
+    { type: "portal", x: 990, y: 530, sprite: "portal", scale: 0.8, label: "Wormhole", labelY: 30, glow: "#a97bff", anim: "pulse",
       box: { dx: -80, dy: -40, w: 160, h: 42 }, action: "spawn", actionLabel: "Call a critter", icon: "portal", color: "#a97bff", hint: "A wild critter may float in",
-      spawn: { min: 1, max: 1, cap: "capacity", from: { x: 1210, y: 560 }, message: "{i:portal} A wild critter floated in!", fullMessage: "The nursery is full, no more room for now." } },
+      spawn: { min: 1, max: 1, cap: "capacity", from: { x: 990, y: 570 }, message: "{i:portal} A wild critter floated in!", fullMessage: "The nursery is full, no more room for now." } },
   ],
 
   /* ---- Economy + Star Market + decorations ---- */
@@ -438,8 +438,8 @@ window.GAME = {
     { x: 1080, y: 1420, sprite: "crystal", scale: 0.6, glow: "#ff8fd8", anim: "pulse", box: { dx: -30, dy: -14, w: 60, h: 18 } },
     { x: 1440, y: 1420, sprite: "crystal_b", scale: 0.6, glow: "#8ff6ff", anim: "pulse", box: { dx: -30, dy: -14, w: 60, h: 18 } },
     { x: 760, y: 1240, sprite: "alienplant", scale: 0.7, anim: "sway", box: false },
-    { x: 880, y: 520, sprite: "orblamp", scale: 0.6, glow: "#ffe68a", glowY: 80, box: { dx: -12, dy: -8, w: 24, h: 12 } },
-    { x: 1540, y: 520, sprite: "orblamp", scale: 0.6, glow: "#ffe68a", glowY: 80, box: { dx: -12, dy: -8, w: 24, h: 12 } },
+    { x: 1220, y: 500, sprite: "orblamp", scale: 0.6, glow: "#ffe68a", glowY: 80, box: { dx: -12, dy: -8, w: 24, h: 12 } },
+    { x: 1480, y: 500, sprite: "orblamp", scale: 0.6, glow: "#ffe68a", glowY: 80, box: { dx: -12, dy: -8, w: 24, h: 12 } },
   ],
 
   /* ---- Unlocks: the nursery grows richer as you play (no reading needed) ---- */
