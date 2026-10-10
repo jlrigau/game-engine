@@ -6,6 +6,7 @@
  * so they never drift apart.
  */
 const K = require("../../.claude/skills/_shared/svg-kit.cjs");
+const IK = require("../../.claude/skills/_shared/icon-kit.cjs");
 const { svg, sheet, job, shade, mix, lin, rad, glow, blur, rng, star } = K;
 
 const INK = "#1d2147";                 // outline colour (deep navy)
@@ -52,7 +53,7 @@ function critterSheet(v) {
   // 4-frame walk: squash ↔ stretch with alternating feet (the engine adds the hop)
   const params = [{ sq: 0.0, feet: 1 }, { sq: -0.05, feet: 0 }, { sq: 0.0, feet: -1 }, { sq: 0.05, feet: 0 }];
   let defs = "";
-  const frames = params.map((p, i) => { const r = critter({ c, uid: `k${i}`, sq: p.sq, feet: p.feet }); defs += r.defs; return r.body; });
+  const frames = params.map((p, i) => { const r = critter({ c, uid: `k${i}`, sq: p.sq, feet: p.feet }); defs += r.defs; return `<g transform="translate(64 109) scale(0.88) translate(-64 -109)">${r.body}</g>`; });
   return job(`assets/sheet/critter_${v}.png`, 512, 128, sheet(frames, 128, 128, 4), defs);
 }
 function critterThumb(v) {
@@ -124,7 +125,7 @@ function keeperSheet(name, pal) {
     for (let i = 0; i < 9; i++) {
       const u = `r${r}${i}`;
       const res = robot(d, i === 0 ? 0 : ((i - 1) / 8) * Math.PI * 2, i > 0, pal, u);
-      defs += res.defs; frames.push(res.body);
+      defs += res.defs; frames.push(`<g transform="translate(64 124) scale(0.9) translate(-64 -124)">${res.body}</g>`);
     }
   });
   return job(`assets/sheet/${name}.png`, 128 * 9, 128 * 4, sheet(frames, 128, 128, 9), defs);
@@ -348,6 +349,40 @@ function logo() {
   return job("assets/img/logo.png", W, H, g, defs);
 }
 
+
+/* ---------------- UI icons (shared kit, Nebula palette) + game icons ---------------- */
+const PAL = { ink: "#1d2147", blue: "#3fb8ff", teal: "#3fe0e8", pink: "#ff5db1", purple: "#a97bff", gold: "#ffc93c", green: "#6ee08a" };
+function critterIcon() {   // the creature icon: the same critter, framed as an icon
+  const r = critter({ c: VARIANTS.aqua, uid: "ci", look: 0 });
+  return IK.job("assets/ui/icons/critter.png", `<g transform="translate(64 70) scale(1.05) translate(-64 -66)">${r.body}</g>`, r.defs);
+}
+function robotIcon() {
+  const r = robot("down", 0, false, KEEPERS.keeper, "ri");
+  return IK.job("assets/ui/icons/keeper.png", `<g transform="translate(64 64) scale(1.0) translate(-64 -62)">${r.body}</g>`, r.defs);
+}
+function polishIcon() {   // the polish mitt with a sparkle
+  const defs = lin("pm", [[0, "#ffd0ec"], [1, "#ff7ac0"]]);
+  let g = `<g transform="rotate(-18 64 70)"><rect x="20" y="30" width="88" height="64" rx="28" fill="url(#pm)" stroke="${INK}" stroke-width="7"/><path d="M32 52 Q64 40 96 52" fill="none" stroke="#fff" stroke-width="6" opacity=".6" stroke-linecap="round"/><rect x="50" y="90" width="28" height="30" rx="10" fill="#7b86d6" stroke="${INK}" stroke-width="7"/></g>`;
+  g += `<path d="${star(102, 24, 18, 6, 4)}" fill="#ffd24a" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`;
+  return IK.job("assets/ui/icons/polish.png", g, defs);
+}
+
+/* ---------------- Home splash (portrait, behind the logo + bottom sheet) ---------------- */
+function splash() {
+  const W = 900, H = 1600, R = rng(77);
+  const crit = (v, x, y, s, look, uid, sq) => { const r = critter({ c: VARIANTS[v], uid, look, sq }); return { d: r.defs, g: `<g transform="translate(${x} ${y}) scale(${s}) translate(-64 -66)">${r.body}</g>` }; };
+  let defs = skyDefs() + rad("pl", [[0, "#5a4bd0"], [0.6, "#2e2a86"], [1, "#171a52"]], 0.4, 0.2, 0.8) + rad("plh", [[0, "#7ff3ff", 0.5], [1, "#7ff3ff", 0]]) + glow("sg", 6) + rad("ring", [[0, "#ff9ed8", 0.0], [0.85, "#ff9ed8", 0.0], [0.92, "#ff9ed8", 0.45], [1, "#ff9ed8", 0]]);
+  let g = starfield(W, H, 3);
+  g += `<circle cx="760" cy="300" r="110" fill="#ff8fd0" opacity=".9"/><circle cx="740" cy="280" r="110" fill="url(#pl)" opacity=".35"/><ellipse cx="760" cy="300" rx="190" ry="40" fill="none" stroke="#ffd6ef" stroke-width="10" opacity=".7" transform="rotate(-18 760 300)"/>`;
+  g += `<ellipse cx="450" cy="${H + 420}" rx="900" ry="760" fill="url(#plh)"/>`;
+  g += `<ellipse cx="450" cy="${H + 440}" rx="820" ry="700" fill="url(#pl)"/>`;
+  for (let i = 0; i < 12; i++) g += `<ellipse cx="${80 + R() * 740}" cy="${H - 300 + R() * 260}" rx="${30 + R() * 60}" ry="${8 + R() * 14}" fill="#1a1d5a" opacity=".55"/>`;
+  [[120, 520, 1], [800, 760, 0.8], [240, 900, 0.7], [680, 470, 0.6]].forEach(([x, y, s]) => { g += `<path d="${star(x, y, 18 * s, 6 * s, 4)}" fill="#fff6c8" filter="url(#sg)"/>`; });
+  const cs = [crit("violet", 560, 760, 0.95, -0.2, "s3", 0.0), crit("amber", 330, 800, 0.9, 0.3, "s4", 0.04), crit("rose", 215, 900, 1.3, 0.4, "s1", 0.05), crit("lime", 690, 880, 1.2, -0.4, "s2", -0.03)];   // in the visible band between title and sheet
+  cs.forEach((c) => { defs += c.d; g += c.g; });
+  return K.job("assets/img/splash.png", W, H, g, defs);
+}
+
 module.exports = () => {
   const jobs = [];
   Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v), critterThumb(v), closeup(v, false), closeup(v, true)); });
@@ -356,6 +391,8 @@ module.exports = () => {
     crystal("crystal", "#ff8fd8", "#a45bff"), crystal("crystal_b", "#8ff6ff", "#3a7cff"),
     alienPlant(), orbLamp(), starBall(), fountain(),
     dust("dust", "#b7a9cf"), dust("dust_b", "#9fb0d8"), cloth(), wantBubble(),
-    icon("assets/favicon.png", 512), icon("assets/apple-touch-icon.png", 180), logo());
+    icon("assets/favicon.png", 512), icon("assets/apple-touch-icon.png", 180), logo(), splash(),
+    critterIcon(), robotIcon(), polishIcon(),
+    ...IK.jobs(PAL, ["star", "heart", "heartEmpty", "sound", "soundOff", "help", "avatar", "goals", "close", "play", "resume", "check", "calendar", "gift", "hand", "sparkle", "moon", "refresh", "arrow", "trophy", "palette", "ball", "battery", "smile", "meh", "sad", "joy"]));
   return jobs;
 };

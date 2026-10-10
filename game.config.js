@@ -20,31 +20,44 @@ window.GAME = {
   /* ---- Identity, theming, UI strings ---- */
   meta: {
     title: "Nebula Nursery",
-    titleIcon: "👾",
+    titleIcon: "critter",
     logo: "assets/img/logo.png",       // big illustrated logo on the home screen
+    splash: "assets/img/splash.png",   // full-screen illustration behind the home & create screens
     shortName: "Nebula",
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v27",
+    assetVersion: "v28",
     theme: { home: "#120c34", play: "#0b1029", closeup: "#1b1150" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
     startName: "My Nursery",
     namePromptYou: "Your name",
     avatarPrompt: "Pick your keeper",
-    createTitle: "🤖 Choose your keeper",
-    createOkLabel: "🚀 Let's go!",
-    startLabel: "▶ New game",
-    continueLabel: "📂 Continue",
-    continueHint: "Your nursery is waiting for you! 👾",
-    helpTitle: "❓ How to play",
+    createTitle: "Choose your keeper",
+    createOkLabel: "Let's go!",
+    startLabel: "New game",
+    continueLabel: "Continue",
+    continueHint: "Your nursery is waiting for you!",
+    helpTitle: "{i:help} How to play",
     ageUnit: "c", and: "and",
-    nightMessage: "🌙 The lights dim…",
-    restBlockedHint: "You just woke up! Look after a critter first. 👾",
-    neglectMessage: "🌅 Cycle {day}. Look after {names}!",
-    morningMessage: "🌅 Cycle {day}: everyone rested well. ✨",
-    idleHint: "Tap the floor to move 🚀 — tap a critter to look after it.",
+    nightMessage: "{i:moon} The lights dim…",
+    restBlockedHint: "You just woke up! Look after a critter first.",
+    neglectMessage: "Cycle {day}. Look after {names}!",
+    morningMessage: "{i:sparkle} Cycle {day}: everyone rested well.",
+    idleHint: "Tap a critter to look after it",
+  },
+
+  /* ---- Illustrated UI icons (tools/art/nebula.cjs → assets/ui/icons). Any text can embed {i:key}. ---- */
+  icons: {
+    star: "assets/ui/icons/star.png", heart: "assets/ui/icons/heart.png", heartEmpty: "assets/ui/icons/heartEmpty.png", sound: "assets/ui/icons/sound.png",
+    soundOff: "assets/ui/icons/soundOff.png", help: "assets/ui/icons/help.png", avatar: "assets/ui/icons/avatar.png", goals: "assets/ui/icons/goals.png",
+    close: "assets/ui/icons/close.png", play: "assets/ui/icons/play.png", resume: "assets/ui/icons/resume.png", check: "assets/ui/icons/check.png",
+    calendar: "assets/ui/icons/calendar.png", gift: "assets/ui/icons/gift.png", hand: "assets/ui/icons/hand.png", sparkle: "assets/ui/icons/sparkle.png",
+    moon: "assets/ui/icons/moon.png", refresh: "assets/ui/icons/refresh.png", arrow: "assets/ui/icons/arrow.png", trophy: "assets/ui/icons/trophy.png",
+    palette: "assets/ui/icons/palette.png", ball: "assets/ui/icons/ball.png", battery: "assets/ui/icons/battery.png", smile: "assets/ui/icons/smile.png",
+    meh: "assets/ui/icons/meh.png", sad: "assets/ui/icons/sad.png", joy: "assets/ui/icons/joy.png", critter: "assets/ui/icons/critter.png",
+    keeper: "assets/ui/icons/keeper.png", polish: "assets/ui/icons/polish.png",
   },
 
   /* ---- Look & feel (smooth hi-res art, glow, floating stardust) ---- */
@@ -69,7 +82,7 @@ window.GAME = {
 
   /* ---- World ---- */
   world: { width: 1800, height: 1300, groundTile: "ground", bg: "#0b1029" },
-  camera: { fitW: 700, fitH: 760, min: 0.5, max: 1.1 },
+  camera: { fitW: 520, fitH: 620, min: 0.5, max: 1.2 },
 
   /* ---- Assets (all generated, CC0) ---- */
   assets: {
@@ -103,7 +116,7 @@ window.GAME = {
 
   /* ---- Player (the keeper robot) ---- */
   player: {
-    scale: 0.8,
+    scale: 0.89,
     speed: { walk: 220, run: 390 },
     spawn: { x: 440, y: 680 },
     nameY: -112,                 // keep the name label above the keeper's antenna
@@ -116,34 +129,33 @@ window.GAME = {
 
   /* ---- Creature system (3 needs, 3 actions, variants, aging) ---- */
   creature: {
-    label: "critters", icon: "👾",
+    label: "critters", icon: "critter",
     sheet: "critter_rose",
     origin: { x: 0.5, y: 0.86 },
     walk: { start: 0, end: 3, frameRate: 7, hop: 9, hopPeriod: 260, speed: 46 },   // bouncy little hops
     shadow: { w: 66, h: 18 },
     // Critters hatch tiny and grow to full size over a few cycles.
-    aging: { adultAge: 4, scaleBaby: 0.45, scaleAdult: 0.72 },
-    youngLabel: "🐣 Hatchling", adultLabel: "🌟 Grown",
+    aging: { adultAge: 4, scaleBaby: 0.5, scaleAdult: 0.82 },
+    youngLabel: "Hatchling", adultLabel: "Grown",
     // Mood = average of the three needs (the coloured heart above each critter).
     // joy is the MOOD_NEED: maxing it (via Play) triggers the little celebration,
     // and it gently drifts each cycle depending on how well the other needs are kept up.
     moodNeed: "joy",
     moodFrom: ["fuel", "shine", "joy"],
-    moodFaces: ["😢", "😐", "🙂", "😄"],
-    moodDay: { base: -8, lowPenalty: -8, lowAt: 25, highBonus: 6, highAt: 60 },
+        moodDay: { base: -8, lowPenalty: -8, lowAt: 25, highBonus: 6, highAt: 60 },
     // Three clear needs, each looked after by exactly ONE action:
-    //   🔋 Energy ← Feed   ·   ✨ Sparkle ← Polish (zoom)   ·   🎮 Fun ← Play
+    //   Energy ← Feed   ·   Sparkle ← Polish (zoom)   ·   Fun ← Play
     needs: [
-      { id: "fuel", icon: "🔋", label: "Energy", start: 70, perDay: -22 },
-      { id: "shine", icon: "✨", label: "Sparkle", start: 55, perDay: -20 },
-      { id: "joy", icon: "🎮", label: "Fun", start: 80 },
+      { id: "fuel", icon: "battery", label: "Energy", start: 70, perDay: -22 },
+      { id: "shine", icon: "sparkle", label: "Sparkle", start: 55, perDay: -20 },
+      { id: "joy", icon: "ball", label: "Fun", start: 80 },
     ],
     // A dusty critter intermittently pops a "polish me" bubble (Sparkle low) — it cues
     // the close-up. The coloured mood heart stays on alongside it (wantBubble.withMood).
     wantBubble: { sprite: "want_dust", need: "shine", below: 45, withMood: true,
       intermittent: true, scale: 0.42, lift: 30, showFor: 2.6, hideMin: 5, hideMax: 10 },
     // Rest with EVERYONE happy → a synchronized send-off and a special morning line.
-    allHappy: { mood: 75, message: "🌟 Cycle {day}: every critter is glowing — what a wonderful day! ✨" },
+    allHappy: { mood: 75, message: "{i:trophy} Cycle {day}: every critter is glowing — what a wonderful day!" },
     // Each variant has its own glow colour (sheet), close-up face, happy face and thumbnail.
     variants: [
       { id: "rose", name: "Rose", color: "#ff5db1", sheet: "critter_rose", closeupBg: "critter_closeup_rose", closeupBgDone: "critter_closeup_rose_done", thumb: "assets/ui/critter_rose.png" },
@@ -154,35 +166,35 @@ window.GAME = {
     ],
     variantLabel: "Glow colour",
     customize: { rename: true, variant: true },
-    customizeTitle: "🎨 Customize",
-    customizedMessage: "{name} looks great! ✨",
+    customizeTitle: "{i:palette} Customize",
+    customizedMessage: "{i:sparkle} {name} looks great!",
     actions: [
       // Quick in-world taps — each tops up one need only.
-      { id: "feed", label: "Feed", icon: "🔋",
+      { id: "feed", label: "Feed", icon: "battery", color: "#5ad18a",
         effects: { fuel: 38 }, stat: "feed",
         // themed particles: little cyan energy sparks float up as it recharges
         anim: { motion: "nod", particle: "spark", colors: ["#9fe8ff", "#6fb7e8", "#ffffff"], count: 7, y0: 38 },
-        message: "{name} recharged happily! 🔋" },
-      { id: "play", label: "Play", icon: "🎮",
+        message: "{i:battery} {name} recharged happily!" },
+      { id: "play", label: "Play", icon: "ball", color: "#ffb43a",
         effects: { joy: 30 }, stat: "play",
         // themed particles: a burst of STARS instead of hearts
         anim: { motion: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff", "#ff5db1"], count: 8 },
-        message: "{name} had fun! 🎮", celebrateMessage: "{name} glows with joy! ✨" },
+        message: "{i:ball} {name} had fun!", celebrateMessage: "{i:joy} {name} glows with joy!" },
       // ⭐ the signature CLOSE-UP "moment fort": zoom in and scrub off the cosmic dust by hand
-      { id: "polish", type: "closeup", label: "Polish", icon: "✨", stat: "polish",
+      { id: "polish", type: "closeup", label: "Polish", icon: "polish", color: "#ff5db1", stat: "polish",
         closeup: {
           bg: "critter_closeup_rose", spotSprites: ["dust", "dust_b"], brush: "cloth", brushTip: { x: 0.5, y: 0.38 },
           spots: { base: 4, growEvery: 2, max: 9, rubs: 3, size: 120, minGap: 0.1,
                    // around the big eye (never on it): left & right cheeks, forehead, chin
                    area: [{ x: 0.25, y: 0.45, w: 0.1, h: 0.2 }, { x: 0.65, y: 0.45, w: 0.1, h: 0.2 },
                           { x: 0.40, y: 0.385, w: 0.2, h: 0.02 }, { x: 0.40, y: 0.70, w: 0.2, h: 0.03 }] },
-          finishParticles: ["⭐", "✨", "💫", "🌟"],
+          finishParticles: ["star", "sparkle", "heart"],
           foam: { colors: ["#ffffff", "#e3f9ff", "#ffe3f4"] },
         },
         effects: { shine: 100 },
-        message: "{name} is sparkling clean! ✨" },
+        message: "{i:sparkle} {name} is sparkling clean!" },
       // open the customize menu (recolour the glow / rename) — no effect on needs
-      { id: "style", type: "customize", label: "Style", icon: "🎨" },
+      { id: "style", type: "customize", label: "Style", icon: "palette", color: "#a97bff" },
     ],
     celebrate: { mode: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff", "#ff9ed8"], count: 9 },
     names: ["Zib", "Quor", "Lumi", "Vex", "Orbit", "Pulse", "Nova", "Echo", "Bly", "Pixl"],
@@ -194,13 +206,13 @@ window.GAME = {
   /* ---- Zone (the nursery pen where critters roam) ---- */
   zones: [
     { id: "pen", home: true, rect: { x: 520, y: 340, w: 780, h: 640 }, floor: "pen_floor",
-      fence: true, gates: "left", gateA: 0.38, gateB: 0.62, label: "✦ Nursery ✦", labelLift: 26 },
+      fence: true, gates: "left", gateA: 0.38, gateB: 0.62, label: "Nursery", labelLift: 26 },
   ],
 
   /* ---- One station: the recharge pod (rest → next cycle) ---- */
   stations: [
     { type: "rest", x: 300, y: 560, sprite: "pod_rest", scale: 0.8, label: "Recharge Pod", labelY: 34, glow: "#3fe0e8",
-      box: { dx: -78, dy: -44, w: 156, h: 46 }, action: "nextDay", actionLabel: "🌙 Rest (next cycle)" },
+      box: { dx: -78, dy: -44, w: 156, h: 46 }, action: "nextDay", actionLabel: "Rest", icon: "moon", color: "#7b6cff", hint: "Sleep until the next cycle" },
   ],
 
   /* ---- Ambient scenery (crystals, alien plants) with a little life ---- */
@@ -217,11 +229,11 @@ window.GAME = {
 
   /* ---- Unlocks: the nursery grows richer as you care (no reading needed) ---- */
   unlocks: [
-    { id: "ball", when: { stat: "play", atLeast: 3 }, message: "🎁 A new toy appeared in the nursery!",
+    { id: "ball", when: { stat: "play", atLeast: 3 }, message: "{i:gift} A new toy appeared in the nursery!",
       scenery: { x: 1080, y: 830, sprite: "starball", scale: 0.6, anim: "bob", box: { dx: -18, dy: -10, w: 36, h: 14 } } },
-    { id: "lamps", when: { stat: "feed", atLeast: 4 }, message: "💡 Cosy orb lamps light up the way!",
+    { id: "lamps", when: { stat: "feed", atLeast: 4 }, message: "{i:gift} Cosy orb lamps light up the way!",
       scenery: { x: 470, y: 470, sprite: "orblamp", scale: 0.7, glow: "#ffe68a", glowY: 90, box: { dx: -14, dy: -10, w: 28, h: 14 } } },
-    { id: "fountain", when: { stat: "polish", atLeast: 3 }, message: "⛲ A stardust fountain for the critters!",
+    { id: "fountain", when: { stat: "polish", atLeast: 3 }, message: "{i:gift} A stardust fountain for the critters!",
       scenery: { x: 1520, y: 600, sprite: "fountain", scale: 0.8, glow: "#ff8fd8", glowY: 70, box: { dx: -70, dy: -30, w: 140, h: 34 } } },
   ],
 
@@ -240,13 +252,12 @@ window.GAME = {
   /* ---- Help screen ---- */
   help: [
     "<b>Welcome to your space nursery!</b>",
-    "<b>🚀 Move:</b> tap where you want to go — your keeper floats there, around obstacles. Tap a critter to go straight to it. (Keyboard: arrows or WASD/ZQSD.)",
-    "<b>👾 Three needs:</b> 🔋 Energy (Feed), 🎮 Fun (Play) and ✨ Sparkle (Polish). The heart over each critter shows its mood — keep it green!",
-    "<b>✨ Polish:</b> when a critter gathers cosmic dust it pops a bubble. Tap ✨ Polish to zoom right in and rub the dust bunnies away with your finger!",
-    "<b>🎨 Style:</b> tap a critter then 🎨 Style to rename it or change its glow colour.",
-    "<b>🐣 Growing up:</b> hatchlings start tiny and grow over a few cycles.",
-    "<b>🎁 Surprises:</b> the more you care, the more the nursery fills with toys and lights.",
-    "<b>🌙 Recharge Pod:</b> rest to reach the next cycle. Send everyone to sleep happy for a glowing send-off! ✨",
-    "<b>🤖 / 🔊 (top):</b> change your keeper, turn sound on or off. 💾 The game saves automatically.",
+    "{i:hand} <b>Move:</b> tap the floor — your keeper floats there, around obstacles. Tap a critter to go straight to it. (Keyboard: arrows or WASD/ZQSD.)",
+    "{i:heart} <b>Three needs:</b> {i:battery} Energy (Feed), {i:ball} Fun (Play) and {i:sparkle} Sparkle (Polish). The heart over each critter shows its mood — keep it green!",
+    "{i:polish} <b>Polish:</b> a dusty critter pops a bubble. Tap Polish to zoom right in and rub the dust bunnies away with your finger!",
+    "{i:palette} <b>Style:</b> rename a critter or change its glow colour.",
+    "{i:gift} <b>Surprises:</b> the more you care, the more the nursery fills with toys and lights.",
+    "{i:moon} <b>Recharge Pod:</b> rest to reach the next cycle. Send everyone to sleep happy for a glowing send-off!",
+    "{i:avatar} {i:sound} change your keeper or turn the sound off. The game saves automatically.",
   ],
 };

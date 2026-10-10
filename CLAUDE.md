@@ -69,11 +69,12 @@ core loop) and **feedback-session** (non-technical playtester mode, silent work)
 Editing: add-character, add-creature-variant, add-decor-item, add-collision,
 place-scatter, state-migration. Assets: asset-search (content policy via
 `GAME.meta.audience` + license), asset-add. QA/ship: test-debug, map-verify,
-ios-pwa-check, release-deploy. **capitalize-learnings** (run after every feature/bugfix:
+ios-pwa-check, release-deploy, **visual-review** (art-check + full-size crops + tour
+screenshots + checklist — mandatory after any art/UI change). **capitalize-learnings** (run after every feature/bugfix:
 fold the learnings back into the engine/skills/docs and audit the separation).
 **sync-engine** (template-side: backport engine/skills/tooling FROM a game INTO the
 template). Shared tooling in `_shared/` (incl. `separation-audit.cjs`, `prune-assets.cjs`,
-`sync-engine.sh`).
+`sync-engine.sh`, `art-check.cjs`, `icon-kit.cjs`, `contact-sheet.py`, `probes/tour.cjs`).
 
 ## 8. Conventions
 - Engine, config and skills are in **English**. Clear commit messages.
@@ -92,6 +93,11 @@ template). Shared tooling in `_shared/` (incl. `separation-audit.cjs`, `prune-as
 - **Kids' games:** `guide` arrow + `creature.tapAction` (one tap = go + act) + `unlocks`
   (progress without reading) + sound. Characters must stay big on a phone (check zoom).
 - Avoid CSS that old iOS Safari drops silently on critical rules (e.g. `color-mix()`).
+- **No emoji in the UI.** Every icon is an illustrated icon from `GAME.icons` (generated
+  with `_shared/icon-kit.cjs` + game-specific ones); texts use `{i:key}` tokens.
+- **Look before you ship**: run **visual-review**. Inspect characters/faces as FULL-SIZE
+  crops (a head floating without a neck was once missed on thumbnails). Check both a tall
+  (390×844) and a short Safari (iPhone 13 profile, 664 px) screen.
 - **iOS / touch:** drag-over-touch interactions (close-up scrub…) must follow the
   robustness pattern in `ENGINE.md` and be verified on the **real Safari engine**
   (`playtest.cjs --engine webkit --device "iPhone 13"`) — Chromium-green is not enough.

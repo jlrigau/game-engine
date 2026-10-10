@@ -75,6 +75,13 @@ Use a fresh `meta.saveKey` so it doesn't collide with other games' saves.
   **add-creature-variant**.
 - Generate fresh **PWA icons** (`assets/favicon.png` 512, `assets/apple-touch-icon.png`
   180) matching the new theme.
+- Generate the **UI icon set** in the theme's palette with the shared kit
+  (`IK.jobs(PAL, [...], "assets/ui/icons")` from `_shared/icon-kit.cjs`) + a few
+  game-specific icons (the creature, the main tool…), and list them in `GAME.icons`.
+  **No emoji anywhere in the UI**: labels, toasts and help use `{i:key}` tokens.
+- Generate a **home splash** (`meta.splash`, 900×1600 portrait; keep its subject in the
+  band between the logo and the bottom sheet, inside the phone crop x 80–820) and a
+  **logo** (`meta.logo`).
 - **Remove the previous game's leftover themed art** the new game no longer uses. Always
   **dry-run first and review** — never blanket-`--delete`:
   ```bash
@@ -125,6 +132,8 @@ UI is in another language** — don't mix languages. Mention the game's language
 (e.g. "the game itself is in French") rather than dropping foreign copy into the prose.
 
 ## Step 6 — Verify & ship
+Run **visual-review** (art-check + full-size crops + tour screenshots on a tall AND a
+short screen) before anything else in this step.
 - **test-debug**: `node --check`, serve, run the harness — 0 page errors, core actions
   work, state correct. Look at the screenshots.
 - **map-verify** if the map geometry is custom (walkability empty).

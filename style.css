@@ -10,48 +10,25 @@
 :root {
   --game-font: "Fredoka", ui-rounded, "Trebuchet MS", system-ui, sans-serif;
   --deep: #0b1029;
-  --panel: #1a2348;
-  --panel2: #26336a;
-  --text: #e4ebff;
-  --muted: #97a3d6;
-  --title: #ffffff;
-  --primary: #3fe0e8; --primary-d: #1f9fb0; --on-primary: #08203a;
-  --accent: #ff5db1; --accent-d: #c23a83; --on-accent: #ffffff;
+  --panel: #1f2a5a; --panel2: #18214a; --panel-edge: #111839;
+  --sheet-bg: rgba(24, 31, 72, 0.82); --sheet-fade: rgba(5, 8, 30, 0.55);
+  --text: #eef2ff; --muted: #a5b0e0; --title: #ffffff;
+  --title-fill: #ffffff; --title-stroke: #2a1d6e;
+  --primary: #3fe0e8; --primary-d: #1b98aa; --on-primary: #0b2142;
+  --accent: #ff5db1; --accent-d: #b8327a; --on-accent: #ffffff;
+  --ribbon: #8b5cff; --ribbon-d: #5532b8;
   --good: #6ef0a0; --warn: #ffc24a; --bad: #ff6a8a;
-  --border: #10173a;
-  --input-bg: #121a3e;
-  --chip-bg: rgba(20, 28, 66, 0.72); --chip-text: #eaf0ff; --chip-border: rgba(120, 160, 255, 0.25);
+  --border: #2c3a7a; --input-bg: #121a3e;
+  --chip-bg: rgba(24, 32, 78, 0.78); --chip-text: #f1f4ff; --chip-edge: rgba(8, 12, 40, 0.9);
   --overlay: rgba(3, 5, 20, 0.62);
   --night: #02030c;
   --hud-fade: rgba(4, 6, 24, 0.55);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-  --glow: 0 0 22px rgba(63, 224, 232, 0.16);
-  --title-shadow: 0 0 14px rgba(63, 224, 232, 0.9), 0 0 32px rgba(255, 93, 177, 0.45);
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 26px rgba(63, 224, 232, 0.14);
   --closeup-bg: #0b1029;
-  --home-bg:
-    radial-gradient(900px 600px at 20% 0%, #3a1f73 0%, rgba(58, 31, 115, 0) 60%),
-    radial-gradient(900px 700px at 100% 100%, #0f4a6b 0%, rgba(15, 74, 107, 0) 55%),
-    linear-gradient(180deg, #120c34 0%, #0b1029 100%);
+  --home-bg: #120c34;
 }
-
-/* twinkling starfield behind the menus */
-#screen-home, #screen-create {
-  background-image:
-    radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 51%),
-    radial-gradient(1px 1px at 32% 72%, #cfe8ff 50%, transparent 51%),
-    radial-gradient(2px 2px at 78% 28%, #fff 50%, transparent 51%),
-    radial-gradient(1px 1px at 58% 42%, #ffd6f0 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 88% 82%, #fff 50%, transparent 51%),
-    radial-gradient(1px 1px at 8% 88%, #cfe8ff 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 46% 8%, #fff 50%, transparent 51%);
-  background-size: 420px 420px; animation: twinkle 6s ease-in-out infinite alternate;
-}
-@keyframes twinkle { from { background-position: 0 0; } to { background-position: 14px -20px; } }
-
-.box-home, .box-create, .modal-content, .panel:not(.idle) {
-  border: 1.5px solid rgba(63, 224, 232, 0.45);
-  background: linear-gradient(180deg, #202b58 0%, #161e44 100%);
-}
-.btn { box-shadow: 0 4px 0 #0e1534, var(--glow); }
-.btn:active { box-shadow: 0 0 0 #0e1534; }
-.avatar-preview { border-color: rgba(63, 224, 232, 0.35); }
+.btn-primary { --fg: #ffffff; }
+.btn-secondary { --fg: #bff6ff; }
+.pc-needs { background: rgba(0, 0, 0, 0.22); }
+.gauge { background: rgba(0, 0, 0, 0.35); }

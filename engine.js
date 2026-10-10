@@ -95,6 +95,47 @@ function T(key, fallback, vars) {
   return s;
 }
 
+/* ===================== Icons ===================== */
+// GAME.icons = { key: "assets/ui/icons/key.png", … } — illustrated icons used everywhere
+// (HUD, buttons, panel, toasts, help, close-up). Any text in the config can embed one
+// with a {i:key} token. Unknown keys fall back to a built-in monochrome glyph, then to
+// the raw text (so legacy emoji configs keep working).
+const ICONS = G.icons || {};
+const ICON_SVG = {
+  close: '<path d="M6 6l12 12M18 6L6 18"/>', check: '<path d="M4 12.5l5 5L20 6.5"/>',
+  play: '<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>', resume: '<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>',
+  help: '<circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 3.6 2.8c-.8.3-.8.9-.8 1.6M12 17.2v.3"/>',
+  sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  soundOff: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+  avatar: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-4 3.8-6 7.5-6s6.7 2 7.5 6"/>',
+  goals: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
+  star: '<path d="M12 3.5l2.6 5.6 6 .6-4.5 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6L3.4 9.7l6-.6z" fill="currentColor"/>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" fill="currentColor"/>',
+  heartEmpty: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+  arrow: '<path d="M12 3v15M5.5 12.5L12 19l6.5-6.5"/>', hand: '<path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V12m0-1a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-.5a6 6 0 0 1-5-2.7L4 15.5a1.5 1.5 0 0 1 2.5-1.6L9 16"/>',
+  refresh: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/>', calendar: '<rect x="4" y="5.5" width="16" height="14.5" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>',
+  trophy: '<path d="M7.5 4h9v5a4.5 4.5 0 0 1-9 0zM7.5 6H4.5a3 3 0 0 0 3 4M16.5 6h3a3 3 0 0 1-3 4M12 13.5V17M8.5 20h7"/>',
+  home: '<path d="M4 11l8-7 8 7M6.5 9.5V20h11V9.5"/>', gift: '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11M12 9c-2-4-6-4-6-1.5S12 9 12 9zm0 0c2-4 6-4 6-1.5S12 9 12 9z"/>',
+};
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
+function iconHTML(k, cls) {
+  if (!k) return "";
+  const c = "ico" + (cls ? " " + cls : "");
+  if (ICONS[k]) return `<img class="${c}" src="${av(ICONS[k])}" alt="" draggable="false" />`;
+  if (/\.(png|svg|webp|jpg)$/i.test(k)) return `<img class="${c}" src="${av(k)}" alt="" draggable="false" />`;
+  if (ICON_SVG[k]) return `<svg class="${c} ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICON_SVG[k]}</svg>`;
+  return `<span class="${c} ico-text">${esc(k)}</span>`;
+}
+// Escape a config/user string, then expand {i:key} icon tokens. html=true keeps markup (help).
+function fmt(s, html) { return (html ? String(s == null ? "" : s) : esc(s)).replace(/\{i:([\w-]+)\}/g, (_, k) => iconHTML(k)); }
+function coinTok() { const k = META.coinIcon || "star"; return (ICONS[k] || ICON_SVG[k]) ? "{i:" + k + "}" : k; }
+function stripIcons(s) { return String(s == null ? "" : s).replace(/\{i:[\w-]+\}\s*/g, "").trim(); }
+// A button: optional leading icon + label (the label may also carry {i:key} tokens).
+function btnHTML(label, icon) {
+  const hasTok = /\{i:/.test(label || "");
+  return (hasTok ? "" : (icon ? iconHTML(icon, "btn-ico") : "")) + `<span>${fmt(label)}</span>`;
+}
+
 /* ===================== Stats / objectives ===================== */
 
 // The set of counters tracked in state.stats: one per action that declares a
@@ -343,7 +384,7 @@ function init() {
   const bs = $("btn-sound");
   if (bs) {
     if (!Sound.enabled()) bs.classList.add("hidden");
-    const paint = () => { bs.textContent = Sound.isMuted() ? "🔇" : "🔊"; bs.title = T("soundLabel", "Sound"); };
+    const paint = () => { bs.innerHTML = iconHTML(Sound.isMuted() ? "soundOff" : "sound"); bs.title = T("soundLabel", "Sound"); };
     paint();
     bs.addEventListener("click", () => { Sound.setMuted(!Sound.isMuted()); paint(); Sound.play("click"); });
   }
@@ -401,18 +442,22 @@ function applyStaticText() {
   const setHTML = (id, html) => { const el = $(id); if (el != null && html != null) el.innerHTML = html; };
   document.title = META.title || "Game";
   const logo = $("home-logo");
-  if (logo && META.logo) { logo.src = av(META.logo); logo.classList.remove("hidden"); setHTML("home-title", META.title || "Game"); }
-  else setHTML("home-title", (META.titleIcon ? META.titleIcon + " " : "") + (META.title || "Game"));
-  set("place-icon", META.titleIcon || "");                 // in-game HUD icon (generic shell)
+  if (logo && META.logo) { logo.src = av(META.logo); logo.classList.remove("hidden"); setHTML("home-title", esc(META.title || "Game")); document.body.classList.add("has-logo"); }
+  else setHTML("home-title", (META.titleIcon ? iconHTML(META.titleIcon) + " " : "") + esc(META.title || "Game"));
+  const splash = $("home-bg");
+  if (META.splash) document.querySelectorAll(".home-bg").forEach((el) => { el.style.backgroundImage = `url("${av(META.splash)}")`; });
+  setHTML("place-icon", iconHTML(META.titleIcon || ""));   // in-game HUD icon (generic shell)
   set("home-tagline", META.tagline || "");
   set("home-name-label", (META.namePrompt && META.namePrompt.label) || "Name your place:");
   const inp = $("place-name-input"); if (inp && META.namePrompt) inp.placeholder = META.namePrompt.placeholder || "";
-  set("btn-start", META.startLabel || "▶ New game");
-  set("btn-continue", META.continueLabel || "📂 Continue");
-  set("btn-refresh", T("refreshLabel", "🔄 Refresh (clear cache)"));
+  setHTML("btn-start", btnHTML(META.startLabel || "New game", META.startIcon || "play"));
+  setHTML("btn-continue", btnHTML(META.continueLabel || "Continue", META.continueIcon || "resume"));
+  setHTML("btn-refresh", iconHTML("refresh") + " " + esc(stripIcons(T("refreshLabel", "Refresh (clear cache)"))));
   set("app-version", "build " + ASSET_VER);   // visible build tag (helps confirm the cache is fresh)
-  set("create-title", META.createTitle || "🎨 Choose your character");
-  set("btn-create-ok", META.createOkLabel || "✅ Let's go!");
+  setHTML("create-title", fmt(META.createTitle || "Choose your character"));
+  setHTML("btn-create-ok", btnHTML(META.createOkLabel || "Let's go!", META.createOkIcon || "check"));
+  setHTML("btn-goals", iconHTML("goals")); setHTML("btn-me", iconHTML("avatar")); setHTML("btn-help", iconHTML("help"));
+  setHTML("btn-close-modal", iconHTML("close")); setHTML("closeup-close", iconHTML("close"));
   if (RENDER.vignette) document.documentElement.style.setProperty("--vignette", String(RENDER.vignette));
 }
 
@@ -490,16 +535,16 @@ function buildHud() {
   const bar = $("hud-resources"); if (!bar) return;
   // The goals button only makes sense when objective levels exist.
   const gb = $("btn-goals"); if (gb) gb.classList.toggle("hidden", !LEVELS.length);
-  let html = META.showCoins === false ? ""
-    : `<span class="resource" id="chip-coins" title="${T("coinsLabel", "Coins")}">${META.coinIcon || "💰"} <b id="hud-coins">0</b></span>`;
-  (SHOP.resources || []).forEach((r) => {
-    html += `<span class="resource" title="${r.name}">${r.icon || "📦"} <b id="hud-res-${r.id}">0</b></span>`;
-  });
-  if (META.showDay !== false) html += `<span class="resource" title="${T("dayLabel", "Day")}">📅 <b id="hud-day">1</b></span>`;
-  if (CREATURE && META.showCreatureCount !== false) html += `<span class="resource" title="${CREATURE.label || "creatures"}">${CREATURE.icon || "🐾"} <b id="hud-cap">0/0</b></span>`;
-  if (LEVELS.length) html += `<span class="resource" title="${T("levelLabel", "Level")}">⭐ <b id="hud-level">1</b></span>`;
+  const chip = (id, icon, title, valId) => `<span class="resource" id="${id}" title="${esc(title)}"><span class="r-ico">${iconHTML(icon)}</span><b id="${valId}">0</b></span>`;
+  let html = META.showCoins === false ? "" : chip("chip-coins", META.coinIcon || "star", T("coinsLabel", "Coins"), "hud-coins");
+  (SHOP.resources || []).forEach((r) => { html += chip("chip-res-" + r.id, r.icon || "gift", r.name, "hud-res-" + r.id); });
+  if (META.showDay !== false) html += chip("chip-day", "calendar", T("dayLabel", "Day"), "hud-day");
+  if (CREATURE && META.showCreatureCount !== false) html += chip("chip-cap", CREATURE.icon || "heart", CREATURE.label || "creatures", "hud-cap");
+  if (LEVELS.length) html += chip("chip-level", "trophy", T("levelLabel", "Level"), "hud-level");
   bar.innerHTML = html;
   bar.classList.toggle("hidden", !html);
+  const pa = $("place-avatar");
+  if (pa && state && state.player) pa.innerHTML = `<img src="${av("assets/ui/" + charDef(state.player.avatar).thumb + ".png")}" alt="" />`;
 }
 
 function refreshHud() {
@@ -525,11 +570,11 @@ function checkGoals() {
   recalcLevel();
   if (done.length) {
     Sound.play("goal");
-    message(done.length === 1 ? T("goalComplete", "🎯 Goal complete: {name}!", { name: done[0].name }) : T("goalsComplete", "🎯 {n} goals complete!", { n: done.length }));
+    message(done.length === 1 ? T("goalComplete", "{i:goals} Goal complete: {name}!", { name: done[0].name }) : T("goalsComplete", "{i:goals} {n} goals complete!", { n: done.length }));
   }
   if ((state.level || 1) > before) {
     const n = state.level;
-    message(T("levelUp", "⭐ Well done! You reached level {n}! 🎉", { n }));
+    message(T("levelUp", "{i:trophy} Well done! You reached level {n}!", { n }));
     confetti();
   }
 }
@@ -575,7 +620,7 @@ function message(t) {
   const el = $("game-message"); if (!el) return;
   const now = nowMs();
   if (!el.classList.contains("hidden") && now < msgBusyUntil) {
-    if (el.textContent !== t && !msgQueue.includes(t)) { msgQueue.push(t); if (msgQueue.length > 3) msgQueue.shift(); }
+    if (el.dataset.raw !== t && !msgQueue.includes(t)) { msgQueue.push(t); if (msgQueue.length > 3) msgQueue.shift(); }
     clearTimeout(msgTimer); msgTimer = setTimeout(nextMessage, msgBusyUntil - now);
     return;
   }
@@ -583,7 +628,10 @@ function message(t) {
 }
 function showMessage(t) {
   const el = $("game-message");
-  el.textContent = t; el.classList.remove("hidden");
+  el.dataset.raw = t;
+  el.innerHTML = `<span class="gm-text">${fmt(t)}</span>`;
+  el.classList.toggle("text-only", !/\{i:/.test(t));
+  el.classList.remove("hidden");
   el.style.animation = "none"; void el.offsetWidth; el.style.animation = "";
   msgBusyUntil = nowMs() + 1400;
   clearTimeout(msgTimer); msgTimer = setTimeout(nextMessage, 2800);
@@ -623,7 +671,7 @@ function flyReward(x, y, text, chipId) {
   const chip = $(chipId || "chip-coins");
   const p = worldToScreen(x, y);
   const d = document.createElement("div");
-  d.className = "fly-reward"; d.textContent = text;
+  d.className = "fly-reward"; d.innerHTML = fmt(text);
   d.style.left = p.x + "px"; d.style.top = p.y + "px";
   document.body.appendChild(d);
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -632,7 +680,7 @@ function flyReward(x, y, text, chipId) {
       if (chip && !chip.closest(".hidden")) {
         const r = chip.getBoundingClientRect();
         d.classList.add("go");
-        d.style.left = (r.left + r.width / 2) + "px"; d.style.top = (r.top + r.height / 2) + "px";
+        d.style.left = (r.left + 18) + "px"; d.style.top = (r.top + r.height / 2) + "px";
       } else d.classList.add("fade");
     }, 520);
   }));
@@ -651,33 +699,38 @@ function openCreate(player, onValidate) {
   $("screen-game").classList.add("hidden");
   $("screen-create").classList.remove("hidden");
   themeColor(TINT_HOME);
-  const previewSrc = (p) => av("assets/ui/" + charDef(p.avatar).thumb + ".png");
-  const drawPreview = () => { $("avatar-preview").innerHTML = `<img class="thumb-big" src="${previewSrc(pendingPlayer)}" alt="" />`; };
-  drawPreview();
-
+  const idx = () => Math.max(0, CHARACTERS.findIndex((c) => c.id === pendingPlayer.avatar));
+  const draw = (dir) => {
+    const ch = charDef(pendingPlayer.avatar);
+    $("avatar-preview").innerHTML = `<div class="podium"></div><img class="thumb-big ${dir ? "swap-" + dir : ""}" src="${av("assets/ui/" + ch.thumb + ".png")}" alt="" /><div class="avatar-name">${esc(ch.name)}</div>`;
+    document.querySelectorAll("#grp-avatar .btn-avatar").forEach((b) => b.classList.toggle("chosen", b.dataset.id === ch.id));
+  };
+  const step = (k) => { const i = (idx() + k + CHARACTERS.length) % CHARACTERS.length; pendingPlayer.avatar = CHARACTERS[i].id; draw(k > 0 ? "next" : "prev"); };
   const cont = $("create-controls");
-  cont.innerHTML = `<span class="group-title">${META.namePromptYou || "Your name"}</span>
-    <input id="create-name" type="text" maxlength="14" placeholder="${META.namePromptYou || "Your name"}" value="${(pendingPlayer.name || "").replace(/"/g, "&quot;")}" />
-    <span class="group-title">${META.avatarPrompt || "Pick your character"}</span><div class="avatar-row" id="grp-avatar"></div>`;
+  const many = CHARACTERS.length > 1;
+  ["car-prev", "car-next"].forEach((id, i) => {
+    const b = $(id); if (!b) return;
+    b.innerHTML = iconHTML("arrow"); b.classList.toggle("hidden", !many);
+    b.onclick = () => step(i ? 1 : -1);
+  });
+  cont.innerHTML = `<div class="avatar-row" id="grp-avatar"></div>
+    <label class="field-label" for="create-name">${esc(META.namePromptYou || "Your name")}</label>
+    <input id="create-name" type="text" maxlength="14" placeholder="${esc(META.namePromptYou || "Your name")}" value="${esc(pendingPlayer.name || "")}" />`;
   const ga = $("grp-avatar");
+  if (!many) ga.classList.add("hidden");
   CHARACTERS.forEach((p) => {
     const b = document.createElement("button");
-    b.className = "btn-avatar btn-thumb" + (pendingPlayer.avatar === p.id ? " chosen" : "");
-    b.innerHTML = `<img src="${av("assets/ui/" + p.thumb + ".png")}" alt="${p.name}" /><span class="thumb-name">${p.name}</span>`;
-    b.title = p.name;
-    b.addEventListener("click", () => {
-      pendingPlayer.avatar = p.id; ga.querySelectorAll(".btn-avatar").forEach((x) => x.classList.remove("chosen"));
-      b.classList.add("chosen"); drawPreview();
-      const pv = $("avatar-preview"); pv.classList.remove("bump"); void pv.offsetWidth; pv.classList.add("bump");
-    });
+    b.className = "btn-avatar btn-thumb"; b.dataset.id = p.id; b.title = p.name;
+    b.innerHTML = `<img src="${av("assets/ui/" + p.thumb + ".png")}" alt="" />`;
+    b.addEventListener("click", () => { const k = CHARACTERS.indexOf(p) - idx(); pendingPlayer.avatar = p.id; draw(k >= 0 ? "next" : "prev"); });
     ga.appendChild(b);
   });
-
+  draw();
   $("btn-create-ok").onclick = () => {
     const n = $("create-name").value.trim();
     pendingPlayer.name = n || pendingPlayer.name || charDef(pendingPlayer.avatar).name;
     onValidate();
-    if (state) { $("screen-create").classList.add("hidden"); $("screen-game").classList.remove("hidden"); themeColor(TINT_PLAY); }
+    if (state) { $("screen-create").classList.add("hidden"); $("screen-game").classList.remove("hidden"); themeColor(TINT_PLAY); buildHud(); refreshHud(); }
   };
 }
 
@@ -1216,10 +1269,10 @@ function buildWorld() {
   const sheet = charDef(state.player.avatar).sheet;
   playerSprite = sc.add.sprite(0, 0, sheet, 18).setOrigin(0.5, PL.originY || 0.97).setScale(PL.scale || 1.7);
   playerFacing = "down";
-  playerName = sc.add.text(0, PLAYER_NAME_Y, state.player.name || "", txtStyle(15)).setOrigin(0.5);
+  playerName = sc.add.text(0, 0, state.player.name || "", txtStyle(15)).setOrigin(0.5).setDepth(99980);
   if (PL.showName === false) playerName.setVisible(false);
   const sp = PL.spawn || (HOME_ZONE ? { x: HOME_ZONE.rect.x - 240, y: HOME_ZONE.rect.y + HOME_ZONE.rect.h * 0.5 } : { x: 560, y: 700 });
-  player = sc.add.container(sp.x, sp.y, [playerShadow, playerSprite, playerName]);
+  player = sc.add.container(sp.x, sp.y, [playerShadow, playerSprite]);
   player.setSize(40, 40);
   mounted = null;
 
@@ -1328,9 +1381,9 @@ function buildCreatureObj(c) {
     wantT = sc.add.image(0, heartY(c) - (WANT.lift || 22), WANT.sprite).setOrigin(0.5, 1).setScale(WANT.scale || 1).setVisible(false);
     kids.push(wantT);
   }
-  const nameT = sc.add.text(0, CREATURE.nameY != null ? CREATURE.nameY : 22, c.name, txtStyle(CREATURE.nameSize || 16)).setOrigin(0.5);
+  // the name lives on a top layer (never hidden behind furniture); it follows the creature
+  const nameT = sc.add.text(c.x, c.y + (CREATURE.nameY != null ? CREATURE.nameY : 22), c.name, txtStyle(CREATURE.nameSize || 16)).setOrigin(0.5).setDepth(99970);
   if (CREATURE.showName === false) nameT.setVisible(false);
-  kids.push(nameT);
   const cont = sc.add.container(c.x, c.y, kids);
   c.obj = cont; c.bodyT = body; c.heartT = heart; c.wantT = wantT; c.nameT = nameT; c.shadowT = shadow;
   c.baseScale = scale; c.ph = rand(0, Math.PI * 2); c.texKey = body.texture.key;
@@ -1473,7 +1526,7 @@ function sceneUpdate(time, delta) {
     mounted.obj.setDepth(player.y - 1);
     mounted.bodyT.setFlipX(playerFacing === "right");
     playerSprite.y = (RIDE.sitY || -58) - arc; playerShadow.setVisible(false);
-    if (playerName) playerName.y = (RIDE.nameY || -138) - arc;
+    if (playerName) playerName.setPosition(player.x, player.y + (RIDE.nameY || -138) - arc);
     if (RIDE.fatigueNeed) {
       const rate = (mvx || mvy) ? (running ? 2.4 : 1.1) : 0.3;
       rideFatigueAcc += rate * dt;
@@ -1485,7 +1538,7 @@ function sceneUpdate(time, delta) {
     }
   } else if (!mounted) {
     if (playerSprite.y !== 0) { playerSprite.y = 0; playerShadow.setVisible(true); }
-    if (playerName && playerName.y !== PLAYER_NAME_Y) playerName.y = PLAYER_NAME_Y;
+    if (playerName) playerName.setPosition(player.x, player.y + PLAYER_NAME_Y);
   }
 
   // Trail-visit stat (marked once when the player steps onto the path).
@@ -1571,6 +1624,7 @@ function updateCreatures(now, dt) {
 
 // Procedural body life: idle breathing and (optionally) a bouncy hop while walking.
 function animateCreatureBody(c, now, moving) {
+  if (c.nameT && c.obj) { c.nameT.setPosition(c.obj.x, c.obj.y + (CREATURE.nameY != null ? CREATURE.nameY : 22)); c.nameT.setAlpha(c.obj.alpha); }
   const t = c.bodyT; if (!t || c.celebrating || (sc.tweens.isTweening && sc.tweens.isTweening(t))) return;
   const s = c.baseScale || 1, W = CREATURE.walk || {};
   if (moving && W.hop) {
@@ -1645,6 +1699,7 @@ function departCreature(c) {
 }
 function removeCreature(c) {
   if (c.obj) { c.obj.destroy(); c.obj = null; }
+  if (c.nameT) { c.nameT.destroy(); c.nameT = null; }
   const i = state.creatures.indexOf(c);
   if (i >= 0) state.creatures.splice(i, 1);
   save();
@@ -1768,7 +1823,7 @@ function updateGuide(time) {
 let guideEdge = null;
 function guideEdgeEl() {
   if (!GUIDE) return null;
-  if (!guideEdge) { guideEdge = document.createElement("div"); guideEdge.className = "guide-edge hidden"; guideEdge.innerHTML = "<span>➤</span>"; document.body.appendChild(guideEdge); }
+  if (!guideEdge) { guideEdge = document.createElement("div"); guideEdge.className = "guide-edge hidden"; guideEdge.innerHTML = `<span>${iconHTML("arrow")}</span>`; document.body.appendChild(guideEdge); }
   return guideEdge;
 }
 
@@ -1830,48 +1885,57 @@ function buildPanel() {
   const p = $("panel");
   p.classList.remove("idle");
   if (placingDecor) {
-    p.innerHTML = `<div class="pc-station">
-      <p class="panel-hint">${(META.placeHint || "Walk anywhere, then place {item}.").replace("{item}", placingDecor.name)}</p>
+    p.innerHTML = `<div class="pc-card"><div class="pc-main"><div class="pc-tag">${fmt((META.placeHint || "Walk anywhere, then place {item}.").replace("{item}", placingDecor.name))}</div></div></div>
       <div class="pc-actions">
-        <button class="btn btn-accent" data-place="1">✅ ${META.placeHere || "Place here"}</button>
-        <button class="btn btn-secondary" data-cancel-place="1">❌ ${META.cancel || "Cancel"}</button>
-      </div></div>`;
+        <button class="act" style="--c:var(--good)" data-place="1"><span class="act-ico">${iconHTML("check")}</span><span class="act-lbl">${esc(META.placeHere || "Place here")}</span></button>
+        <button class="act" style="--c:var(--bad)" data-cancel-place="1"><span class="act-ico">${iconHTML("close")}</span><span class="act-lbl">${esc(META.cancel || "Cancel")}</span></button>
+      </div>`;
     panelPop(p);
     return;
   }
   if (!activeTarget) {
     p.classList.add("idle");
-    p.innerHTML = META.idleHint === "" ? "" : `<p class="panel-hint">${META.idleHint || "Walk around and approach something to act."}</p>`;
+    p.innerHTML = META.idleHint === "" ? "" : `<p class="panel-hint">${iconHTML(META.idleIcon || "hand")}<span>${fmt(META.idleHint || "Walk around and approach something to act.")}</span></p>`;
     return;
   }
+  const actBtn = (attr, icon, label, color, cls) => `<button class="act ${cls || ""}" ${attr} style="--c:${color || "var(--primary)"}"><span class="act-ico">${iconHTML(icon)}</span><span class="act-lbl">${fmt(stripIcons(label))}</span></button>`;
   if (isCreature(activeTarget)) {
     const c = activeTarget, isMounted = mounted === c;
     let actions;
     if (isMounted) {
       const rideAct = ACTIONS.find((a) => a.type === "ride");
       const jumpAct = ACTIONS.find((a) => a.type === "jump");
-      actions = (jumpAct ? `<button class="btn btn-accent" data-creature="${jumpAct.id}">${jumpAct.icon || ""} ${jumpAct.label}</button>` : "")
-        + `<button class="btn btn-secondary" data-creature="${rideAct.id}">🛑 ${rideAct.dismountLabel || "Get off"}</button>`;
+      actions = (jumpAct ? actBtn(`data-creature="${jumpAct.id}"`, jumpAct.icon, jumpAct.label, jumpAct.color) : "")
+        + actBtn(`data-creature="${rideAct.id}"`, rideAct.dismountIcon || "close", rideAct.dismountLabel || "Get off", "var(--bad)");
     } else {
-      actions = ACTIONS.filter((a) => a.type !== "jump").map((a) => {
-        const cls = a.type === "ride" ? "btn btn-accent" : (a.type === "customize" ? "btn btn-secondary btn-small" : (a.type === "closeup" ? "btn btn-giant btn-primary" : "btn"));
-        return `<button class="${cls}" data-creature="${a.id}"><span class="b-ico">${a.icon || ""}</span><span class="b-lbl">${a.label}</span></button>`;
-      }).join("");
+      const list = ACTIONS.filter((a) => a.type !== "jump");
+      const single = list.length === 1;
+      actions = list.map((a) => actBtn(`data-creature="${a.id}"`, a.icon, a.label, a.color,
+        (a.type === "closeup" ? "act-primary" : "") + (single ? " act-wide" : "") + (a.type === "customize" ? " act-soft" : ""))).join("");
     }
-    const ageTxt = CREATURE.aging
-      ? (isYoung(c) ? `${CREATURE.youngLabel || "🐣 Young"} (${c.age}${META.ageUnit || "d"})` : `${CREATURE.adultLabel || "Adult"} (${c.age}${META.ageUnit || "d"})`)
-      : "";
+    const ageTxt = CREATURE.aging ? `${stripIcons(isYoung(c) ? (CREATURE.youngLabel || "Young") : (CREATURE.adultLabel || "Adult"))} · ${c.age}${META.ageUnit || "d"}` : "";
     const v = variantDef(variantId(c));
-    const dot = v && v.color ? `<span class="pc-dot" style="background:${v.color}"></span>` : "";
+    const thumb = v && v.thumb ? av(v.thumb) : null;
     p.innerHTML = `
-      <div class="pc-head">${dot}<div class="pc-name"><b>${c.name}</b> <span class="pc-sub">${ageTxt}</span></div><span class="pc-mood" id="pc-mood"></span></div>
-      ${CREATURE.showBars === false ? "" : '<div class="pc-bars" id="pc-bars"></div>'}
-      <div class="pc-actions${ACTIONS.length >= 3 && !isMounted ? " tiles" : ""}">${actions}</div>`;
+      <div class="pc-card">
+        <div class="pc-portrait" style="--c:${(v && v.color) || "var(--primary)"}">${thumb ? `<img src="${thumb}" alt="" />` : iconHTML(CREATURE.icon || "heart")}</div>
+        <div class="pc-main">
+          <div class="pc-title"><span class="pc-name">${esc(c.name)}</span>${ageTxt ? `<span class="pc-tag">${esc(ageTxt)}</span>` : ""}</div>
+          ${CREATURE.showMood === false ? "" : '<div class="pc-mood" id="pc-mood"></div>'}
+        </div>
+      </div>
+      ${CREATURE.showBars === false ? "" : '<div class="pc-needs" id="pc-bars"></div>'}
+      <div class="pc-actions${!isMounted && ACTIONS.length >= 3 ? " tiles" : ""}">${actions}</div>`;
     refreshBars(c);
   } else {
     const s = activeTarget;
     const st = STATIONS.find((x) => x.type === s.type);
-    p.innerHTML = `<div class="pc-station"><button class="btn btn-giant btn-primary" data-station="${s.type}">${(st && st.actionLabel) || st.label}</button></div>`;
+    const img = st && G.assets.images[st.sprite] ? av(G.assets.images[st.sprite]) : null;
+    p.innerHTML = `<div class="pc-card">
+        <div class="pc-portrait station">${img ? `<img src="${img}" alt="" />` : iconHTML(st.icon || "home")}</div>
+        <div class="pc-main"><div class="pc-title"><span class="pc-name">${fmt(stripIcons(st.label || ""))}</span></div>${st.hint ? `<div class="pc-tag">${fmt(st.hint)}</div>` : ""}</div>
+      </div>
+      <div class="pc-actions">${actBtn(`data-station="${s.type}"`, st.icon || "check", st.actionLabel || st.label, st.color, "act-primary act-wide")}</div>`;
   }
   panelPop(p);
 }
@@ -1879,18 +1943,30 @@ function panelPop(p) { p.classList.remove("pop"); void p.offsetWidth; p.classLis
 
 function refreshBars(c) {
   const mood = $("pc-mood");
-  if (mood && CREATURE.moodFaces) {
-    const f = CREATURE.moodFaces, m = needAverage(c);
-    const face = f[Math.min(f.length - 1, Math.floor(m / (100 / f.length + 0.001)))];
-    if (mood.textContent !== face) mood.textContent = face;
+  if (mood) {
+    const m = needAverage(c);
+    let html;
+    if (CREATURE.moodFaces) {
+      const f = CREATURE.moodFaces;
+      html = iconHTML(f[Math.min(f.length - 1, Math.floor(m / (100 / f.length + 0.001)))], "mood-face");
+    } else {
+      const n = Math.round(m / 25);
+      html = [0, 1, 2, 3].map((i) => iconHTML(i < n ? "heart" : "heartEmpty", "mood-heart")).join("");
+    }
+    if (mood.dataset.h !== html) { mood.innerHTML = html; mood.dataset.h = html; }
   }
   const cont = $("pc-bars"); if (!cont) return;
-  const html = NEEDS.map((n) => {
-    const v = c[n.id] || 0;
-    const cl = v < 25 ? "r-red" : v < 50 ? "r-yellow" : "r-green";
-    return `<div class="need" title="${n.label || n.id}"><span class="icon">${n.icon || ""}</span><div class="bar"><div class="bar-fill ${cl}" style="width:${v}%"></div></div></div>`;
-  }).join("");
-  if (cont.dataset.h !== html) { cont.innerHTML = html; cont.dataset.h = html; }
+  const key = NEEDS.map((n) => Math.round(c[n.id] || 0)).join(",");
+  if (cont.dataset.k === key && cont.dataset.c === String(c.id)) return;
+  if (cont.dataset.c !== String(c.id) || !cont.children.length) {
+    cont.innerHTML = NEEDS.map((n) => `<div class="need" title="${esc(n.label || n.id)}"><span class="need-ico">${iconHTML(n.icon)}</span><div class="gauge"><i id="g-${n.id}"></i></div></div>`).join("");
+  }
+  NEEDS.forEach((n) => {
+    const v = c[n.id] || 0, el = $("g-" + n.id); if (!el) return;
+    el.style.width = Math.max(4, v) + "%";
+    el.className = v < 25 ? "r-red" : v < 50 ? "r-yellow" : "r-green";
+  });
+  cont.dataset.k = key; cont.dataset.c = String(c.id);
 }
 
 /* ===================== Interactions ===================== */
@@ -1930,7 +2006,7 @@ function creatureAction(actionId) {
   const moodBefore = MOOD_NEED ? (c[MOOD_NEED] || 0) : 0;
   // apply need effects
   Object.keys(a.effects || {}).forEach((k) => { c[k] = clamp01((c[k] || 0) + a.effects[k]); });
-  if (a.reward) { state.coins += a.reward; flyReward(c.x, c.y - 40, "+" + a.reward + " " + (META.coinIcon || "💰")); }
+  if (a.reward) { state.coins += a.reward; flyReward(c.x, c.y - 40, "+" + a.reward + " " + coinTok()); }
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (a.stat) state.stats[a.stat] = (state.stats[a.stat] || 0) + 1;
   if (a.anim) actionAnim(c, a.anim);
@@ -2158,7 +2234,7 @@ function nextDay() {
   if (state.allHappyTonight && ALL_HAPPY.celebrate !== false) {
     state.creatures.forEach((c, i) => { if (sc) sc.time.delayedCall(i * 140, () => celebrate(c)); });
   }
-  nightRunning = true; moveTarget = null; navPath = []; message(META.nightMessage || "🌙 Night falls…");
+  nightRunning = true; moveTarget = null; navPath = []; message(META.nightMessage || "{i:moon} Night falls…");
   Sound.play("night");
   const v = $("night-veil");
   if (v) {
@@ -2196,10 +2272,10 @@ function applyDay() {
   const baby = tryBirth();
   refreshHud(); save();
   const allHappy = state.allHappyTonight; state.allHappyTonight = false;
-  if (baby) message((CREATURE.breeding && CREATURE.breeding.message || "🐣 A baby was born: {name}!").replace("{name}", baby.name));
+  if (baby) message((CREATURE.breeding && CREATURE.breeding.message || "{i:heart} A baby was born: {name}!").replace("{name}", baby.name));
   else if (allHappy && ALL_HAPPY && ALL_HAPPY.message) { message(ALL_HAPPY.message.replace("{day}", state.day)); setTimeout(() => confetti(), 900); }
-  else if (neglected.length) message((META.neglectMessage || "🌅 Day {day}. Take care of {names}!").replace("{day}", state.day).replace("{names}", listFr(neglected)));
-  else message((META.morningMessage || "🌅 Day {day}: everyone slept well.").replace("{day}", state.day));
+  else if (neglected.length) message((META.neglectMessage || "Day {day}. Take care of {names}!").replace("{day}", state.day).replace("{names}", listFr(neglected)));
+  else message((META.morningMessage || "{i:sparkle} Day {day}: everyone slept well.").replace("{day}", state.day));
 }
 
 // Breeding: two happy adults can produce one baby overnight (with guard-rails).
@@ -2231,7 +2307,7 @@ function listFr(arr) {
 
 /* ===================== Modal / shop / customize ===================== */
 
-function openModal(t, html) { $("modal-title").innerHTML = t; $("modal-body").innerHTML = html; $("modal").classList.remove("hidden"); Sound.play("open"); }
+function openModal(t, html) { $("modal-title").innerHTML = fmt(t); $("modal-body").innerHTML = html; $("modal").classList.remove("hidden"); Sound.play("open"); }
 function closeModal() { $("modal").classList.add("hidden"); lastInputT = nowMs(); }
 
 function openShop() {
@@ -2239,27 +2315,27 @@ function openShop() {
   let html = "";
   (SHOP.resources || []).forEach((r) => {
     html += `<div class="shop-row"><div class="desc"><b>${r.icon || ""} ${r.name}</b><small>${r.desc || ""}</small></div>
-      <button class="btn" data-shop="res:${r.id}">${r.price} ${META.coinIcon || "💰"}</button></div>`;
+      <button class="btn" data-shop="res:${r.id}">${r.price} ${fmt(coinTok())}</button></div>`;
   });
   if (SHOP.capacity && CREATURE) {
     html += `<div class="shop-row"><div class="desc"><b>${SHOP.capacity.name}</b><small>${state.creatures.length}/${state.capacity} ${CREATURE.label || ""}.</small></div>
-      <button class="btn" data-shop="capacity">${SHOP.capacity.price} ${META.coinIcon || "💰"}</button></div>`;
+      <button class="btn" data-shop="capacity">${SHOP.capacity.price} ${fmt(coinTok())}</button></div>`;
   }
   if (DECOR.length) {
-    html += `<h3>${SHOP.decorHeading || "🎨 Decorations"}</h3><div class="decor-grid">`;
+    html += `<h3>${fmt(SHOP.decorHeading || "{i:gift} Decorations")}</h3><div class="decor-grid">`;
     DECOR.forEach((d) => {
       html += `<button class="decor-card" data-decor="${d.id}">
-        <img class="d-img" src="${av((G.assets.images[d.sprite]) || ("assets/img/" + d.sprite + ".png"))}" alt="" /><span>${d.name}</span><span class="d-price">${d.price} ${META.coinIcon || "💰"}</span></button>`;
+        <img class="d-img" src="${av((G.assets.images[d.sprite]) || ("assets/img/" + d.sprite + ".png"))}" alt="" /><span>${d.name}</span><span class="d-price">${d.price} ${fmt(coinTok())}</span></button>`;
     });
     html += `</div>`;
   }
   if (SHOP.buyCreature && CREATURE) {
-    html += `<h3>${SHOP.buyCreature.heading || "🐾 Adopt"}</h3>`;
+    html += `<h3>${fmt(SHOP.buyCreature.heading || "{i:heart} Adopt")}</h3>`;
     if (!room) html += `<p>⚠️ ${SHOP.fullMessage || "No room! Expand first."}</p>`;
     else html += `<p>${SHOP.buyCreature.hint || ""}</p>
-      <button class="btn btn-giant" data-shop="creature">${(SHOP.buyCreature.label || "🛒 Adopt")} (${SHOP.buyCreature.price} ${META.coinIcon || "💰"})</button>`;
+      <button class="btn btn-giant" data-shop="creature">${fmt(SHOP.buyCreature.label || "Adopt")} (${SHOP.buyCreature.price} ${fmt(coinTok())})</button>`;
   }
-  openModal(SHOP.title || "🛒 Shop", html);
+  openModal(SHOP.title || "{i:gift} Shop", html);
 }
 
 function buy(what) {
@@ -2307,7 +2383,7 @@ function ghostXY() {
 // Placement rules. Returns null if OK, otherwise an error message.
 function placementError(d, x, y) {
   for (const s of STATIONS) {
-    if (x > s.x - 80 && x < s.x + 80 && y > s.y - 150 && y < s.y + 24) return META.noOnBuilding || "🏠 Not on a building!";
+    if (x > s.x - 80 && x < s.x + 80 && y > s.y - 150 && y < s.y + 24) return META.noOnBuilding || "Not on a building!";
   }
   if (HOME_ZONE && !d.allowInHome) {
     const r = HOME_ZONE.rect;
@@ -2329,7 +2405,7 @@ function placeDecor() {
   buildDecors(); save(); refreshHud(); panelId = "upd"; refreshInteraction();
   emitBurst(x, y, { shape: "star", colors: ["#fff2a8", "#ffd24a", "#ffffff"], count: 8, y0: 30, spread: 40 });
   Sound.play("unlock");
-  message((META.placedMessage || "{name} placed! ✨").replace("{name}", name));
+  message((META.placedMessage || "{i:sparkle} {name} placed!").replace("{name}", name));
 }
 
 function cancelPlacement() {
@@ -2338,7 +2414,7 @@ function cancelPlacement() {
   placingDecor = null;
   if (ghostDecor) { ghostDecor.destroy(); ghostDecor = null; }
   refreshHud(); panelId = "upd"; refreshInteraction();
-  message(META.refundMessage || "Placement cancelled, refunded. 💰");
+  message(META.refundMessage || "Placement cancelled, refunded.");
 }
 
 function openCustomize(c) {
@@ -2346,8 +2422,8 @@ function openCustomize(c) {
   let html = `<div class="customize-preview" id="cz-preview"></div>`;
   if (cz.rename) html += `<label class="cz-label">${META.nameLabel || "Name:"}</label><input id="cz-name" type="text" maxlength="14" value="${c.name}" />`;
   if (cz.variant && VARIANTS.length) html += `<div class="group"><span class="group-title">${CREATURE.variantLabel || "Colour"}</span><div class="avatar-row" id="cz-variant"></div></div>`;
-  html += `<button class="btn btn-giant btn-primary" id="cz-ok">✅ ${META.confirm || "Confirm"}</button>`;
-  openModal((CREATURE.customizeTitle || "🎨 Customize") + " " + c.name, html);
+  html += `<button class="btn btn-giant btn-primary" id="cz-ok">${btnHTML(META.confirm || "Confirm", "check")}</button>`;
+  openModal((CREATURE.customizeTitle || "{i:palette} Customize") + " " + c.name, html);
 
   // Preview: the creature's own (variant) thumbnail if available, else a colour blob.
   const drawPreview = () => {
@@ -2378,7 +2454,7 @@ function openCustomize(c) {
     refreshCreatureVisual(c); save(); closeModal(); panelId = PANEL_DIRTY;
     actionAnim(c, { motion: "hop", particle: "spark", colors: [(variantDef(variantId(c)) || {}).color || "#ffffff", "#ffffff"], count: 8 });
     Sound.play("action");
-    message((CREATURE.customizedMessage || "{name} updated! 🎨").replace("{name}", c.name));
+    message((CREATURE.customizedMessage || "{i:sparkle} {name} updated!").replace("{name}", c.name));
   });
   drawPreview();
 }
@@ -2450,11 +2526,11 @@ function openCloseup(c, a) {
   }
   // progress dots (one per spot) — a clear "how much is left" for non-readers
   const prog = cuEl("cu-progress", "cu-progress", "div", root);
-  prog.innerHTML = Array.from({ length: count }, () => '<i></i>').join("");
+  prog.innerHTML = Array.from({ length: count }, () => `<i>${iconHTML("star")}</i>`).join("");
   prog.classList.toggle("hidden", cfg.progress === false);
   // a pulsing finger hint on the first spot until the first scrub
   if (cfg.hint !== false) {
-    const h = document.createElement("div"); h.className = "cu-hint"; h.textContent = cfg.hint || "👆";
+    const h = document.createElement("div"); h.className = "cu-hint"; h.innerHTML = iconHTML(cfg.hint || "hand");
     stage.appendChild(h);
   }
   cuState = { c, a, remaining: count, total: count, pressed: false, ang: 0, lx: null, foamT: 0, scrubT: 0 };
@@ -2578,7 +2654,7 @@ function cuRub(e) {
 
 function cuPop(spot) {
   const done = cuState ? cuState.total - cuState.remaining : 0;
-  cuEmoji(spot.style.left, spot.style.top, (cuState && cuState.a.closeup && cuState.a.closeup.popParticles) || ["✨", "⭐"], false);
+  cuEmoji(spot.style.left, spot.style.top, (cuState && cuState.a.closeup && cuState.a.closeup.popParticles) || ["sparkle", "star"], false);
   const ring = document.createElement("div"); ring.className = "cu-ring"; ring.style.left = spot.style.left; ring.style.top = spot.style.top;
   $("closeup-stage").appendChild(ring); setTimeout(() => ring.remove(), 600);
   spot.remove();
@@ -2595,7 +2671,7 @@ function cuEmoji(left, top, glyphs, burst) {
   glyphs.forEach((g, k) => {
     const e = document.createElement("div");
     e.className = "cu-emoji" + (burst ? " cu-burst" : "");
-    e.textContent = g; e.style.left = left; e.style.top = top;
+    e.innerHTML = iconHTML(g); e.style.left = left; e.style.top = top;
     e.style.setProperty("--dx", randInt(-40, 40) + "px");
     e.style.animationDelay = (burst ? Math.floor(Math.random() * 300) : k * 70) + "ms";
     stage.appendChild(e); setTimeout(() => e.remove(), 1600);
@@ -2610,7 +2686,7 @@ function cuFinish() {
   if (cuState) cuState.pressed = false;
   cuReleaseCapture();
   const cfg = a.closeup || {};
-  const parts = cfg.finishParticles || ["⭐", "💖", "✨", "🌟"];
+  const parts = cfg.finishParticles || ["star", "heart", "sparkle"];
   const bg2 = $("closeup-bg2");
   const reveal = bg2 && bg2.getAttribute("src");
   if (reveal) bg2.classList.add("show");                       // e.g. the patient's big happy smile
@@ -2625,7 +2701,7 @@ function cuFinish() {
 function cuApply(c, a) {
   const moodBefore = MOOD_NEED ? (c[MOOD_NEED] || 0) : 0;
   Object.keys(a.effects || {}).forEach((k) => { c[k] = clamp01((c[k] || 0) + a.effects[k]); });
-  if (a.reward) { state.coins += a.reward; setTimeout(() => flyReward(c.x, c.y - 50, "+" + a.reward + " " + (META.coinIcon || "💰")), 350); }
+  if (a.reward) { state.coins += a.reward; setTimeout(() => flyReward(c.x, c.y - 50, "+" + a.reward + " " + coinTok()), 350); }
   state.actionsSinceRest = (state.actionsSinceRest || 0) + 1;
   if (a.stat) state.stats[a.stat] = (state.stats[a.stat] || 0) + 1;
   let celebrated = false;
@@ -2668,7 +2744,7 @@ function closeCloseup() {
 /* ===================== Goals / help ===================== */
 
 function openGoals() {
-  if (!LEVELS.length) { openModal(T("goalsTitle", "🎯 Goals"), `<p>${T("noGoals", "No goals configured.")}</p>`); return; }
+  if (!LEVELS.length) { openModal(T("goalsTitle", "{i:goals} Goals"), `<p>${T("noGoals", "No goals configured.")}</p>`); return; }
   const idx = Math.min((state.level || 1) - 1, LEVELS.length - 1);
   const lvl = LEVELS[idx];
   const list = lvl.goals;
@@ -2678,23 +2754,23 @@ function openGoals() {
   const allDone = last && done === list.length;
   const lines = list.map((o) => {
     const ok = !!state.goalsDone[o.id];
-    return `<div class="goal-row ${ok ? "goal-ok" : ""}"><span class="goal-check">${ok ? "✅" : "⬜"}</span>
+    return `<div class="goal-row ${ok ? "goal-ok" : ""}"><span class="goal-check">${ok ? iconHTML("check") : ""}</span>
       <span class="goal-txt"><b>${o.name}</b><small>${o.desc}</small></span></div>`;
   }).join("");
-  const sub = allDone ? T("allGoalsDone", "You finished every goal! 🏆") : T("goalsProgress", "{done}/{total} goals — finish them to reach level {next}", { done, total: list.length, next: idx + 2 });
-  openModal(T("goalsTitle", "🎯 Goals"), `
+  const sub = allDone ? T("allGoalsDone", "You finished every goal!") : T("goalsProgress", "{done}/{total} goals — finish them to reach level {next}", { done, total: list.length, next: idx + 2 });
+  openModal(T("goalsTitle", "{i:goals} Goals"), `
     <div class="level-box">
-      <div class="level-top"><b>⭐ ${T("levelLabel", "Level")} ${idx + 1}</b><span>“${lvl.name}”</span></div>
+      <div class="level-top"><b>${iconHTML("trophy")} ${T("levelLabel", "Level")} ${idx + 1}</b><span>“${esc(lvl.name)}”</span></div>
       <div class="xp-bar"><div class="xp-fill" style="width:${pct}%"></div></div>
       <p class="level-sub">${sub}</p>
     </div>
-    ${allDone ? `<p class="goal-done">${T("topLevel", "🏆 You reached the top level! 🎉")}</p>` : ""}
+    ${allDone ? `<p class="goal-done">${fmt(T("topLevel", "{i:trophy} You reached the top level!"))}</p>` : ""}
     <div class="goal-list">${lines}</div>`);
 }
 
 function openHelp() {
-  const items = (G.help || []).map((h) => `<p>${h}</p>`).join("");
-  openModal(META.helpTitle || "❓ How to play", `<div class="help-text">${items}</div>`);
+  const items = (G.help || []).map((h, i) => `<div class="help-row${i === 0 ? " lead" : ""}">${fmt(h, true)}</div>`).join("");
+  openModal(META.helpTitle || "How to play", `<div class="help-text">${items}</div>`);
 }
 
 /* ===================== Boot ===================== */

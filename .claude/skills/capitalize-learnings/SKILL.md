@@ -52,7 +52,9 @@ the config). Exit 0 = clean.
 2. **Docs**: update `ENGINE.md` (schema + the *Capabilities* list) for any new engine
    feature; update `_shared/README.md` for any new tooling; update `CLAUDE.md` skill list
    for any new skill.
-3. **Ship**: hand off to **release-deploy** (bumps `vN`, commits, deploys, verifies).
+3. **Look**: run **visual-review** (art-check + tour screenshots + checklist) whenever art
+   or UI changed — and add any new defect class you discovered to its checklist.
+4. **Ship**: hand off to **release-deploy** (bumps `vN`, commits, deploys, verifies).
 
 ## Guard-rails
 - **Never put game content in `engine.js`.** If the engine truly lacks something, add it as

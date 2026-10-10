@@ -76,13 +76,44 @@ ageUnit, and, nightMessage, restBlockedHint, neglectMessage, morningMessage,
 notEnough, idleHint, placeHint, placeHere, cancel, boughtDecorMessage, placedMessage,
 refundMessage, noOnBuilding, noInHome, nameLabel, confirm, nameTaken, closeLabel
 ```
-Strings with `{name}`, `{day}`, `{names}`, `{item}` are interpolated by the engine.
+Strings with `{name}`, `{day}`, `{names}`, `{item}` are interpolated by the engine, and
+`{i:key}` tokens become icons (see Icons). User-typed names are HTML-escaped.
 
 `meta.strings` overrides any **engine** UI label (each has an English fallback):
 `closeLabel, soundLabel, coinsLabel, dayLabel, levelLabel, noSave, refreshLabel,
 goalComplete ("{name}"), goalsComplete ("{n}"), levelUp ("{n}"), goalsTitle, noGoals,
 allGoalsDone, goalsProgress ("{done}/{total}…{next}"), topLevel`. (For back-compat a key
 set directly on `meta` also works.)
+
+### Icons (`GAME.icons`) — no emoji in the UI
+```
+icons: { star: "assets/ui/icons/star.png", sound: "…", help: "…", …, critter: "…" }
+```
+Every UI spot shows an **illustrated icon** by key: HUD chips (`meta.coinIcon`, `calendar`,
+`creature.icon`, `trophy`), the round HUD buttons (`goals`, `avatar`, `sound`/`soundOff`,
+`help`), `close`, the home/create buttons (`meta.startIcon` def. `play`, `continueIcon` def.
+`resume`, `createOkIcon` def. `check`), action buttons (`action.icon`), needs (`need.icon`),
+mood (`heart`/`heartEmpty`, or `creature.moodFaces` keys), stations (`station.icon`), the
+idle hint (`meta.idleIcon` def. `hand`), the close-up (`hand` hint, `star` progress,
+`popParticles` / `finishParticles` keys), the guide edge (`arrow`), rewards (`coinIcon`).
+**Any config text** (messages, labels, help, titles) can embed an icon with a `{i:key}`
+token: `message: "{i:sparkle} {name} is clean!"`. Unknown keys fall back to a built-in
+monochrome SVG glyph (close, check, play, help, sound…), then to the raw text (legacy emoji
+configs keep working). Generate a themed set with `_shared/icon-kit.cjs`.
+
+### Home & panel look (config side)
+- `meta.splash`: full-screen illustration behind the home and create screens (portrait,
+  ~900×1600; keep the subject between the logo and the bottom sheet). `meta.logo` above it.
+- Action buttons: round glossy buttons coloured by `action.color`; the `closeup` action
+  gets a glowing ring; a creature with a single action / a station shows one big pill.
+- The panel shows a **portrait** (`variant.thumb`, or the station sprite), the name, a
+  subtitle (age, or `station.hint`), mood hearts (`creature.showMood:false` hides them),
+  need gauges with their icons (`creature.showBars:false` hides them), then the actions.
+- Theme variables (style.css): `--panel --panel2 --panel-edge --sheet-bg --sheet-fade
+  --text --muted --title --title-fill --title-stroke --primary(-d) --accent(-d) --ribbon(-d)
+  --chip-bg --chip-text --chip-edge --good --warn --bad --input-bg --border --overlay
+  --night --closeup-bg --home-bg --shadow --glow --game-font`.
+- Names of the player and creatures are drawn on a top layer (never hidden by furniture).
 
 ### `render` (look & feel)
 ```

@@ -23,7 +23,9 @@ Cleanly publish a change to production.
    node .claude/skills/_shared/bump-version.mjs
    ```
    (Skip if you only touched `.claude/` or docs.)
-3. **Verify** — Bash: `node --check engine.js && node --check game.config.js`
+3. **Verify** — Bash: `node --check engine.js && node --check game.config.js`, the
+   separation audit, `art-check.cjs`, and the regression tour (`probes/tour.cjs`, errors
+   must be empty). If art/UI changed, **visual-review** must have been done.
    (and JSON validity of the manifest if it changed).
 4. **Commit** with a clear message (what + why).
 5. **Push with retry** — Bash:

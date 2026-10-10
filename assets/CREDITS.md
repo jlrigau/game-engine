@@ -18,6 +18,8 @@ repo — nothing is reused from any other game's art — and dedicated to the pu
 | Force-field fence | `assets/sheet/fence.png` | 80-px frames drawn at half size |
 | Recharge pod | `assets/img/pod_rest.png` | rest station |
 | Scenery & unlocks | `crystal*.png`, `alienplant.png`, `orblamp.png`, `starball.png`, `fountain.png` | |
+| UI icons | `assets/ui/icons/*.png` | shared icon kit in the neon palette + critter, keeper, polish mitt |
+| Home splash | `assets/img/splash.png` | starfield, ringed planet and floating critters |
 | Logo & app icons | `assets/img/logo.png`, `assets/favicon.png`, `assets/apple-touch-icon.png` | the shared `critter()` drawing |
 
 Regenerate: `node .claude/skills/_shared/render-svg.cjs tools/art/nebula.cjs [--only key]`.
