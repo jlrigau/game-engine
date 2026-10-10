@@ -101,3 +101,28 @@ template). Shared tooling in `_shared/` (incl. `separation-audit.cjs`, `prune-as
 - **iOS / touch:** drag-over-touch interactions (close-up scrub…) must follow the
   robustness pattern in `ENGINE.md` and be verified on the **real Safari engine**
   (`playtest.cjs --engine webkit --device "iPhone 13"`) — Chromium-green is not enough.
+
+## 9. Quality bar — owner feedback (ALWAYS apply, every game, every change)
+The owner expects a **professional** result at every level (engine, art, UI, gameplay),
+like a game made by a studio — not a prototype. Concretely:
+- **No emoji in the game UI.** Every icon is an illustrated icon (`GAME.icons`, generated
+  with `_shared/icon-kit.cjs` + game-specific ones), texts use `{i:key}` tokens. Emoji in
+  config examples/docs are forbidden too (they get copied into games).
+- **Panels & buttons look like a mobile game**: the action panel is a card with a
+  portrait, gauges with icons and round glossy action buttons (see engine.css); no big
+  flat default buttons; home = illustrated splash + logo + bottom sheet; modals with a
+  ribbon title. A visible redesign is expected when asked to "improve" UI — re-check
+  against the screenshots, don't claim an improvement that isn't obvious.
+- **Art is checked at FULL SIZE** (skill **visual-review**): anatomy connected (head–neck–
+  shoulders, limbs attached), nothing clipped by its frame, outlines closed, fills inside
+  their shapes, characters big enough on a phone. A defect the owner finds = the checks
+  were insufficient → **improve the tooling/checklist** (art-check, probes, visual-review)
+  in the same change, not just the asset.
+- **Reuse and improve the skills**: route work through the existing skills, and when one
+  is outdated or missed something, fix the skill (and `_shared/` tooling) too.
+- **Fix bugs you discover** along the way (even outside the request), and say so.
+- **Gameplay must feel polished**: one-tap interactions for kids, immediate visual +
+  audible feedback, clear guidance (guide arrow), progression without reading (unlocks).
+- Verify on a **tall and a short** phone screen and on **WebKit** before publishing; report
+  honestly what was not verified (real device, sound).
+- New owner feedback → add it to this section (via **capitalize-learnings**).

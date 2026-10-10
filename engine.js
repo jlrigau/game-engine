@@ -2331,7 +2331,7 @@ function openShop() {
   }
   if (SHOP.buyCreature && CREATURE) {
     html += `<h3>${fmt(SHOP.buyCreature.heading || "{i:heart} Adopt")}</h3>`;
-    if (!room) html += `<p>⚠️ ${SHOP.fullMessage || "No room! Expand first."}</p>`;
+    if (!room) html += `<p>${fmt(SHOP.fullMessage || "No room! Expand first.")}</p>`;
     else html += `<p>${SHOP.buyCreature.hint || ""}</p>
       <button class="btn btn-giant" data-shop="creature">${fmt(SHOP.buyCreature.label || "Adopt")} (${SHOP.buyCreature.price} ${fmt(coinTok())})</button>`;
   }

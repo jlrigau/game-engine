@@ -27,7 +27,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v28",
+    assetVersion: "v29",
     theme: { home: "#120c34", play: "#0b1029", closeup: "#1b1150" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -180,7 +180,7 @@ window.GAME = {
         // themed particles: a burst of STARS instead of hearts
         anim: { motion: "hop", particle: "star", colors: ["#fff2a8", "#ffd24a", "#a8e6ff", "#ff5db1"], count: 8 },
         message: "{i:ball} {name} had fun!", celebrateMessage: "{i:joy} {name} glows with joy!" },
-      // ⭐ the signature CLOSE-UP "moment fort": zoom in and scrub off the cosmic dust by hand
+      // the signature CLOSE-UP "moment fort": zoom in and scrub off the cosmic dust by hand
       { id: "polish", type: "closeup", label: "Polish", icon: "polish", color: "#ff5db1", stat: "polish",
         closeup: {
           bg: "critter_closeup_rose", spotSprites: ["dust", "dust_b"], brush: "cloth", brushTip: { x: 0.5, y: 0.38 },

@@ -31,6 +31,7 @@ From the diff just made, list what was actually learned (be concrete):
 | A missing test/visual/check capability | the **shared tooling** in `.claude/skills/_shared/` (e.g. a `playtest.cjs` flag). |
 | A golden-rule nuance / cross-cutting convention | `CLAUDE.md` (§ Conventions). |
 | Game-specific art/copy | the **game** only (`game.config.js`, `tools/…`, assets) — **not** the engine. |
+| **Owner / user feedback on quality** ("ugly", "not pro", "the head floats", "emoji icons") | a rule in **`CLAUDE.md` §9 (quality bar)** **+** a check in **visual-review** (checklist line) or `_shared/art-check.cjs` / `probes/` so the same class of defect is caught automatically next time. |
 
 Prefer **extending** an existing skill over creating a new one. Create a new skill only
 when the procedure is distinct and reusable across games. New skills follow the house

@@ -52,7 +52,7 @@ language (e.g. *“add a pink critter”*, *“let me ride them”*, *“add a s
 
 | Want to add… | Where it lives | Skill |
 | --- | --- | --- |
-| A new colour/skin for the creature | `creature.variants` (a tint — no art needed) | add-creature-variant |
+| A new colour/skin for the creature | `creature.variants` (a tint, or a sheet drawn in `tools/art/`) | add-creature-variant |
 | Rename / restyle creatures | `creature.customize` | — |
 | A shop & coins | `economy` + `shop` (and `meta.showCoins`) | — |
 | Buyable, placeable decorations | `GAME.decor` | add-decor-item |
@@ -61,7 +61,8 @@ language (e.g. *“add a pink critter”*, *“let me ride them”*, *“add a s
 | A scattered forest / trail loop | `GAME.environment` | place-scatter |
 | More goals / levels | `GAME.objectives.levels` | — |
 | Another playable character | `GAME.characters` | add-character |
-| Brand-new art | `assets/` + `GAME.assets` | asset-search → asset-add |
+| Brand-new art | `tools/art/<game>.cjs` → `assets/` (SVG → PNG) | asset-add (or asset-search for external art) |
+| New UI icons | `GAME.icons` (`_shared/icon-kit.cjs`) | — |
 | Theme-specific effects (e.g. stars when playing) | `action.anim` particles | — |
 
 Nothing here ships in the starter on purpose — you switch features on as you need them.
@@ -83,6 +84,8 @@ you want.
 | asset-search · asset-add | Find (with content + license checks) and integrate art. |
 | state-migration | Add a saved field without breaking existing saves. |
 | test-debug · map-verify | Prove a change works / check map placement (headless, with proof). |
+| visual-review | Art + UI QA at full size (anatomy, clipping, icons, short/tall screens) — before every publish. |
+| capitalize-learnings · sync-engine | Fold learnings back into the engine/skills; backport them into the template. |
 | ios-pwa-check | Keep the iPhone/PWA layout clean. |
 | release-deploy | Cache-bust, push to `main`, verify the Pages deploy. |
 

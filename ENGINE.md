@@ -68,7 +68,7 @@ title, titleIcon, logo ("assets/img/logo.png" — big home-screen image), shortN
 audience: { minAge, notes },          // used by the asset skills' content policy
 theme: { home, play, closeup },        // iOS theme-color per screen
 showCoins,                             // false → hide the coins HUD (no economy)
-showDay, showCreatureCount,            // false → hide the 📅 day / creature-count HUD chips (minimal HUD)
+showDay, showCreatureCount,            // false → hide the day / creature-count HUD chips (minimal HUD)
 showCapacity,                          // creature count: show "n/cap" vs bare "n". Default auto: "/cap" only when group size can change (breeding / spawn station / capacity shop)
 coinIcon, namePrompt:{label,placeholder}, startName, namePromptYou, avatarPrompt,
 createTitle, createOkLabel, startLabel, continueLabel, continueHint, helpTitle,
@@ -142,7 +142,7 @@ audio: {
 ```
 Built-in sounds: `tap click select action pop scrub celebrate reward spawn night morning
 goal open whoosh error unlock`. A station may pick its sound with `sfx`, an action too.
-Omit `audio` entirely for a silent game (the 🔊 button hides itself).
+Omit `audio` entirely for a silent game (the sound button hides itself).
 
 ### `guide` (where to go next — great for young kids)
 ```
@@ -183,7 +183,7 @@ label, icon, sheet, origin:{x,y}, moodIcon,  // moodIcon = particle shape of the
 walk: { start, end, frameRate, speed:40, hop:0, hopPeriod:300, squash:0.08 },  // hop>0 → bouncy hop-walk (px)
 headY,                                 // px from feet to head top at scale 1 (default: derived from frame size)
 shadow:{w,h}, spacing:46, breathe:0.025, nameY, nameSize, showName, showMood, moodScale,
-moodColors:[low,mid,high], moodFaces:["😢","😐","🙂","😄"],   // a face in the panel, by mood
+moodColors:[low,mid,high], moodFaces:["sad","meh","smile","joy"],   // icon keys: a face in the panel by mood (default: 4 hearts)
 happySheet, happyAt:100,               // swap to a "happy" sheet once the mood need reaches happyAt
 tapAction: "<action id>",              // tapping a creature walks to it AND starts this action (kids: one tap)
 arrive: { speed, from:{x,y} },         // creatures brought by a spawn station walk in from a door
@@ -264,7 +264,7 @@ shows a special morning line instead of the ordinary `morningMessage`.
 ```
 allHappy: {
   mood: 75,                       // every creature's mood average must be ≥ this at rest
-  message: "🌟 Cycle {day}: ...",  // morning line on a perfect cycle ({day} substituted)
+  message: "{i:trophy} Cycle {day}: ...",  // morning line on a perfect cycle ({day} substituted)
   celebrate: true,                // default true → each creature does its celebrate() hop, staggered
 }
 ```
@@ -313,10 +313,10 @@ action = {
                                   //   May be an ARRAY of regions (e.g. upper + lower teeth) —
                                   //   spots alternate between them so each region gets some.
     },
-    finishParticles: ["⭐","💖"], // emojis bursting when the scene is cleared
-    popParticles: ["✨","⭐"],     // emojis when one spot is cleared
+    finishParticles: ["star","heart"], // icon keys bursting when the scene is cleared
+    popParticles: ["sparkle","star"], // icon keys when one spot is cleared
     foam: { colors:[…] } | false, // bubbles under the brush while scrubbing
-    hint: "👆" | false,           // pulsing finger on the first spot until the first scrub
+    hint: "hand" | false,         // icon key: pulsing finger on the first spot until the first scrub
     progress: false,              // hide the progress dots (one per spot)
     finishDelay: 1900,            // ms before returning to the world
   },
@@ -329,7 +329,7 @@ in (`render.closeupZoom:false` to disable); each scrub plays a sound and each cl
 a rising-pitch pop, so progress can be *heard*. Difficulty ramps via `state.stats[stat]` (number of past
 completions). The mood need reaching 100 via `effects` triggers `celebrate` in the
 world, so the cured creature visibly rejoices when you return.
-`meta.closeLabel` localises the ✖ button's `aria-label` (default `"Close"`).
+`meta.strings.closeLabel` localises the close button's `aria-label` (default `"Close"`).
 
 #### iOS / touch robustness (why the close-up is built the way it is)
 A finger-scrub over disappearing targets hits two real Safari/iOS bugs. The engine and
