@@ -119,7 +119,7 @@ configs keep working). Generate a themed set with `_shared/icon-kit.cjs`.
 ```
 render: {
   pixelArt: false,          // true (default, legacy) = nearest-neighbour pixel art; false = smooth hi-res art
-  maxDpr: 2,                // HiDPI cap (canvas has DPR x CSS pixels)
+  maxDpr: 3,                // HiDPI cap (canvas has DPR x CSS pixels); 3 = crisp on iPhones
   vignette: 0.3,            // 0..1 dark edge around the world view
   selectColor, tapColor,    // selection ring / tap ripple colours (tapMarker:false hides the ripple)
   text: { color, stroke, strokeThickness, weight },     // in-world labels (names…)
@@ -162,6 +162,19 @@ nav: { cell: 20 }                      // optional: pathfinding grid size (world
 ```
 
 ### `assets` / `fence`
+**Resolution (no blur):** render every image at the size it is DISPLAYED on a phone (DPR
+3). Sprites drawn at N× their logical size declare `res: N`; the engine loads them
+full-size and shows them at the logical size (frame sizes stay LOGICAL in the config):
+```
+images: { chair: { path: "assets/img/chair.webp", res: 2 }, floor: "assets/img/floor.webp" }
+sheets: { hero: { path: "assets/sheet/hero.webp", frameWidth: 128, frameHeight: 128, res: 2 } }
+```
+Close-up backdrops with `res` keep `spots.size` in logical pixels. Menu thumbnails
+(character `thumb` — a path, e.g. `assets/ui/hero_thumb.webp`), icons, logo and splash are
+DOM images: just render them big enough (thumbs ×6, icons ×2, backdrops ×2). Prefer
+**WebP** (`render-svg` type "webp": 3–15× smaller than PNG, alpha, Safari ≥ 14); keep the
+PWA icons (`favicon.png`, `apple-touch-icon.png`) in PNG.
+
 ```
 assets.images: { key: "assets/img/x.png", ... }       // single images
 assets.sheets: { key: { path, frameWidth, frameHeight }, ... }   // spritesheets

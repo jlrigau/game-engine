@@ -125,4 +125,10 @@ like a game made by a studio — not a prototype. Concretely:
   audible feedback, clear guidance (guide arrow), progression without reading (unlocks).
 - Verify on a **tall and a short** phone screen and on **WebKit** before publishing; report
   honestly what was not verified (real device, sound).
+- **Never blurry**: every image is rendered at ≥ 2× its displayed size (WebP, `res` in
+  `GAME.assets`, canvas up to DPR 3). Check FULL-RES crops on the iPhone profile.
+- **Slim buttons, big icons**: pills 44–50 px high, icons that fill their tile (~80 %) or
+  overflow the pill; no oversized buttons with tiny icons.
+- **App icon redone with the art** (`icon-192`, 512, maskable, apple-touch) and remind the
+  owner that iOS keeps the old one until the shortcut is removed and re-added.
 - New owner feedback → add it to this section (via **capitalize-learnings**).

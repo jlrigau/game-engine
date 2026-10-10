@@ -56,4 +56,17 @@ function blob(cx, cy, rx, ry, n, jitter, rand) {
   }
   return d + "Z";
 }
-module.exports = { svg, sheet, job, shade, mix, glow, blur, shadowFilter, lin, rad, rng, star, blob, hex2rgb, rgb2hex };
+// Output resolution policy: rules = [[RegExp on file, { scale, type, ext }], …]; first match
+// wins. Render every image at the size it is DISPLAYED on a phone (DPR 2–3), else it is
+// blurry. `ext` renames the file (e.g. ".jpg" for opaque full-screen backdrops).
+function hidpi(jobs, rules) {
+  return jobs.map((j) => {
+    const r = rules.find(([re]) => re.test(j.file));
+    if (!r || r[1].keep) return j;
+    const o = Object.assign({}, j, { scale: r[1].scale || 1 });
+    if (r[1].type) o.type = r[1].type;
+    if (r[1].ext) o.file = j.file.replace(/\.[a-z]+$/i, r[1].ext);
+    return o;
+  });
+}
+module.exports = { hidpi, svg, sheet, job, shade, mix, glow, blur, shadowFilter, lin, rad, rng, star, blob, hex2rgb, rgb2hex };

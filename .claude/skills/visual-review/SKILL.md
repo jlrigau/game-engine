@@ -40,6 +40,11 @@ Checklist — answer each explicitly (write down the defects you find):
 - **Silhouette readable at the in-game size** (a phone shows sprites at ~40–90 px).
 - **Walk cycles**: feet stay on the same line, no sliding, arms/legs alternate.
 - **Variants** differ clearly (colour, hair…) but share the same anatomy.
+- **Sharpness (no blur)**: crop at the DPR-3 (iPhone) resolution — art must be rendered at
+  ≥ 2× its displayed size (`svg-kit` `hidpi()` rules + `res` in `GAME.assets`, see ENGINE.md
+  "Resolution"). A soft/blurry edge on a home-screen character = wrong scale, not "fine".
+- **App icons**: look at `apple-touch-icon`, `icon-192` and the maskable icon cropped to a
+  circle — subject centred, nothing touching the edge, readable at 60 px.
 - **Backdrops / close-ups**: the subject's important area stays inside the phone crop
   (portrait cover-fit crops ~17% on each side of a 900-wide image).
 
@@ -62,6 +67,8 @@ Checklist:
   short screens.
 - **World**: characters big enough on a phone; labels readable and never hidden behind
   furniture; nothing walks through furniture; depth sorting correct.
+- **Buttons & icons proportion**: slim buttons (44–50 px pills), BIG icons (icon fills
+  ~80 % of a tile, or overflows a pill). A fat button with a small icon looks amateur.
 - **Consistency**: one art style, one outline colour, one icon style, theme colours used.
 - **Feedback**: every tap/action has a visible + audible response.
 

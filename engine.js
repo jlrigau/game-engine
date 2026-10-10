@@ -84,7 +84,7 @@ const HOME_ZONE = ZONES.find((z) => z.home) || ZONES[0] || null;
 
 // Rendering: pixel-art (nearest, rounded) or smooth hi-res art; HiDPI canvas.
 const PIXEL_ART = RENDER.pixelArt !== false;
-const DPR = Math.max(1, Math.min(RENDER.maxDpr || 2, window.devicePixelRatio || 1));
+const DPR = Math.max(1, Math.min(RENDER.maxDpr || 3, window.devicePixelRatio || 1));
 const TEXT_RES = Math.max(1, Math.ceil(DPR * Math.max(1, (G.camera && G.camera.max) || 1)));
 
 // UI strings: every label has an English fallback; a game overrides any of them in
@@ -174,6 +174,16 @@ function themeColor(c) { const m = document.querySelector('meta[name="theme-colo
 const TINT_HOME = (META.theme && META.theme.home) || "#ffce8f";
 const TINT_PLAY = (META.theme && META.theme.play) || "#b5572b";
 function hexInt(hex) { return typeof hex === "number" ? hex : parseInt(String(hex).replace("#", ""), 16); }
+// Asset resolution: an image/sheet drawn at N x its logical size (crisp on HiDPI phones)
+// declares `res: N` in GAME.assets; the engine loads it full-size and displays it at its
+// logical size. Images may be a path string or { path, res }.
+// Character thumbnail: a path ("assets/ui/x.webp") or a bare name (legacy → assets/ui/<name>.png).
+function thumbSrc(ch) { const t = (ch && ch.thumb) || ""; return av(/[./]/.test(t) ? t : "assets/ui/" + t + ".png"); }
+function assetPath(k) { const v = G.assets && G.assets.images && G.assets.images[k]; return v ? (typeof v === "string" ? v : v.path) : null; }
+function RES(k) {
+  const a = G.assets || {}, im = a.images && a.images[k], sh = a.sheets && a.sheets[k];
+  return (sh && sh.res) || (im && typeof im === "object" && im.res) || 1;
+}
 function nowMs() { return (typeof performance !== "undefined" ? performance.now() : Date.now()); }
 
 // Variant id of a creature (with migration of old/unknown values to the first one).
@@ -544,7 +554,7 @@ function buildHud() {
   bar.innerHTML = html;
   bar.classList.toggle("hidden", !html);
   const pa = $("place-avatar");
-  if (pa && state && state.player) pa.innerHTML = `<img src="${av("assets/ui/" + charDef(state.player.avatar).thumb + ".png")}" alt="" />`;
+  if (pa && state && state.player) pa.innerHTML = `<img src="${thumbSrc(charDef(state.player.avatar))}" alt="" />`;
 }
 
 function refreshHud() {
@@ -702,7 +712,7 @@ function openCreate(player, onValidate) {
   const idx = () => Math.max(0, CHARACTERS.findIndex((c) => c.id === pendingPlayer.avatar));
   const draw = (dir) => {
     const ch = charDef(pendingPlayer.avatar);
-    $("avatar-preview").innerHTML = `<div class="podium"></div><img class="thumb-big ${dir ? "swap-" + dir : ""}" src="${av("assets/ui/" + ch.thumb + ".png")}" alt="" /><div class="avatar-name">${esc(ch.name)}</div>`;
+    $("avatar-preview").innerHTML = `<div class="podium"></div><img class="thumb-big ${dir ? "swap-" + dir : ""}" src="${thumbSrc(ch)}" alt="" /><div class="avatar-name">${esc(ch.name)}</div>`;
     document.querySelectorAll("#grp-avatar .btn-avatar").forEach((b) => b.classList.toggle("chosen", b.dataset.id === ch.id));
   };
   const step = (k) => { const i = (idx() + k + CHARACTERS.length) % CHARACTERS.length; pendingPlayer.avatar = CHARACTERS[i].id; draw(k > 0 ? "next" : "prev"); };
@@ -721,7 +731,7 @@ function openCreate(player, onValidate) {
   CHARACTERS.forEach((p) => {
     const b = document.createElement("button");
     b.className = "btn-avatar btn-thumb"; b.dataset.id = p.id; b.title = p.name;
-    b.innerHTML = `<img src="${av("assets/ui/" + p.thumb + ".png")}" alt="" />`;
+    b.innerHTML = `<img src="${thumbSrc(p)}" alt="" />`;
     b.addEventListener("click", () => { const k = CHARACTERS.indexOf(p) - idx(); pendingPlayer.avatar = p.id; draw(k >= 0 ? "next" : "prev"); });
     ga.appendChild(b);
   });
@@ -819,11 +829,12 @@ let zoomFx = false;
 
 function scenePreload() {
   const imgs = (G.assets && G.assets.images) || {};
-  Object.keys(imgs).forEach((k) => this.load.image(k, av(imgs[k])));
+  Object.keys(imgs).forEach((k) => this.load.image(k, av(assetPath(k))));
   const sheets = (G.assets && G.assets.sheets) || {};
   Object.keys(sheets).forEach((k) => {
     const s = sheets[k];
-    this.load.spritesheet(k, av(s.path), { frameWidth: s.frameWidth, frameHeight: s.frameHeight });
+    const r = s.res || 1;   // frame sizes are LOGICAL in the config; the file holds res x pixels
+    this.load.spritesheet(k, av(s.path), { frameWidth: s.frameWidth * r, frameHeight: s.frameHeight * r });
   });
   // A simple loading bar (the canvas is otherwise blank while assets stream in).
   const W = this.scale.width, H = this.scale.height;
@@ -876,7 +887,7 @@ function fenceRect(r, opts = {}) {
   const fr = (G.fence && G.fence.frames) || { post: 1, side: 17, cornerTL: 32, cornerTR: 34 };
   const sheet = (G.fence && G.fence.sheet) || "fence";
   const fs = (G.fence && G.fence.scale) || 1;
-  const add = (x, y, frame, flipY) => { const o = sc.add.image(x, y, sheet, frame).setOrigin(0.5, 0.7).setScale(fs).setDepth(y); if (flipY) o.setFlipY(true); };
+  const add = (x, y, frame, flipY) => { const o = sc.add.image(x, y, sheet, frame).setOrigin(0.5, 0.7).setScale(fs / RES(sheet)).setDepth(y); if (flipY) o.setFlipY(true); };
   for (let x = x0 + s; x < x1; x += s) { add(x, y0, fr.post, false); add(x, y1, fr.post, false); }
   const gates = opts.gates || "left";
   for (let y = y0 + s; y < y1; y += s) {
@@ -956,11 +967,11 @@ function buildEnvironment() {
   // --- Arena (fenced obstacle area) ---
   if (ENV.arena) {
     const a = ENV.arena;
-    if (a.tile) sc.add.tileSprite(a.rect.x, a.rect.y, a.rect.w, a.rect.h, a.tile).setOrigin(0, 0).setDepth(-19);
+    if (a.tile) sc.add.tileSprite(a.rect.x, a.rect.y, a.rect.w, a.rect.h, a.tile).setOrigin(0, 0).setDepth(-19).setTileScale(1 / RES(a.tile));
     if (a.label) worldLabel(a.rect.x + a.rect.w / 2, a.rect.y - 36, a.label, 99990);
     if (a.fence) fenceRect(a.rect, { gates: "left" });
     (a.obstacles || []).forEach((h) => {
-      sc.add.image(h.x, h.y, a.obstacleSprite).setOrigin(0.5, 0.92).setScale(a.obstacleScale || 1).setDepth(h.y);
+      sc.add.image(h.x, h.y, a.obstacleSprite).setOrigin(0.5, 0.92).setScale((a.obstacleScale || 1) / RES(a.obstacleSprite)).setDepth(h.y);
       const b = a.obstacleBox || { dx: -33, dy: -18, w: 66, h: 30 };
       COLLISIONS.push({ x: h.x + b.dx, y: h.y + b.dy, w: b.w, h: b.h, jumpable: true });
     });
@@ -968,7 +979,7 @@ function buildEnvironment() {
   // --- Trail loop (sand path around the map, inside a forest band) ---
   if (ENV.path) {
     const p = ENV.path, tile = p.tile || "dirt";
-    PATHS.forEach((s) => sc.add.tileSprite(s.x - SAND, s.y - SAND, s.w + 2 * SAND, s.h + 2 * SAND, tile).setOrigin(0, 0).setDepth(-19));
+    PATHS.forEach((s) => sc.add.tileSprite(s.x - SAND, s.y - SAND, s.w + 2 * SAND, s.h + 2 * SAND, tile).setOrigin(0, 0).setDepth(-19).setTileScale(1 / RES(tile)));
     if (p.label) worldLabel(WORLD.w / 2, p.labelY || 300, p.label, 99990);
     // Vegetation by a SINGLE declarative rule → continuous & identical everywhere,
     // openings and corners handled automatically (cells "on the path" stay empty).
@@ -981,10 +992,10 @@ function buildEnvironment() {
         if (onPath(gx, gy, 6)) continue;                      // keep the path clear
         const x = gx + randInt(-7, 7), y = gy + randInt(-6, 6);
         if (onPath(gx, gy, hedgeM)) {                          // path edge → low hedge (bush)
-          sc.add.image(x, y, bush).setOrigin(0.5, 0.9).setScale(randInt(11, 14) / 10).setDepth(y);
+          sc.add.image(x, y, bush).setOrigin(0.5, 0.9).setScale(randInt(11, 14) / 10 / RES(bush)).setDepth(y);
           COLLISIONS.push({ x: x - 22, y: y - 10, w: 44, h: 14 });
         } else {                                               // farther → forest (trees, no tight collision)
-          sc.add.image(x, y, tree).setOrigin(0.5, 0.95).setScale(randInt(15, 19) / 10).setDepth(y);
+          sc.add.image(x, y, tree).setOrigin(0.5, 0.95).setScale(randInt(15, 19) / 10 / RES(tree)).setDepth(y);
         }
       }
     }
@@ -994,14 +1005,14 @@ function buildEnvironment() {
       for (let gx = -M; gx <= WORLD.w + M; gx += 90) {
         if (gx > -10 && gx < WORLD.w + 10 && gy > -10 && gy < WORLD.h + 10) continue;
         const x = gx + randInt(-13, 13), y = gy + randInt(-13, 13);
-        sc.add.image(x, y, (gx + gy) % 4 === 0 ? bush : tree).setOrigin(0.5, 0.95).setScale(randInt(15, 19) / 10).setDepth(y);
+        { const k = (gx + gy) % 4 === 0 ? bush : tree; sc.add.image(x, y, k).setOrigin(0.5, 0.95).setScale(randInt(15, 19) / 10 / RES(k)).setDepth(y); }
       }
     }
     // jumpable logs across the horizontal sides — centred on the visible path
     if (p.logs) {
       const sprite = p.logs.sprite || "logs", scale = p.logs.scale || 1.3;
       LOGS.forEach((r) => {
-        sc.add.image(r.x, r.y, sprite).setOrigin(0.5, 0.5).setScale(scale).setDepth(r.y + 30);
+        sc.add.image(r.x, r.y, sprite).setOrigin(0.5, 0.5).setScale(scale / RES(sprite)).setDepth(r.y + 30);
         COLLISIONS.push({ x: r.x - 22, y: r.y - 50, w: 44, h: 100, jumpable: true });
       });
     }
@@ -1028,7 +1039,7 @@ function addSceneryItem(raw, isNew) {
       .setBlendMode(Phaser.BlendModes.ADD).setScale((s.glowSize || 1.6) * sc0).setAlpha(0.55).setDepth(s.ground ? -16 : s.y - 1);
     sc.tweens.add({ targets: gl, alpha: 0.25, scale: gl.scale * 0.85, duration: randInt(1400, 2200), yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
   }
-  const img = sc.add.image(s.x, s.y, s.sprite).setOrigin(o.x, o.y).setScale(sc0)
+  const img = sc.add.image(s.x, s.y, s.sprite).setOrigin(o.x, o.y).setScale(sc0 / RES(s.sprite))
     .setDepth(s.depth != null ? s.depth : (s.ground ? -17 : s.y));
   if (s.flip) img.setFlipX(true);
   if (s.alpha != null) img.setAlpha(s.alpha);
@@ -1211,7 +1222,7 @@ function buildWorld() {
   // Ground: tiled, extending beyond the world so no gaps show at the edges.
   const ground = (G.world && G.world.groundTile) || "grass";
   const gt = sc.add.tileSprite(-700, -700, WORLD.w + 1400, WORLD.h + 1400, ground).setOrigin(0, 0).setDepth(-20);
-  if (G.world && G.world.groundScale) gt.setTileScale(G.world.groundScale);
+  gt.setTileScale(((G.world && G.world.groundScale) || 1) / RES(ground));
   // Optional single backdrop image under the world (e.g. a painted room floor).
   if (G.world && G.world.backdrop) {
     const b = G.world.backdrop;
@@ -1221,7 +1232,7 @@ function buildWorld() {
   // Configured ground patches (paths in front of buildings, etc.).
   (G.world && G.world.patches || []).forEach((q) => {
     const t = sc.add.tileSprite(q.x, q.y, q.w, q.h, q.tile || "dirt").setOrigin(q.ox != null ? q.ox : 0, q.oy != null ? q.oy : 0).setDepth(-19);
-    if (q.tileScale) t.setTileScale(q.tileScale);
+    t.setTileScale((q.tileScale || 1) / RES(q.tile || "dirt"));
   });
 
   // Zones (e.g. the pen): floor image / tinted ground + fence + label.
@@ -1247,7 +1258,7 @@ function buildWorld() {
       const gl = sc.add.image(s.x, s.y - 40, ensureGlow()).setTint(hexInt(s.glow)).setBlendMode(Phaser.BlendModes.ADD).setScale(2.2).setAlpha(0.5).setDepth(s.y - 1);
       sc.tweens.add({ targets: gl, alpha: 0.2, duration: 1600, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     }
-    const b = sc.add.image(s.x, s.y, s.sprite).setOrigin(0.5, 0.88).setScale(s.scale || 1.2).setDepth(s.y);
+    const b = sc.add.image(s.x, s.y, s.sprite).setOrigin(0.5, 0.88).setScale((s.scale || 1.2) / RES(s.sprite)).setDepth(s.y);
     if (s.anim) animateScenery(b, s.anim);
     if (s.label) worldLabel(s.x, s.y + (s.labelY != null ? s.labelY : 44), s.label, 99990, 20);
     s.obj = b;
@@ -1267,7 +1278,7 @@ function buildWorld() {
   const sh = PL.shadow || { w: 34, h: 12 };
   playerShadow = sc.add.image(0, 2, ensureShadow()).setDisplaySize(sh.w * 1.25, sh.h * 1.6).setAlpha(RENDER.shadowAlpha != null ? RENDER.shadowAlpha : 0.32);
   const sheet = charDef(state.player.avatar).sheet;
-  playerSprite = sc.add.sprite(0, 0, sheet, 18).setOrigin(0.5, PL.originY || 0.97).setScale(PL.scale || 1.7);
+  playerSprite = sc.add.sprite(0, 0, sheet, 18).setOrigin(0.5, PL.originY || 0.97).setScale((PL.scale || 1.7) / RES(sheet));
   playerFacing = "down";
   playerName = sc.add.text(0, 0, state.player.name || "", txtStyle(15)).setOrigin(0.5).setDepth(99980);
   if (PL.showName === false) playerName.setVisible(false);
@@ -1365,20 +1376,21 @@ function buildCreatureObj(c) {
   const shw = (CREATURE.shadow && CREATURE.shadow.w) || 58, shh = (CREATURE.shadow && CREATURE.shadow.h) || 16;
   const shadow = sc.add.image(0, 2, ensureShadow()).setDisplaySize(shw * 1.25 * scale, shh * 1.6 * scale).setAlpha(RENDER.shadowAlpha != null ? RENDER.shadowAlpha : 0.32);
   shadow.baseW = shw * 1.25; shadow.baseH = shh * 1.6;
-  const body = sc.add.sprite(0, 0, creatureTexture(c)).setOrigin(orig.x, orig.y).setScale(scale);
+  const tex = creatureTexture(c);
+  const body = sc.add.sprite(0, 0, tex).setOrigin(orig.x, orig.y).setScale(scale / RES(tex));
   body.play({ key: creatureWalkKey(c), startFrame: randInt(0, 3) });
   applyVariantTint(body, c);
   // WANT replaces the mood shape, UNLESS wantBubble.withMood: then both coexist
   // (mood shape stays as the always-on colour gauge, want bubble pops in above it).
   const wantOnly = WANT && !WANT.withMood;
   const heart = wantOnly
-    ? sc.add.image(0, heartY(c) - (WANT.lift || 6), WANT.sprite).setOrigin(0.5, 1).setScale(WANT.scale || 1).setVisible(!WANT.intermittent)
+    ? sc.add.image(0, heartY(c) - (WANT.lift || 6), WANT.sprite).setOrigin(0.5, 1).setScale((WANT.scale || 1) / RES(WANT.sprite)).setVisible(!WANT.intermittent)
     : sc.add.image(0, heartY(c), ensureShape(MOOD_SHAPE)).setOrigin(0.5).setScale(0.95 * 0.5 * (CREATURE.moodScale || 1)).setTint(0x6fcf5f);
   if (CREATURE.showMood === false && !wantOnly) heart.setVisible(false);
   const kids = [shadow, body, heart];
   let wantT = null;
   if (WANT && WANT.withMood) {
-    wantT = sc.add.image(0, heartY(c) - (WANT.lift || 22), WANT.sprite).setOrigin(0.5, 1).setScale(WANT.scale || 1).setVisible(false);
+    wantT = sc.add.image(0, heartY(c) - (WANT.lift || 22), WANT.sprite).setOrigin(0.5, 1).setScale((WANT.scale || 1) / RES(WANT.sprite)).setVisible(false);
     kids.push(wantT);
   }
   // the name lives on a top layer (never hidden behind furniture); it follows the creature
@@ -1386,7 +1398,7 @@ function buildCreatureObj(c) {
   if (CREATURE.showName === false) nameT.setVisible(false);
   const cont = sc.add.container(c.x, c.y, kids);
   c.obj = cont; c.bodyT = body; c.heartT = heart; c.wantT = wantT; c.nameT = nameT; c.shadowT = shadow;
-  c.baseScale = scale; c.ph = rand(0, Math.PI * 2); c.texKey = body.texture.key;
+  c.baseScale = scale; c.k = scale / RES(tex); c.ph = rand(0, Math.PI * 2); c.texKey = body.texture.key;
 }
 
 function refreshCreatureVisual(c) {
@@ -1396,7 +1408,7 @@ function refreshCreatureVisual(c) {
   if (c.bodyT.texture.key !== tex) { c.bodyT.setTexture(tex); c.texKey = tex; }
   c.bodyT.play(creatureWalkKey(c), true);
   applyVariantTint(c.bodyT, c);
-  c.bodyT.setScale(scale); c.baseScale = scale;
+  c.baseScale = scale; c.k = scale / RES(tex); c.bodyT.setScale(c.k);
   if (c.shadowT) c.shadowT.setDisplaySize(c.shadowT.baseW * scale, c.shadowT.baseH * scale);
   c.heartT.y = heartY(c) - ((WANT && !WANT.withMood) ? (WANT.lift || 6) : 0);
   if (c.wantT) c.wantT.y = heartY(c) - (WANT.lift || 22);
@@ -1409,7 +1421,7 @@ function buildDecors() {
   state.decors.forEach((it) => {
     const d = DECOR.find((x) => x.id === it.id);
     if (!d) return;
-    const o = sc.add.image(it.x, it.y, d.sprite).setOrigin(0.5, 0.95).setScale(d.scale || 1.2).setDepth(it.y);
+    const o = sc.add.image(it.x, it.y, d.sprite).setOrigin(0.5, 0.95).setScale((d.scale || 1.2) / RES(d.sprite)).setDepth(it.y);
     decorObjs.push(o);
     if (d.collision) {
       const b = d.collision;
@@ -1423,7 +1435,7 @@ function buildDecors() {
 function animatePlayer(mvx, mvy, t) {
   if (!playerSprite) return;
   const sheet = charDef(state.player.avatar).sheet;
-  const ps = (G.player && G.player.scale) || 1.7;
+  const ps = ((G.player && G.player.scale) || 1.7) / RES(sheet);
   if (mounted) {
     if (mvx) playerFacing = mvx < 0 ? "left" : "right";
     else if (playerFacing !== "left" && playerFacing !== "right") playerFacing = "right";
@@ -1626,17 +1638,17 @@ function updateCreatures(now, dt) {
 function animateCreatureBody(c, now, moving) {
   if (c.nameT && c.obj) { c.nameT.setPosition(c.obj.x, c.obj.y + (CREATURE.nameY != null ? CREATURE.nameY : 22)); c.nameT.setAlpha(c.obj.alpha); }
   const t = c.bodyT; if (!t || c.celebrating || (sc.tweens.isTweening && sc.tweens.isTweening(t))) return;
-  const s = c.baseScale || 1, W = CREATURE.walk || {};
+  const s = c.baseScale || 1, k = c.k || s, W = CREATURE.walk || {};
   if (moving && W.hop) {
     const ph = (now / (W.hopPeriod || 300)) * Math.PI + c.ph;
     const h = Math.abs(Math.sin(ph));
     t.y = -h * W.hop * s;
     const sq = (1 - h) * (W.squash != null ? W.squash : 0.08);
-    t.setScale(s * (1 + sq), s * (1 - sq));
+    t.setScale(k * (1 + sq), k * (1 - sq));
     if (c.shadowT) c.shadowT.setAlpha((RENDER.shadowAlpha || 0.32) * (1 - 0.35 * h));
   } else {
     const b = RENDER.breathe === false ? 0 : (CREATURE.breathe != null ? CREATURE.breathe : 0.025) * Math.sin(now / 480 + c.ph);
-    t.y = 0; t.setScale(s * (1 - b * 0.6), s * (1 + b));
+    t.y = 0; t.setScale(k * (1 - b * 0.6), k * (1 + b));
   }
 }
 
@@ -1665,7 +1677,7 @@ function updateMood(c, now) {
         if (showing) {
           const e = Math.min(1, (now - c.wantShownAt) / 220); // springy pop-in
           const k = e < 1 ? (1 + 0.25 * Math.sin(e * Math.PI)) * e : 1;
-          wt.setScale(base * (0.4 + 0.6 * k));
+          wt.setScale(base / RES(WANT.sprite) * (0.4 + 0.6 * k));
           wt.y = heartY(c) - lift + Math.sin(now / 300 + c.ph) * 3;
         }
       } else {
@@ -1930,7 +1942,7 @@ function buildPanel() {
   } else {
     const s = activeTarget;
     const st = STATIONS.find((x) => x.type === s.type);
-    const img = st && G.assets.images[st.sprite] ? av(G.assets.images[st.sprite]) : null;
+    const img = st && assetPath(st.sprite) ? av(assetPath(st.sprite)) : null;
     p.innerHTML = `<div class="pc-card">
         <div class="pc-portrait station">${img ? `<img src="${img}" alt="" />` : iconHTML(st.icon || "home")}</div>
         <div class="pc-main"><div class="pc-title"><span class="pc-name">${fmt(stripIcons(st.label || ""))}</span></div>${st.hint ? `<div class="pc-tag">${fmt(st.hint)}</div>` : ""}</div>
@@ -2156,12 +2168,12 @@ function emitBurst(x, y, spec) {
 // Body motion presets used by action animations.
 function applyMotion(c, motion) {
   if (!c.bodyT || !sc || motion === "none") return;
-  const m = motion || "bounce", s = c.baseScale || 1, t = c.bodyT;
-  const done = () => { if (c.bodyT) { c.bodyT.y = 0; c.bodyT.setScale(s); } };
-  if (m === "nod") sc.tweens.add({ targets: t, y: 7 * s, scaleY: s * 0.92, duration: 120, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: done });
+  const m = motion || "bounce", s = c.baseScale || 1, k = c.k || s, t = c.bodyT;
+  const done = () => { if (c.bodyT) { c.bodyT.y = 0; c.bodyT.setScale(k); } };
+  if (m === "nod") sc.tweens.add({ targets: t, y: 7 * s, scaleY: k * 0.92, duration: 120, yoyo: true, repeat: 1, ease: "Sine.easeInOut", onComplete: done });
   else if (m === "hop") {
-    t.setScale(s * 1.12, s * 0.88);
-    sc.tweens.add({ targets: t, y: -26 * s, scaleX: s * 0.92, scaleY: s * 1.1, duration: 200, yoyo: true, ease: "Quad.easeOut", onComplete: done });
+    t.setScale(k * 1.12, k * 0.88);
+    sc.tweens.add({ targets: t, y: -26 * s, scaleX: k * 0.92, scaleY: k * 1.1, duration: 200, yoyo: true, ease: "Quad.easeOut", onComplete: done });
   } else if (m === "wiggle") sc.tweens.add({ targets: t, angle: { from: -8, to: 8 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => { if (c.bodyT) c.bodyT.angle = 0; done(); } });
   else sc.tweens.add({ targets: t, y: -12 * s, duration: 130, yoyo: true, ease: "Quad.easeOut", onComplete: done });
 }
@@ -2193,7 +2205,7 @@ function celebrate(c) {
   c.celebrating = true;
   const cel = CREATURE.celebrate || {};
   const mode = cel.mode || "hop";
-  const t = c.bodyT, s = c.baseScale || 1;
+  const t = c.bodyT, s = c.baseScale || 1, k = c.k || s;
   refreshCreatureVisual(c);                       // e.g. swap to the "happy" sheet
   Sound.play("celebrate");
   if (mode === "rear") {
@@ -2208,10 +2220,10 @@ function celebrate(c) {
     });
   } else {
     // squash → big hop with a little spin of joy → land
-    t.setScale(s * 1.15, s * 0.85);
+    t.setScale(k * 1.15, k * 0.85);
     sc.tweens.add({
-      targets: t, y: -38 * s, scaleX: s * 0.92, scaleY: s * 1.1, duration: 230, yoyo: true, repeat: 1, ease: "Quad.easeOut",
-      onComplete: () => { if (t) { t.y = 0; t.setScale(s); } c.celebrating = false; if (CREATURE.depart) departCreature(c); },
+      targets: t, y: -38 * s, scaleX: k * 0.92, scaleY: k * 1.1, duration: 230, yoyo: true, repeat: 1, ease: "Quad.easeOut",
+      onComplete: () => { if (t) { t.y = 0; t.setScale(k); } c.celebrating = false; if (CREATURE.depart) departCreature(c); },
     });
   }
   emitBurst(c.x, c.y, { shape: cel.particle || "heart", colors: cel.colors || ["#ff7eb6", "#7fd06f", "#ffd24a"], count: cel.count || 5, y0: 50, riseMin: 48, riseMax: 90, spread: 34 });
@@ -2325,7 +2337,7 @@ function openShop() {
     html += `<h3>${fmt(SHOP.decorHeading || "{i:gift} Decorations")}</h3><div class="decor-grid">`;
     DECOR.forEach((d) => {
       html += `<button class="decor-card" data-decor="${d.id}">
-        <img class="d-img" src="${av((G.assets.images[d.sprite]) || ("assets/img/" + d.sprite + ".png"))}" alt="" /><span>${d.name}</span><span class="d-price">${d.price} ${fmt(coinTok())}</span></button>`;
+        <img class="d-img" src="${av(assetPath(d.sprite) || ("assets/img/" + d.sprite + ".png"))}" alt="" /><span>${d.name}</span><span class="d-price">${d.price} ${fmt(coinTok())}</span></button>`;
     });
     html += `</div>`;
   }
@@ -2369,7 +2381,7 @@ function buyDecor(id) {
   closeModal();
   if (sc) {
     if (ghostDecor) ghostDecor.destroy();
-    ghostDecor = sc.add.image(player.x, player.y, d.sprite).setOrigin(0.5, 0.95).setScale(d.scale || 1.2).setAlpha(0.6).setDepth(99999);
+    ghostDecor = sc.add.image(player.x, player.y, d.sprite).setOrigin(0.5, 0.95).setScale((d.scale || 1.2) / RES(d.sprite)).setAlpha(0.6).setDepth(99999);
   }
   refreshHud(); panelId = PANEL_DIRTY; refreshInteraction();
   message((META.boughtDecorMessage || "{name} bought! Walk around and tap “Place here”.").replace("{name}", d.name));
@@ -2473,10 +2485,11 @@ function openCloseup(c, a) {
   const root = $("closeup"); if (!root || !a || closeupOpen) return;
   const cfg = a.closeup || {};
   const stage = $("closeup-stage"), bg = $("closeup-bg"), brush = $("closeup-brush");
-  const imgPath = (k, def) => av((G.assets.images && G.assets.images[k]) || ("assets/img/" + (k || def) + ".png"));
+  const imgPath = (k, def) => av(assetPath(k) || ("assets/img/" + (k || def) + ".png"));
   // The backdrop can be overridden per creature variant (e.g. each child's own face).
   const cv = variantDef(variantId(c));
-  const src = imgPath((cv && cv.closeupBg) || cfg.bg, "closeup");
+  const bgKey = (cv && cv.closeupBg) || cfg.bg;
+  const src = imgPath(bgKey, "closeup");
   if (bg) { bg.src = src; bg.classList.remove("cu-fade"); }
   // optional "after" backdrop revealed on finish (e.g. the same face, now smiling)
   const doneKey = (cv && cv.closeupBgDone) || cfg.bgDone;
@@ -2533,7 +2546,7 @@ function openCloseup(c, a) {
     const h = document.createElement("div"); h.className = "cu-hint"; h.innerHTML = iconHTML(cfg.hint || "hand");
     stage.appendChild(h);
   }
-  cuState = { c, a, remaining: count, total: count, pressed: false, ang: 0, lx: null, foamT: 0, scrubT: 0 };
+  cuState = { c, a, remaining: count, total: count, pressed: false, ang: 0, lx: null, foamT: 0, scrubT: 0, bgRes: RES(bgKey) };
   // Cinematic in: the camera swoops onto the creature, then the scene fades in.
   if (sc && RENDER.closeupZoom !== false) {
     zoomFx = true;
@@ -2555,7 +2568,9 @@ function openCloseup(c, a) {
 function cuCover() {
   const stage = $("closeup-stage"), bg = $("closeup-bg");
   const Wc = stage.clientWidth, Hc = stage.clientHeight;
-  const iw = (bg && bg.naturalWidth) || 900, ih = (bg && bg.naturalHeight) || 1160;
+  // spot sizes are in LOGICAL backdrop pixels: divide a HiDPI backdrop (res: N) back down
+  const r = (cuState && cuState.bgRes) || 1;
+  const iw = ((bg && bg.naturalWidth) || 900) / r, ih = ((bg && bg.naturalHeight) || 1160) / r;
   const s = Math.max(Wc / iw, Hc / ih);
   return { s, dw: iw * s, dh: ih * s, ox: (Wc - iw * s) / 2, oy: (Hc - ih * s) / 2 };
 }

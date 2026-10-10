@@ -21,13 +21,13 @@ window.GAME = {
   meta: {
     title: "Nebula Nursery",
     titleIcon: "critter",
-    logo: "assets/img/logo.png",       // big illustrated logo on the home screen
-    splash: "assets/img/splash.png",   // full-screen illustration behind the home & create screens
+    logo: "assets/img/logo.webp",       // big illustrated logo on the home screen
+    splash: "assets/img/splash.webp",   // full-screen illustration behind the home & create screens
     shortName: "Nebula",
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v29",
+    assetVersion: "v30",
     theme: { home: "#120c34", play: "#0b1029", closeup: "#1b1150" },
     showCoins: false,                 // minimal demo: no economy
     namePrompt: { label: "Name your nursery:", placeholder: "Starlight Bay" },
@@ -50,14 +50,14 @@ window.GAME = {
 
   /* ---- Illustrated UI icons (tools/art/nebula.cjs → assets/ui/icons). Any text can embed {i:key}. ---- */
   icons: {
-    star: "assets/ui/icons/star.png", heart: "assets/ui/icons/heart.png", heartEmpty: "assets/ui/icons/heartEmpty.png", sound: "assets/ui/icons/sound.png",
-    soundOff: "assets/ui/icons/soundOff.png", help: "assets/ui/icons/help.png", avatar: "assets/ui/icons/avatar.png", goals: "assets/ui/icons/goals.png",
-    close: "assets/ui/icons/close.png", play: "assets/ui/icons/play.png", resume: "assets/ui/icons/resume.png", check: "assets/ui/icons/check.png",
-    calendar: "assets/ui/icons/calendar.png", gift: "assets/ui/icons/gift.png", hand: "assets/ui/icons/hand.png", sparkle: "assets/ui/icons/sparkle.png",
-    moon: "assets/ui/icons/moon.png", refresh: "assets/ui/icons/refresh.png", arrow: "assets/ui/icons/arrow.png", trophy: "assets/ui/icons/trophy.png",
-    palette: "assets/ui/icons/palette.png", ball: "assets/ui/icons/ball.png", battery: "assets/ui/icons/battery.png", smile: "assets/ui/icons/smile.png",
-    meh: "assets/ui/icons/meh.png", sad: "assets/ui/icons/sad.png", joy: "assets/ui/icons/joy.png", critter: "assets/ui/icons/critter.png",
-    keeper: "assets/ui/icons/keeper.png", polish: "assets/ui/icons/polish.png",
+    star: "assets/ui/icons/star.webp", heart: "assets/ui/icons/heart.webp", heartEmpty: "assets/ui/icons/heartEmpty.webp", sound: "assets/ui/icons/sound.webp",
+    soundOff: "assets/ui/icons/soundOff.webp", help: "assets/ui/icons/help.webp", avatar: "assets/ui/icons/avatar.webp", goals: "assets/ui/icons/goals.webp",
+    close: "assets/ui/icons/close.webp", play: "assets/ui/icons/play.webp", resume: "assets/ui/icons/resume.webp", check: "assets/ui/icons/check.webp",
+    calendar: "assets/ui/icons/calendar.webp", gift: "assets/ui/icons/gift.webp", hand: "assets/ui/icons/hand.webp", sparkle: "assets/ui/icons/sparkle.webp",
+    moon: "assets/ui/icons/moon.webp", refresh: "assets/ui/icons/refresh.webp", arrow: "assets/ui/icons/arrow.webp", trophy: "assets/ui/icons/trophy.webp",
+    palette: "assets/ui/icons/palette.webp", ball: "assets/ui/icons/ball.webp", battery: "assets/ui/icons/battery.webp", smile: "assets/ui/icons/smile.webp",
+    meh: "assets/ui/icons/meh.webp", sad: "assets/ui/icons/sad.webp", joy: "assets/ui/icons/joy.webp", critter: "assets/ui/icons/critter.webp",
+    keeper: "assets/ui/icons/keeper.webp", polish: "assets/ui/icons/polish.webp",
   },
 
   /* ---- Look & feel (smooth hi-res art, glow, floating stardust) ---- */
@@ -87,28 +87,28 @@ window.GAME = {
   /* ---- Assets (all generated, CC0) ---- */
   assets: {
     images: {
-      ground: "assets/img/ground.png", pen_floor: "assets/img/pen_floor.png",
-      crystal: "assets/img/crystal.png", crystal_b: "assets/img/crystal_b.png", alienplant: "assets/img/alienplant.png",
-      orblamp: "assets/img/orblamp.png", starball: "assets/img/starball.png", fountain: "assets/img/fountain.png",
-      pod_rest: "assets/img/pod_rest.png",
-      dust: "assets/img/dust.png", dust_b: "assets/img/dust_b.png", cloth: "assets/img/cloth.png",
-      want_dust: "assets/img/want_dust.png",
+      ground: { path: "assets/img/ground.webp", res: 2 }, pen_floor: "assets/img/pen_floor.webp",
+      crystal: { path: "assets/img/crystal.webp", res: 2 }, crystal_b: { path: "assets/img/crystal_b.webp", res: 2 }, alienplant: { path: "assets/img/alienplant.webp", res: 2 },
+      orblamp: { path: "assets/img/orblamp.webp", res: 2 }, starball: { path: "assets/img/starball.webp", res: 2 }, fountain: { path: "assets/img/fountain.webp", res: 2 },
+      pod_rest: { path: "assets/img/pod_rest.webp", res: 2 },
+      dust: "assets/img/dust.webp", dust_b: "assets/img/dust_b.webp", cloth: "assets/img/cloth.webp",
+      want_dust: { path: "assets/img/want_dust.webp", res: 2 },
       // per-variant close-up backdrops (+ the happy "after" version revealed when clean)
-      critter_closeup_rose: "assets/img/critter_closeup_rose.png", critter_closeup_rose_done: "assets/img/critter_closeup_rose_done.png",
-      critter_closeup_amber: "assets/img/critter_closeup_amber.png", critter_closeup_amber_done: "assets/img/critter_closeup_amber_done.png",
-      critter_closeup_aqua: "assets/img/critter_closeup_aqua.png", critter_closeup_aqua_done: "assets/img/critter_closeup_aqua_done.png",
-      critter_closeup_lime: "assets/img/critter_closeup_lime.png", critter_closeup_lime_done: "assets/img/critter_closeup_lime_done.png",
-      critter_closeup_violet: "assets/img/critter_closeup_violet.png", critter_closeup_violet_done: "assets/img/critter_closeup_violet_done.png",
+      critter_closeup_rose: { path: "assets/img/critter_closeup_rose.webp", res: 2 }, critter_closeup_rose_done: { path: "assets/img/critter_closeup_rose_done.webp", res: 2 },
+      critter_closeup_amber: { path: "assets/img/critter_closeup_amber.webp", res: 2 }, critter_closeup_amber_done: { path: "assets/img/critter_closeup_amber_done.webp", res: 2 },
+      critter_closeup_aqua: { path: "assets/img/critter_closeup_aqua.webp", res: 2 }, critter_closeup_aqua_done: { path: "assets/img/critter_closeup_aqua_done.webp", res: 2 },
+      critter_closeup_lime: { path: "assets/img/critter_closeup_lime.webp", res: 2 }, critter_closeup_lime_done: { path: "assets/img/critter_closeup_lime_done.webp", res: 2 },
+      critter_closeup_violet: { path: "assets/img/critter_closeup_violet.webp", res: 2 }, critter_closeup_violet_done: { path: "assets/img/critter_closeup_violet_done.webp", res: 2 },
     },
     sheets: {
-      keeper: { path: "assets/sheet/keeper.png", frameWidth: 128, frameHeight: 128 },
-      keeper_amber: { path: "assets/sheet/keeper_amber.png", frameWidth: 128, frameHeight: 128 },
-      critter_rose: { path: "assets/sheet/critter_rose.png", frameWidth: 128, frameHeight: 128 },
-      critter_amber: { path: "assets/sheet/critter_amber.png", frameWidth: 128, frameHeight: 128 },
-      critter_aqua: { path: "assets/sheet/critter_aqua.png", frameWidth: 128, frameHeight: 128 },
-      critter_lime: { path: "assets/sheet/critter_lime.png", frameWidth: 128, frameHeight: 128 },
-      critter_violet: { path: "assets/sheet/critter_violet.png", frameWidth: 128, frameHeight: 128 },
-      fence: { path: "assets/sheet/fence.png", frameWidth: 80, frameHeight: 80 },
+      keeper: { path: "assets/sheet/keeper.webp", frameWidth: 128, frameHeight: 128, res: 2 },
+      keeper_amber: { path: "assets/sheet/keeper_amber.webp", frameWidth: 128, frameHeight: 128, res: 2 },
+      critter_rose: { path: "assets/sheet/critter_rose.webp", frameWidth: 128, frameHeight: 128, res: 2 },
+      critter_amber: { path: "assets/sheet/critter_amber.webp", frameWidth: 128, frameHeight: 128, res: 2 },
+      critter_aqua: { path: "assets/sheet/critter_aqua.webp", frameWidth: 128, frameHeight: 128, res: 2 },
+      critter_lime: { path: "assets/sheet/critter_lime.webp", frameWidth: 128, frameHeight: 128, res: 2 },
+      critter_violet: { path: "assets/sheet/critter_violet.webp", frameWidth: 128, frameHeight: 128, res: 2 },
+      fence: { path: "assets/sheet/fence.webp", frameWidth: 80, frameHeight: 80, res: 2 },
     },
   },
   // force-field fence: 80-px frames drawn at half size, one pylon every 40 px
@@ -123,8 +123,8 @@ window.GAME = {
     shadow: { w: 40, h: 12 },
   },
   characters: [
-    { id: "aqua", name: "Bolt", sheet: "keeper", thumb: "keeper_thumb" },
-    { id: "amber", name: "Sol", sheet: "keeper_amber", thumb: "keeper_amber_thumb" },
+    { id: "aqua", name: "Bolt", sheet: "keeper", thumb: "assets/ui/keeper_thumb.webp" },
+    { id: "amber", name: "Sol", sheet: "keeper_amber", thumb: "assets/ui/keeper_amber_thumb.webp" },
   ],
 
   /* ---- Creature system (3 needs, 3 actions, variants, aging) ---- */
@@ -158,11 +158,11 @@ window.GAME = {
     allHappy: { mood: 75, message: "{i:trophy} Cycle {day}: every critter is glowing — what a wonderful day!" },
     // Each variant has its own glow colour (sheet), close-up face, happy face and thumbnail.
     variants: [
-      { id: "rose", name: "Rose", color: "#ff5db1", sheet: "critter_rose", closeupBg: "critter_closeup_rose", closeupBgDone: "critter_closeup_rose_done", thumb: "assets/ui/critter_rose.png" },
-      { id: "amber", name: "Amber", color: "#ffb43a", sheet: "critter_amber", closeupBg: "critter_closeup_amber", closeupBgDone: "critter_closeup_amber_done", thumb: "assets/ui/critter_amber.png" },
-      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua", closeupBg: "critter_closeup_aqua", closeupBgDone: "critter_closeup_aqua_done", thumb: "assets/ui/critter_aqua.png" },
-      { id: "lime", name: "Lime", color: "#86e55a", sheet: "critter_lime", closeupBg: "critter_closeup_lime", closeupBgDone: "critter_closeup_lime_done", thumb: "assets/ui/critter_lime.png" },
-      { id: "violet", name: "Violet", color: "#a97bff", sheet: "critter_violet", closeupBg: "critter_closeup_violet", closeupBgDone: "critter_closeup_violet_done", thumb: "assets/ui/critter_violet.png" },
+      { id: "rose", name: "Rose", color: "#ff5db1", sheet: "critter_rose", closeupBg: "critter_closeup_rose", closeupBgDone: "critter_closeup_rose_done", thumb: "assets/ui/critter_rose.webp" },
+      { id: "amber", name: "Amber", color: "#ffb43a", sheet: "critter_amber", closeupBg: "critter_closeup_amber", closeupBgDone: "critter_closeup_amber_done", thumb: "assets/ui/critter_amber.webp" },
+      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua", closeupBg: "critter_closeup_aqua", closeupBgDone: "critter_closeup_aqua_done", thumb: "assets/ui/critter_aqua.webp" },
+      { id: "lime", name: "Lime", color: "#86e55a", sheet: "critter_lime", closeupBg: "critter_closeup_lime", closeupBgDone: "critter_closeup_lime_done", thumb: "assets/ui/critter_lime.webp" },
+      { id: "violet", name: "Violet", color: "#a97bff", sheet: "critter_violet", closeupBg: "critter_closeup_violet", closeupBgDone: "critter_closeup_violet_done", thumb: "assets/ui/critter_violet.webp" },
     ],
     variantLabel: "Glow colour",
     customize: { rename: true, variant: true },

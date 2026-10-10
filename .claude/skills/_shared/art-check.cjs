@@ -37,8 +37,9 @@ global.window = {};
 require(path.join(root, "game.config.js"));
 const G = global.window.GAME;
 const items = [];
-Object.entries((G.assets && G.assets.sheets) || {}).forEach(([k, s]) => items.push({ key: k, path: s.path, fw: s.frameWidth, fh: s.frameHeight }));
-Object.entries((G.assets && G.assets.images) || {}).forEach(([k, p]) => items.push({ key: k, path: p }));
+Object.entries((G.assets && G.assets.sheets) || {}).forEach(([k, s]) => items.push({ key: k, path: s.path, fw: s.frameWidth * (s.res || 1), fh: s.frameHeight * (s.res || 1) }));
+Object.entries((G.assets && G.assets.images) || {}).forEach(([k, p]) => items.push({ key: k, path: typeof p === "string" ? p : p.path }));
+Object.entries(G.icons || {}).forEach(([k, p]) => items.push({ key: "icon:" + k, path: p }));
 const todo = items.filter((it) => !only || only.split(",").some((o) => it.key.includes(o)));
 
 (async () => {

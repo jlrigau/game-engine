@@ -13,7 +13,10 @@ Keep the iPhone layout clean (fullscreen, no band, safe areas).
   `apple-mobile-web-app-title` (**short**, else truncated), `link rel="manifest"`,
   no-cache metas.
 - **`manifest.webmanifest`**: `name`, short `short_name`, `display: standalone`,
-  `background_color`, `theme_color`, `icons` (180 + 512).
+  `background_color`, `theme_color`, `icons`: `icon-192.png` (any), `favicon.png` 512 (any),
+  `icon-maskable.png` 512 (purpose `maskable`: subject inside the central 80 % — Android crops
+  it to a circle/squircle) + `apple-touch-icon.png` 180. Never mark one file "any maskable".
+  Render all of them from the art module's `icon(file, size, safe)` (one mascot drawing).
 - **`engine.css`** (shared structure — safe areas, panel, HUD) / **`style.css`** (theme):
   - `html, body` fullscreen; **soft background** with no dark band
     (`background-attachment: fixed`).

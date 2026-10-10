@@ -326,16 +326,21 @@ function wantBubble() {
 }
 
 /* ---------------- Icons & logo (same critter as in the game) ---------------- */
-function icon(file, size, rounded) {
-  const r = critter({ c: VARIANTS.aqua, uid: "i", look: 0 });
-  const s = size / 128 * 0.92;
-  const defs = skyDefs() + r.defs;
-  let g = rounded ? "" : "";
-  g += `<rect width="${size}" height="${size}" fill="url(#sky)"/>`;
-  g += `<ellipse cx="${size * 0.25}" cy="${size * 0.2}" rx="${size * 0.6}" ry="${size * 0.3}" fill="url(#neb1)"/>`;
-  const R = rng(5); for (let i = 0; i < 24; i++) g += `<circle cx="${R() * size}" cy="${R() * size}" r="${(R() * 1.6 + 0.5) * size / 180}" fill="#fff" opacity="${0.4 + R() * 0.6}"/>`;
-  g += `<g transform="translate(${size / 2 - 64 * s} ${size * 0.53 - 66 * s}) scale(${s})">${r.body}</g>`;
-  return job(file, size, size, g, defs);
+// App icon (home screen): drawn on a 512 grid, rendered at any size. `safe` < 1 shrinks the
+// subject into the central safe zone for Android "maskable" icons (cropped to a circle).
+function icon(file, size, safe = 1) {
+  const S = 512, r = critter({ c: VARIANTS.aqua, uid: "i", look: 0 });
+  const defs = skyDefs() + r.defs + rad("ih", [[0, "#3fe0e8", 0.55], [1, "#3fe0e8", 0]]) + glow("ig", 8) + rad("pl", [[0, "#ff9ed8"], [1, "#b2479a"]], 0.35, 0.3, 0.8);
+  let g = `<rect width="${S}" height="${S}" fill="url(#sky)"/>`;
+  g += `<ellipse cx="120" cy="90" rx="330" ry="170" fill="url(#neb1)"/><ellipse cx="420" cy="460" rx="300" ry="160" fill="url(#neb2)"/>`;
+  const R = rng(5); for (let i = 0; i < 40; i++) g += `<circle cx="${R() * S}" cy="${R() * S}" r="${R() * 2.4 + 0.8}" fill="#fff" opacity="${0.4 + R() * 0.6}"/>`;
+  g += `<g transform="translate(400 112) scale(${safe})"><circle r="44" fill="url(#pl)"/><ellipse rx="78" ry="16" fill="none" stroke="#ffd6ef" stroke-width="7" opacity=".85" transform="rotate(-20)"/></g>`;
+  g += `<circle cx="256" cy="282" r="${190 * safe}" fill="url(#ih)"/>`;
+  // the critter spans x 14..114, y 4..112 of its 128 box: fit it inside ~74% of the icon
+  const s = 3.4 * safe;
+  g += `<g transform="translate(256 290) scale(${s}) translate(-64 -60)">${r.body}</g>`;
+  [[88, 140, 22], [440, 300, 16], [110, 420, 14]].forEach(([x, y, q]) => { g += `<path d="${star(x, y, q * safe, q * 0.33 * safe, 4)}" fill="#fff6c8" filter="url(#ig)"/>`; });
+  return Object.assign(job(file, S, S, g, defs), { scale: size / S });
 }
 function logo() {
   const W = 420, H = 300;
@@ -385,13 +390,28 @@ function splash() {
 
 module.exports = () => {
   const jobs = [];
+  return K.hidpi(build(jobs), HIDPI);
+};
+// Resolution per family of images (see svg-kit.hidpi): world sprites x2 (config `res: 2`),
+// menu thumbnails x3, icons x2, full-screen backdrops x2 as JPEG, close-up props x3.
+const HIDPI = [
+  [/favicon|apple-touch|icon-192|icon-maskable/, { keep: true }],          // PWA icons: PNG at their own scale
+  [/closeup|splash/, { scale: 2, type: "webp", ext: ".webp" }],
+  [/logo/, { scale: 2.5, type: "webp", ext: ".webp" }],
+  [/ui\/icons\//, { scale: 2, type: "webp", ext: ".webp" }],
+  [/assets\/ui\//, { scale: 6, type: "webp", ext: ".webp" }],
+  [/dust|cloth/, { scale: 3, type: "webp", ext: ".webp" }],
+  [/pen_floor/, { scale: 1.4, type: "webp", ext: ".webp" }],
+  [/assets\/(img|sheet)\//, { scale: 2, type: "webp", ext: ".webp" }],
+];
+function build(jobs) {
   Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v), critterThumb(v), closeup(v, false), closeup(v, true)); });
   Object.entries(KEEPERS).forEach(([n, p]) => jobs.push(keeperSheet(n, p), keeperThumb(n, p)));
   jobs.push(ground(), penFloor(780, 640), fence(), pod(),
     crystal("crystal", "#ff8fd8", "#a45bff"), crystal("crystal_b", "#8ff6ff", "#3a7cff"),
     alienPlant(), orbLamp(), starBall(), fountain(),
     dust("dust", "#b7a9cf"), dust("dust_b", "#9fb0d8"), cloth(), wantBubble(),
-    icon("assets/favicon.png", 512), icon("assets/apple-touch-icon.png", 180), logo(), splash(),
+    icon("assets/favicon.png", 512), icon("assets/apple-touch-icon.png", 180), icon("assets/icon-192.png", 192), icon("assets/icon-maskable.png", 512, 0.78), logo(), splash(),
     critterIcon(), robotIcon(), polishIcon(),
     ...IK.jobs(PAL, ["star", "heart", "heartEmpty", "sound", "soundOff", "help", "avatar", "goals", "close", "play", "resume", "check", "calendar", "gift", "hand", "sparkle", "moon", "refresh", "arrow", "trophy", "palette", "ball", "battery", "smile", "meh", "sad", "joy"]));
   return jobs;

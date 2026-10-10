@@ -3,7 +3,8 @@
 Each image is labelled with its file name; pages of up to 8 images (OUT-1.png, OUT-2.png…)."""
 import sys, glob, os
 from PIL import Image, ImageDraw
-args = [a for a in sys.argv[1:] if not a.startswith("--")]
+argv = sys.argv[1:]
+args = [a for i, a in enumerate(argv) if not a.startswith("--") and not (i > 0 and argv[i - 1].startswith("--"))]
 opt = lambda k, d: int(sys.argv[sys.argv.index(k) + 1]) if k in sys.argv else d
 src = args[0]; out = args[1] if len(args) > 1 else os.path.join(src, "_contact.png")
 cols, w = opt("--cols", 4), opt("--w", 360)

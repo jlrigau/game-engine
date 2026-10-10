@@ -8,19 +8,19 @@ repo — nothing is reused from any other game's art — and dedicated to the pu
 
 | Asset | File | Notes |
 | --- | --- | --- |
-| Metal deck ground | `assets/img/ground.png` | tileable 512 |
-| Nursery mat | `assets/img/pen_floor.png` | the pen's floor (glowing hex mat) |
-| Keeper robot (2 colours) | `assets/sheet/keeper.png`, `keeper_amber.png` | 128-px LPC walkcycle (hovering) |
-| Keeper thumbnails | `assets/ui/keeper_thumb.png`, `keeper_amber_thumb.png` | menu portraits |
-| Alien critters (×5 glows) | `assets/sheet/critter_*.png`, `assets/ui/critter_*.png` | 128-px, 4-frame squash walk |
-| Close-ups | `assets/img/critter_closeup_*.png` (+ `_done`) | dusty → happy, per glow colour |
-| Dust bunnies, cloth, bubble | `dust.png`, `dust_b.png`, `cloth.png`, `want_dust.png` | polish mini-scene |
-| Force-field fence | `assets/sheet/fence.png` | 80-px frames drawn at half size |
-| Recharge pod | `assets/img/pod_rest.png` | rest station |
-| Scenery & unlocks | `crystal*.png`, `alienplant.png`, `orblamp.png`, `starball.png`, `fountain.png` | |
-| UI icons | `assets/ui/icons/*.png` | shared icon kit in the neon palette + critter, keeper, polish mitt |
-| Home splash | `assets/img/splash.png` | starfield, ringed planet and floating critters |
-| Logo & app icons | `assets/img/logo.png`, `assets/favicon.png`, `assets/apple-touch-icon.png` | the shared `critter()` drawing |
+| Metal deck ground | `assets/img/ground.webp` | tileable 512 |
+| Nursery mat | `assets/img/pen_floor.webp` | the pen's floor (glowing hex mat) |
+| Keeper robot (2 colours) | `assets/sheet/keeper.webp`, `keeper_amber.webp` | 128-px LPC walkcycle (hovering) |
+| Keeper thumbnails | `assets/ui/keeper_thumb.webp`, `keeper_amber_thumb.webp` | menu portraits |
+| Alien critters (×5 glows) | `assets/sheet/critter_*.webp`, `assets/ui/critter_*.webp` | 128-px, 4-frame squash walk |
+| Close-ups | `assets/img/critter_closeup_*.webp` (+ `_done`) | dusty → happy, per glow colour |
+| Dust bunnies, cloth, bubble | `dust.webp`, `dust_b.webp`, `cloth.webp`, `want_dust.webp` | polish mini-scene |
+| Force-field fence | `assets/sheet/fence.webp` | 80-px frames drawn at half size |
+| Recharge pod | `assets/img/pod_rest.webp` | rest station |
+| Scenery & unlocks | `crystal*.webp`, `alienplant.webp`, `orblamp.webp`, `starball.webp`, `fountain.webp` | |
+| UI icons | `assets/ui/icons/*.webp` | shared icon kit in the neon palette + critter, keeper, polish mitt |
+| Home splash | `assets/img/splash.webp` | starfield, ringed planet and floating critters |
+| Logo & app icons | `assets/img/logo.webp`, `assets/favicon.png`, `assets/apple-touch-icon.png`, `icon-192.png`, `icon-maskable.png` | the shared `critter()` drawing |
 
 Regenerate: `node .claude/skills/_shared/render-svg.cjs tools/art/nebula.cjs [--only key]`.
 
