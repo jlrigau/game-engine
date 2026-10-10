@@ -69,6 +69,9 @@ Checklist:
   furniture; nothing walks through furniture; depth sorting correct.
 - **Buttons & icons proportion**: slim buttons (44–50 px pills), BIG icons (icon fills
   ~80 % of a tile, or overflows a pill). A fat button with a small icon looks amateur.
+- **Round buttons**: depth goes INSIDE the disc (inset shade) + a soft drop shadow. A hard
+  offset coloured edge under a contrasting ring reads as a second disc stuck under the
+  first ("double button") — check them zoomed on BOTH a light and a dark theme.
 - **Consistency**: one art style, one outline colour, one icon style, theme colours used.
 - **Animations** (unlock reveal, pop-ins): run `probes/reveal.cjs` (`REVEAL=<unlock id>`)
   and look at the frames in order — no flicker / disappear-reappear, no two tweens on the

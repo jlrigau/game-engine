@@ -308,13 +308,14 @@ input[type="text"]::placeholder { color: var(--muted); opacity: 0.65; }
 #modal-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; -webkit-overflow-scrolling: touch; padding: 4px 2px; }
 .modal-content h3 { margin: 16px 0 8px; color: var(--primary-d); }
 .btn-close {
-  position: absolute; top: -18px; right: -10px; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--panel); cursor: pointer; z-index: 2;
+  position: absolute; top: -18px; right: -10px; width: 48px; height: 48px; border-radius: 50%; border: 3px solid #fff; cursor: pointer; z-index: 2;
   display: flex; align-items: center; justify-content: center; padding: 0;
-  background: var(--gloss), var(--accent); box-shadow: 0 4px 0 var(--accent-d), 0 6px 12px rgba(0, 0, 0, 0.2);
+  background: var(--gloss), var(--accent); box-shadow: inset 0 -4px 0 var(--accent-d), 0 0 0 1px rgba(0, 0, 0, 0.1), 0 5px 12px rgba(0, 0, 0, 0.28);
+  transition: transform .1s ease;
 }
 .btn-close .ico { width: 26px; height: 26px; vertical-align: 0; }
 .btn-close .ico-svg { color: #fff; }
-.btn-close:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--accent-d); }
+.btn-close:active { transform: scale(0.9); }
 .shop-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--panel2); border-radius: 18px; padding: 12px; margin-bottom: 10px; }
 .shop-row .desc { flex: 1; } .shop-row .desc small { display: block; color: var(--muted); }
 .decor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
@@ -382,13 +383,13 @@ input[type="text"]::placeholder { color: var(--muted); opacity: 0.65; }
 .closeup, .closeup * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
 .closeup-close {
   position: absolute; top: calc(14px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right));
-  z-index: 10; width: 54px; height: 54px; border-radius: 50%; border: 4px solid var(--panel); cursor: pointer; padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--gloss), var(--accent); box-shadow: 0 4px 0 var(--accent-d), 0 8px 16px rgba(0, 0, 0, 0.22);
+  z-index: 10; width: 54px; height: 54px; border-radius: 50%; border: 3px solid #fff; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center; transition: transform .1s ease;
+  background: var(--gloss), var(--accent); box-shadow: inset 0 -5px 0 var(--accent-d), 0 0 0 1px rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.3);
 }
-.closeup-close .ico { width: 28px; height: 28px; vertical-align: 0; }
+.closeup-close .ico { width: 30px; height: 30px; vertical-align: 0; }
 .closeup-close .ico-svg { color: #fff; }
-.closeup-close:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--accent-d); }
+.closeup-close:active { transform: scale(0.9); }
 /* The stage fills the WHOLE screen; the backdrop is shown with object-fit:cover and
    spots are placed cover-aware so they stay on the subject. */
 .closeup-stage { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; touch-action: none; }
@@ -419,7 +420,7 @@ div.cu-spot { border-radius: 50%; background: radial-gradient(circle at 35% 35%,
   position: absolute; z-index: 9; top: calc(14px + env(safe-area-inset-top));
   left: calc(14px + env(safe-area-inset-left)); right: calc(14px + 54px + 10px + env(safe-area-inset-right)); max-width: 440px;
   height: 54px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 0 12px; border-radius: 999px; pointer-events: none;
-  background: var(--panel); border: 3px solid var(--panel-edge); box-shadow: 0 4px 0 var(--panel-edge), 0 6px 14px rgba(0, 0, 0, 0.18);
+  background: var(--panel); border: 3px solid var(--panel-edge); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08), 0 6px 16px rgba(0, 0, 0, 0.22);
 }
 .cu-progress i { display: block; flex: 0 1 34px; min-width: 0; aspect-ratio: 1; transition: opacity .25s, filter .25s; }
 .cu-progress i .ico { display: block; width: 100%; height: 100%; vertical-align: 0; }
