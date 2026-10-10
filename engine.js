@@ -24,6 +24,15 @@
     el.textContent = "⚠ " + msg + "\n\n(tap to dismiss — please screenshot this)";
   }
   window.addEventListener("error", function (e) {
+    // Opaque errors ("Script error.", no file/line) come from scripts the page does not own
+    // (Safari extensions, content blockers, translation, injected scripts): the browser hides
+    // their details and they don't affect the game → log only. Same for other origins.
+    const file = String(e.filename || "");
+    if ((!file && !e.error && /^(script error\.?)?$/i.test(String(e.message || "").trim())) ||
+        (file && !/^https?:/i.test(file)) || (file && file.indexOf(location.origin) !== 0)) {
+      try { console.warn("ignored foreign error:", e.message, file); } catch (_) {}
+      return;
+    }
     show((e.message || "error") + (e.filename ? (" @ " + String(e.filename).split("/").pop() + ":" + e.lineno + ":" + e.colno) : ""));
   });
   window.addEventListener("unhandledrejection", function (e) {

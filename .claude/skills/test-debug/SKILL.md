@@ -84,3 +84,10 @@ node .claude/skills/_shared/playtest.cjs --engine webkit --device "iPhone 13" --
 ## Chaining
 Before **map-verify** (map visuals) and **release-deploy** (publish).
 Called by the **feedback-session** orchestrator for each item.
+
+## On-screen error bar (red, "tap to dismiss")
+`engine.js` shows uncaught errors from the game's own files with file:line — screenshot
+requests from players are actionable. Opaque errors ("Script error.", no file) and errors
+from other origins/extensions are only logged (Safari extensions, content blockers,
+translation inject them; they don't affect the game). A player report showing a file and
+line = a real engine/config bug → reproduce under WebKit.
