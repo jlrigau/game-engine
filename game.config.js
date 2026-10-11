@@ -143,6 +143,8 @@ window.GAME = {
       critter_back_rose: { path: "assets/img/critter_back_rose.webp", res: 2 }, critter_back_amber: { path: "assets/img/critter_back_amber.webp", res: 2 },
       critter_back_aqua: { path: "assets/img/critter_back_aqua.webp", res: 2 }, critter_back_lime: { path: "assets/img/critter_back_lime.webp", res: 2 },
       critter_back_violet: { path: "assets/img/critter_back_violet.webp", res: 2 },
+      // race: the keeper robot seen from behind, drawn over the critter (character.raceRider)
+      rider_back_aqua: { path: "assets/img/rider_back_aqua.webp", res: 2 }, rider_back_amber: { path: "assets/img/rider_back_amber.webp", res: 2 },
       dust: "assets/img/dust.webp", dust_b: "assets/img/dust_b.webp", cloth: "assets/img/cloth.webp",
       want_dust: { path: "assets/img/want_dust.webp", res: 2 },
       // per-variant close-up backdrops (+ the happy "after" version revealed when clean)
@@ -188,8 +190,8 @@ window.GAME = {
     shadow: { w: 40, h: 12 },
   },
   characters: [
-    { id: "aqua", name: "Bolt", sheet: "keeper", rideSheet: "keeper_ride", thumb: "assets/ui/keeper_thumb.webp" },
-    { id: "amber", name: "Sol", sheet: "keeper_amber", rideSheet: "keeper_amber_ride", thumb: "assets/ui/keeper_amber_thumb.webp" },
+    { id: "aqua", name: "Bolt", sheet: "keeper", rideSheet: "keeper_ride", raceRider: "rider_back_aqua", thumb: "assets/ui/keeper_thumb.webp" },
+    { id: "amber", name: "Sol", sheet: "keeper_amber", rideSheet: "keeper_amber_ride", raceRider: "rider_back_amber", thumb: "assets/ui/keeper_amber_thumb.webp" },
   ],
 
   /* ---- Creature system (3 needs, 3 actions, variants, aging) ---- */
