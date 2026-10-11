@@ -1,20 +1,20 @@
-# 🎮 Game Engine
+# Ludea — Game Engine
 
 A **template repository** for building small top-down 2D games (Phaser 3, 100% static,
 no build). The engine is generic: you don't code a game, you **describe** it in one
 config file (`game.config.js`) + assets — or just run the **`/new-game`** skill and
 answer a few questions.
 
-It ships with a working demo, **Nebula Nursery** (a keeper robot tends glowing alien
-critters on a space station). The demo is the engine's **showcase**: care actions and a
-close-up "polish" scene, variants and growth, eggs, riding with jumps in the Gravity Park
-and on the Star Ring road, a shop with decorations, a salon menu, a wormhole that brings new
-critters, pick-up → drop-off deliveries chased by drones, rare critters with stats and a
-pseudo-3D race — every system
-switched on in `game.config.js`. A new game starts from a small seed instead
-(`.claude/skills/new-game/references/minimal-seed.config.js`).
+It ships with a small **starter game** that already runs — a mini space nursery where a
+keeper robot looks after three glowing critters (three needs, a close-up "polish" scene, a
+rest pod, surprises that appear as you play), in English and French. It is the seed that
+`/new-game` turns into your game (`.claude/skills/new-game/references/minimal-seed.config.js`).
 
-▶ **[Play the live demo](https://jlrigau.github.io/game-engine/)** · **[Ludea — landing page & game catalogue](https://jlrigau.github.io/game-engine/landing/)**
+Want to see everything the engine can do? The showcase **Nebula Nursery** switches on every
+system — riding and jumps, shop and decorations, deliveries chased by drones, a pseudo-3D race…
+
+▶ **[Play the showcase](https://ludea.ai/nebula/)** ([source](https://github.com/ludea-ai/nebula)) ·
+**[ludea.ai — the games made with the engine](https://ludea.ai/)**
 
 ---
 
@@ -31,8 +31,9 @@ engine stays clean and you can make as many games as you like.
    language, core loop** — then writes your `game.config.js`, creates/sources the assets,
    themes the look, tests it, and can deploy. It **never edits `engine.js`**.
 4. **Turn on GitHub Pages:** in your repo, **Settings → Pages → Source → “GitHub
-   Actions”**. Your game goes live at `https://<you>.github.io/<repo>/`, and every later
-   push to `main` redeploys automatically.
+   Actions”**. Your game goes live at `https://<you>.github.io/<repo>/` (or under your own
+   domain if your account's Pages site has one), and every later push to `main` redeploys
+   automatically.
 
 That's it — you now have your own game. Keep shaping it by [iterating](#️-make-it-yours-by-iterating).
 
@@ -157,7 +158,7 @@ window.GAME = {
 };
 ```
 
-For example, the demo's creature is described — not coded — like this:
+For example, the starter's creature is described — not coded — like this:
 
 ```js
 creature: {
@@ -211,5 +212,5 @@ assets/ (img · sheet · ui · CREDITS.md) · vendor/phaser.min.js
 
 ## 🎨 Credits
 
-Demo textures and icons are **generated** (CC0) and specific to the demo's universe.
+The starter's textures and icons are **generated** (CC0, `tools/art/starter.cjs`).
 Phaser 3 is MIT. See [`assets/CREDITS.md`](assets/CREDITS.md).

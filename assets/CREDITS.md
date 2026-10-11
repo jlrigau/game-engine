@@ -1,7 +1,8 @@
 # Asset credits
 
-The engine ships a minimal demo game, **Nebula Nursery**. **All of its art is generated**
-from one parametric SVG art module, `tools/art/nebula.cjs`, rendered to PNG by
+The template ships a small starter game (a mini **Nebula Nursery**, the new-game seed). **All of
+its art is generated** from one parametric SVG art module, `tools/art/starter.cjs` (a subset of
+the showcase's `tools/art/nebula.cjs`, github.com/ludea-ai/nebula), rendered to PNG/WebP by
 `.claude/skills/_shared/render-svg.cjs` (headless Chromium). Everything is original to this
 repo — nothing is reused from any other game's art — and dedicated to the public domain
 (**CC0**).
@@ -22,7 +23,7 @@ repo — nothing is reused from any other game's art — and dedicated to the pu
 | Home splash | `assets/img/splash.webp` | starfield, ringed planet and floating critters |
 | Logo & app icons | `assets/img/logo.webp`, `assets/favicon.png`, `assets/apple-touch-icon.png`, `icon-192.png`, `icon-maskable.png` | the shared `critter()` drawing |
 
-Regenerate: `node .claude/skills/_shared/render-svg.cjs tools/art/nebula.cjs [--only key]`.
+Regenerate: `node .claude/skills/_shared/render-svg.cjs tools/art/starter.cjs [--only key]`.
 
 ## Engine dependencies
 - **Phaser 3** (v3.80.1) is vendored at `vendor/phaser.min.js` — MIT license,
@@ -32,6 +33,6 @@ Regenerate: `node .claude/skills/_shared/render-svg.cjs tools/art/nebula.cjs [--
 - Sounds and music are synthesised at runtime (WebAudio) — no audio files.
 
 ## Making your own game
-Write your own `tools/art/<game>.cjs` (copy the demo's structure) or source external art
+Write your own `tools/art/<game>.cjs` (copy the starter's structure) or source external art
 (see the **asset-search** / **asset-add** skills) and credit any third-party assets here
 with their author + license.
