@@ -24,6 +24,7 @@
 window.GAME = {
   /* ---- Identity, theming, UI strings ---- */
   meta: {
+    lang: "en",                        // source language of every text below (translations: game.i18n.js)
     title: "Nebula Nursery",
     titleIcon: "critter",
     logo: "assets/img/logo.webp",       // big illustrated logo on the home screen
@@ -32,7 +33,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v57",
+    assetVersion: "v58",
     theme: { home: "#120c34", play: "#0b1029", closeup: "#1b1150" },
     showCoins: true,
     coinIcon: "shard",                // the currency: star shards
@@ -143,14 +144,27 @@ window.GAME = {
       critter_back_rose: { path: "assets/img/critter_back_rose.webp", res: 2 }, critter_back_amber: { path: "assets/img/critter_back_amber.webp", res: 2 },
       critter_back_aqua: { path: "assets/img/critter_back_aqua.webp", res: 2 }, critter_back_lime: { path: "assets/img/critter_back_lime.webp", res: 2 },
       critter_back_violet: { path: "assets/img/critter_back_violet.webp", res: 2 },
+      // race: the keeper robot seen from behind, drawn over the critter (character.raceRider)
+      drone_back: { path: "assets/img/drone_back.webp", res: 2 }, drone_front: { path: "assets/img/drone_front.webp", res: 2 }, start_gate: { path: "assets/img/start_gate.webp", res: 2 },   // the Escape pursuer (race.chase)
+      rider_back_aqua: { path: "assets/img/rider_back_aqua.webp", res: 2 },
+      rider_rival_1: { path: "assets/img/rider_rival_1.webp", res: 2 },
+      rider_rival_2: { path: "assets/img/rider_rival_2.webp", res: 2 },
+      rider_rival_3: { path: "assets/img/rider_rival_3.webp", res: 2 },
+      rider_rival_4: { path: "assets/img/rider_rival_4.webp", res: 2 },
+      rider_rival_5: { path: "assets/img/rider_rival_5.webp", res: 2 }, rider_back_amber: { path: "assets/img/rider_back_amber.webp", res: 2 },
       dust: "assets/img/dust.webp", dust_b: "assets/img/dust_b.webp", cloth: "assets/img/cloth.webp",
       want_dust: { path: "assets/img/want_dust.webp", res: 2 },
       // per-variant close-up backdrops (+ the happy "after" version revealed when clean)
       critter_closeup_rose: { path: "assets/img/critter_closeup_rose.webp", res: 2 }, critter_closeup_rose_done: { path: "assets/img/critter_closeup_rose_done.webp", res: 2 },
+      critter_closeup_rose_wide: { path: "assets/img/critter_closeup_rose_wide.webp", res: 2 }, critter_closeup_rose_wide_done: { path: "assets/img/critter_closeup_rose_wide_done.webp", res: 2 },
       critter_closeup_amber: { path: "assets/img/critter_closeup_amber.webp", res: 2 }, critter_closeup_amber_done: { path: "assets/img/critter_closeup_amber_done.webp", res: 2 },
+      critter_closeup_amber_wide: { path: "assets/img/critter_closeup_amber_wide.webp", res: 2 }, critter_closeup_amber_wide_done: { path: "assets/img/critter_closeup_amber_wide_done.webp", res: 2 },
       critter_closeup_aqua: { path: "assets/img/critter_closeup_aqua.webp", res: 2 }, critter_closeup_aqua_done: { path: "assets/img/critter_closeup_aqua_done.webp", res: 2 },
+      critter_closeup_aqua_wide: { path: "assets/img/critter_closeup_aqua_wide.webp", res: 2 }, critter_closeup_aqua_wide_done: { path: "assets/img/critter_closeup_aqua_wide_done.webp", res: 2 },
       critter_closeup_lime: { path: "assets/img/critter_closeup_lime.webp", res: 2 }, critter_closeup_lime_done: { path: "assets/img/critter_closeup_lime_done.webp", res: 2 },
+      critter_closeup_lime_wide: { path: "assets/img/critter_closeup_lime_wide.webp", res: 2 }, critter_closeup_lime_wide_done: { path: "assets/img/critter_closeup_lime_wide_done.webp", res: 2 },
       critter_closeup_violet: { path: "assets/img/critter_closeup_violet.webp", res: 2 }, critter_closeup_violet_done: { path: "assets/img/critter_closeup_violet_done.webp", res: 2 },
+      critter_closeup_violet_wide: { path: "assets/img/critter_closeup_violet_wide.webp", res: 2 }, critter_closeup_violet_wide_done: { path: "assets/img/critter_closeup_violet_wide_done.webp", res: 2 },
     },
     sheets: {
       keeper: { path: "assets/sheet/keeper.webp", frameWidth: 128, frameHeight: 128, res: 2 },
@@ -183,8 +197,8 @@ window.GAME = {
     shadow: { w: 40, h: 12 },
   },
   characters: [
-    { id: "aqua", name: "Bolt", sheet: "keeper", rideSheet: "keeper_ride", thumb: "assets/ui/keeper_thumb.webp" },
-    { id: "amber", name: "Sol", sheet: "keeper_amber", rideSheet: "keeper_amber_ride", thumb: "assets/ui/keeper_amber_thumb.webp" },
+    { id: "aqua", name: "Bolt", sheet: "keeper", rideSheet: "keeper_ride", raceRider: "rider_back_aqua", thumb: "assets/ui/keeper_thumb.webp" },
+    { id: "amber", name: "Sol", sheet: "keeper_amber", rideSheet: "keeper_amber_ride", raceRider: "rider_back_amber", thumb: "assets/ui/keeper_amber_thumb.webp" },
   ],
 
   /* ---- Creature system (3 needs, 3 actions, variants, aging) ---- */
@@ -225,11 +239,11 @@ window.GAME = {
     allHappy: { mood: 75, message: "{i:trophy} Cycle {day}: every critter is glowing — what a wonderful day!" },
     // Each variant has its own glow colour (sheet), close-up face, happy face and thumbnail.
     variants: [
-      { id: "rose", name: "Rose", color: "#ff5db1", sheet: "critter_rose", happySheet: "critter_happy_rose", raceSprite: "critter_back_rose", closeupBg: "critter_closeup_rose", closeupBgDone: "critter_closeup_rose_done", thumb: "assets/ui/critter_rose.webp" },
-      { id: "amber", name: "Amber", color: "#ffb43a", sheet: "critter_amber", happySheet: "critter_happy_amber", raceSprite: "critter_back_amber", closeupBg: "critter_closeup_amber", closeupBgDone: "critter_closeup_amber_done", thumb: "assets/ui/critter_amber.webp" },
-      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua", happySheet: "critter_happy_aqua", raceSprite: "critter_back_aqua", closeupBg: "critter_closeup_aqua", closeupBgDone: "critter_closeup_aqua_done", thumb: "assets/ui/critter_aqua.webp" },
-      { id: "lime", name: "Lime", color: "#86e55a", sheet: "critter_lime", happySheet: "critter_happy_lime", raceSprite: "critter_back_lime", closeupBg: "critter_closeup_lime", closeupBgDone: "critter_closeup_lime_done", thumb: "assets/ui/critter_lime.webp" },
-      { id: "violet", name: "Violet", color: "#a97bff", sheet: "critter_violet", happySheet: "critter_happy_violet", raceSprite: "critter_back_violet", closeupBg: "critter_closeup_violet", closeupBgDone: "critter_closeup_violet_done", thumb: "assets/ui/critter_violet.webp" },
+      { id: "rose", name: "Rose", color: "#ff5db1", sheet: "critter_rose", happySheet: "critter_happy_rose", raceSprite: "critter_back_rose", closeupBg: "critter_closeup_rose", closeupBgDone: "critter_closeup_rose_done", closeupBgWide: "critter_closeup_rose_wide", closeupBgWideDone: "critter_closeup_rose_wide_done", thumb: "assets/ui/critter_rose.webp" },
+      { id: "amber", name: "Amber", color: "#ffb43a", sheet: "critter_amber", happySheet: "critter_happy_amber", raceSprite: "critter_back_amber", closeupBg: "critter_closeup_amber", closeupBgDone: "critter_closeup_amber_done", closeupBgWide: "critter_closeup_amber_wide", closeupBgWideDone: "critter_closeup_amber_wide_done", thumb: "assets/ui/critter_amber.webp" },
+      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua", happySheet: "critter_happy_aqua", raceSprite: "critter_back_aqua", closeupBg: "critter_closeup_aqua", closeupBgDone: "critter_closeup_aqua_done", closeupBgWide: "critter_closeup_aqua_wide", closeupBgWideDone: "critter_closeup_aqua_wide_done", thumb: "assets/ui/critter_aqua.webp" },
+      { id: "lime", name: "Lime", color: "#86e55a", sheet: "critter_lime", happySheet: "critter_happy_lime", raceSprite: "critter_back_lime", closeupBg: "critter_closeup_lime", closeupBgDone: "critter_closeup_lime_done", closeupBgWide: "critter_closeup_lime_wide", closeupBgWideDone: "critter_closeup_lime_wide_done", thumb: "assets/ui/critter_lime.webp" },
+      { id: "violet", name: "Violet", color: "#a97bff", sheet: "critter_violet", happySheet: "critter_happy_violet", raceSprite: "critter_back_violet", closeupBg: "critter_closeup_violet", closeupBgDone: "critter_closeup_violet_done", closeupBgWide: "critter_closeup_violet_wide", closeupBgWideDone: "critter_closeup_violet_wide_done", thumb: "assets/ui/critter_violet.webp" },
     ],
     variantLabel: "Glow colour",
     customize: { rename: true, variant: true },
@@ -257,6 +271,10 @@ window.GAME = {
                    // around the big eye (never on it): left & right cheeks, forehead, chin
                    area: [{ x: 0.25, y: 0.45, w: 0.1, h: 0.2 }, { x: 0.65, y: 0.45, w: 0.1, h: 0.2 },
                           { x: 0.40, y: 0.385, w: 0.2, h: 0.02 }, { x: 0.40, y: 0.70, w: 0.2, h: 0.03 }] },
+          // phone held sideways: a landscape backdrop (same 4 areas, same order — wideAreas() in nebula.cjs)
+          wide: { bg: "critter_closeup_rose_wide", bgDone: "critter_closeup_rose_wide_done",
+                  size: 98, area: [{ x: 0.3848, y: 0.4546, w: 0.0461, h: 0.2367 }, { x: 0.5691, y: 0.4546, w: 0.0461, h: 0.2367 },
+                         { x: 0.4539, y: 0.3777, w: 0.0922, h: 0.0237 }, { x: 0.4539, y: 0.7505, w: 0.0922, h: 0.0355 }] },
           finishParticles: ["star", "sparkle", "heart"],
           foam: { colors: ["#ffffff", "#e3f9ff", "#ffe3f4"] },
         },
@@ -266,6 +284,8 @@ window.GAME = {
       { id: "ride", type: "ride", label: "Ride", icon: "ride", color: "#3fe0e8", dismountLabel: "Hop off", dismountIcon: "close" },
       { id: "jump", type: "jump", label: "Jump", icon: "jump", color: "#ffd24a" },
       { id: "race", type: "race", label: "Race", icon: "flag", color: "#ff5db1" },
+      // race variant: the station's security drone chases you to the finish (race.chase)
+      { id: "escape", type: "race", mode: "chase", label: "Escape", icon: "drone", color: "#3fe0e8" },
       // open the customize menu (recolour the glow / rename) — no effect on needs
       { id: "style", type: "customize", label: "Style", icon: "palette", color: "#a97bff" },
     ],
@@ -298,15 +318,47 @@ window.GAME = {
     time: 60, reward: 40, stat: "raceWin", hitPenalty: 3,
     sprite: "critter_back_aqua",          // fallback; each variant has its own rear view (variant.raceSprite)
     roadside: ["spire", "crystal", "crystal_b", "orblamp"], roadsideScale: 5,
-    spriteZoom: 0.13,
+    spriteZoom: 0.13, rideWidth: 0.34,     // ride frame width / screen width (a narrow drawing needs more)
     track: { segments: 900, speed: 0.9, steer: 2.4, centrifugal: 0.55 },
     obstacles: [
       { sprite: "beacon", every: 30, phase: 0, scale: 2.2, hw: 0.2, spread: 0.6 },
       { sprite: "asteroid", every: 46, phase: 18, scale: 3.2, hw: 0.3, spread: 0.45 },
     ],
-    colors: { sky: ["#0b1029", "#2a1d6e", "#7a3fc0"], sun: ["#ffd6ef", "#ff5db1"], skyline: false, ground: "#0e1430",
+    // a REAL race: 5 rival riders to overtake (you start last), ranking, results with a reward per place.
+    // Rival robots: the keeper's rear view in their own accent colour (rider_rival_N, pre-rendered palettes).
+    horizon: 0.42,                           // tall phones: more road, less empty sky
+    // CHASE variant ("Escape"): a security drone starts behind and closes in; obstacles slow you, it catches up
+    chase: {
+      name: "the drone", sprite: "drone_back", front: "drone_front", scale: 5.5, icon: "drone",
+      startGap: 28, skill: [0.9, 1.05], catchGap: 0.8,
+      reward: 35, caughtReward: 3, stat: "chaseEscape",
+      startMessage: "{i:drone} A security drone is after you! Reach the finish before it catches you!",
+      hitMessage: "Bump! The drone is closing in…",
+      caughtMessage: "{i:drone} Caught by {name}!",
+      resultsTitle: "{i:drone} Escape",
+      escapeMessage: "{i:trophy} You outran the drone!", escapeHint: "Finished in {t} s without being caught.",
+      caughtTitle: "{i:drone} The drone caught you!", caughtHint: "Dodge the asteroids: every bump slows you down.",
+      goLabel: "GO!",
+    },
+    rivals: {
+      list: [
+        { name: "Zip", sprite: "critter_back_violet", rider: "rider_rival_1", color: "#ff8a3d" },
+        { name: "Nova", sprite: "critter_back_rose", rider: "rider_rival_2", color: "#5fd36a" },
+        { name: "Pixel", sprite: "critter_back_lime", rider: "rider_rival_3", color: "#a06bff" },
+        { name: "Comet", sprite: "critter_back_amber", rider: "rider_rival_4", color: "#ff5db1" },
+        { name: "Orbit", sprite: "critter_back_aqua", rider: "rider_rival_5", color: "#ffd24a" },
+      ],
+      scale: 6.5, hw: 0.3, skill: [0.82, 0.97], gridGap: 3, gridFirst: 5, startGate: "start_gate", startGateScale: 17, lanes: [-0.62, 0.62],
+      rewards: [40, 25, 15, 8, 5, 3],
+      placeMessages: ["{i:trophy} You won the Comet Race!", "{i:star} 2nd place, so close!", "{i:star} 3rd: you made the podium!", "You finished {place}. Overtake more riders next time!"],
+      resultsTitle: "{i:flag} Results",
+      startMessage: "{i:flag} Overtake the 5 riders and cross the line first!",
+      bumpMessage: "Bump! You hit {name}.",
+      goLabel: "GO!",
+    },
+    colors: { sky: ["#0b1029", "#2a1d6e", "#7a3fc0"], sun: ["#ffd6ef", "#ff5db1"], sunPos: { x: 0.78, y: 0.55, r: 0.07 }, stars: { count: 110, color: "#e9f3ff" }, skyline: false, ground: "#0e1430",
               grass: ["#18214a", "#141c43"], road: ["#2e3b78", "#283470"], rumble: ["#3fe0e8", "#ff5db1"], lane: "#bff6ff", finish: ["#ffffff", "#1d2147"] },
-    icons: { time: "timer", distance: "distance", speed: "speed", quit: "quit", left: "left", right: "right" },
+    icons: { time: "timer", distance: "distance", speed: "speed", quit: "quit", left: "left", right: "right", place: "flag" },
     quitLabel: "Quit", hint: "Tap left or right to steer",
     startMessage: "{i:flag} 3… 2… 1… Go! Reach the finish before the timer runs out!",
     hitMessage: "Bump! −{n} s",
@@ -505,7 +557,7 @@ window.GAME = {
         { id: "job3", name: "Busy courier", desc: "Make 3 deliveries {i:crate}", check: (s) => (s.stats.jobs || 0) >= 3 },
       ] },
       { name: "Racer", goals: [
-        { id: "race1", name: "Comet racer", desc: "Win a race {i:flag}", check: (s) => (s.stats.raceWin || 0) >= 1 },
+        { id: "race1", name: "Comet racer", desc: "Finish a race on the podium {i:flag}", check: (s) => (s.stats.racePodium || 0) >= 1 || (s.stats.raceWin || 0) >= 1 },
         { id: "jump3", name: "Gravity Park", desc: "Jump 3 obstacles {i:jump}", check: (s) => (s.stats.jump || 0) >= 3 },
         { id: "decor1", name: "Decorator", desc: "Place a decoration {i:gift}", check: (s) => (s.stats.decor || 0) >= 1 },
         { id: "earn200", name: "Shard saver", desc: "Earn 200 {i:shard} in total", check: (s) => (s.stats.earned || 0) >= 200 },
@@ -515,6 +567,7 @@ window.GAME = {
         { id: "egg1", name: "A new hatchling", desc: "Have an egg hatch {i:egg}", check: (s) => (s.stats.births || 0) >= 1 },
         { id: "job8", name: "Star courier", desc: "Make 8 deliveries {i:crate}", check: (s) => (s.stats.jobs || 0) >= 8 },
         { id: "race3", name: "Champion", desc: "Win 3 races {i:flag}", check: (s) => (s.stats.raceWin || 0) >= 3 },
+        { id: "escape1", name: "Slippery", desc: "Outrun the drone in an Escape {i:drone}", check: (s) => (s.stats.chaseEscape || 0) >= 1 },
       ] },
     ],
   },
@@ -526,7 +579,7 @@ window.GAME = {
     "{i:heart} <b>Care:</b> {i:battery} Energy (Feed, costs {i:nectar} nectar), {i:ball} Fun (Play) and {i:sparkle} Sparkle (Polish — zoom in and rub the dust away). A full Fun makes a critter beam with happy eyes!",
     "{i:crate} <b>Deliveries:</b> at the <b>Delivery Dock</b>, pick a job. Follow the arrow to the crate, pick it up, then drop it on the glowing target. Express and rare jobs pay more but {i:drone} drones chase you: outrun them, or ride into the {i:palette} <b>Glow Salon</b> for a makeover.",
     "{i:ride} <b>Ride:</b> hop on a grown critter, cruise the <b>Star Ring</b> road and {i:jump} jump the comet rocks and the beams of the <b>Gravity Park</b>. Riding uses Energy: recharge on the {i:pad} <b>Energy Pad</b>.",
-    "{i:flag} <b>Race:</b> while riding, tap Race — steer left and right, dodge the asteroids and reach the finish in time.",
+    "{i:flag} <b>Race:</b> while riding, tap Race. You start behind 5 rival riders: steer left and right to overtake them and dodge the asteroids. The higher you finish, the more you win! {i:drone} <b>Escape:</b> a security drone starts behind you, reach the finish before it catches you.",
     "{i:shop} <b>Star Market:</b> nectar, a bigger nursery, decorations and new critters. {i:egg} <b>Hatchery:</b> rare, faster critters. {i:portal} <b>Wormhole:</b> call a wild critter.",
     "{i:moon} <b>Recharge Pod:</b> rest to reach the next cycle. Two happy grown critters may lay an egg overnight!",
     "{i:goals} <b>Goals:</b> four levels to complete. The game saves automatically.",

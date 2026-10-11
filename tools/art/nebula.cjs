@@ -109,6 +109,7 @@ function robot(dir, phase, moving, pal, u, opt) {
   }
   if (seated && side) g += leg(0, 0, B);
   // head
+  if (dir === "up") g += keeperBackCollar(BD);
   g += `<line x1="64" y1="22" x2="64" y2="9" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>`;
   g += `<circle cx="64" cy="8" r="6.5" fill="${A}" stroke="${INK}" stroke-width="2.5" filter="url(#${u}gl)"/>`;
   g += `<ellipse cx="64" cy="46" rx="33" ry="27" fill="url(#${u}h)" stroke="${INK}" stroke-width="3.5"/>`;
@@ -122,14 +123,21 @@ function robot(dir, phase, moving, pal, u, opt) {
     g += `<g transform="${flip}"><rect x="30" y="40" width="30" height="22" rx="11" fill="url(#${u}v)" stroke="${INK}" stroke-width="3"/>`;
     g += `<ellipse cx="42" cy="51" rx="5.5" ry="7" fill="${A}" filter="url(#${u}gl)"/><circle cx="40" cy="48" r="2" fill="#fff"/>`;
     g += `<circle cx="80" cy="48" r="7" fill="${BD}" stroke="${INK}" stroke-width="2.5"/></g>`;
-  } else {   // back of the head: little vents + a status light
-    g += `<path d="M52 50 H76 M54 57 H74" stroke="${BD}" stroke-width="3.5" stroke-linecap="round"/><circle cx="64" cy="64" r="2.6" fill="${A}" filter="url(#${u}gl)"/>`;
+  } else {   // back of the head: battery hatch with vertical vents (see keeperBackHatch)
+    g += keeperBackHatch(B, BD);
   }
   if (dir === "up") { /* arms already behind */ } else if (side) {
     g += `<g transform="${flip}">${armL(58, 70, seated ? 54 : swing, true)}</g>`;
   }
   g += `</g>`;
   return { defs, body: dir === "left" ? g : g };
+}
+// Back of the keeper's head (local 128 px): a collar ring under the head + a small battery hatch with
+// vertical vents. No status dot below horizontal lines: that read as a sleepy FACE at phone size.
+function keeperBackCollar(BD) { return `<ellipse cx="64" cy="73" rx="15" ry="4.5" fill="${BD}" stroke="${INK}" stroke-width="3"/>`; }
+function keeperBackHatch(B, BD) {   // small, low on the head, low contrast (it must never read as a mouth)
+  return `<rect x="57" y="54" width="14" height="10" rx="3.5" fill="${shade(B, -0.07)}"/>` +
+    `<path d="M61 57 V61 M64 57 V61 M67 57 V61" stroke="${BD}" stroke-width="2" stroke-linecap="round"/>`;
 }
 function keeperSheet(name, pal) {
   const dirs = ["up", "left", "down", "right"];
@@ -284,30 +292,90 @@ function fountain() {
 }
 
 /* ---------------- Close-up: a big critter face on a starfield ---------------- */
-function starfield(W, H, seed) {
+function starfield(W, H, seed, n = 160) {
   const R = rng(seed);
   let g = `<rect width="${W}" height="${H}" fill="url(#sky)"/>`;
   g += `<ellipse cx="${W * 0.2}" cy="${H * 0.18}" rx="${W * 0.5}" ry="${H * 0.2}" fill="url(#neb1)"/>`;
   g += `<ellipse cx="${W * 0.85}" cy="${H * 0.85}" rx="${W * 0.55}" ry="${H * 0.22}" fill="url(#neb2)"/>`;
-  for (let i = 0; i < 160; i++) { const x = R() * W, y = R() * H, r = R() * 2.2 + 0.4; g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#fff" opacity="${(0.3 + R() * 0.7).toFixed(2)}"/>`; }
-  for (let i = 0; i < 10; i++) { const x = R() * W, y = R() * H; g += `<path d="${star(x, y, 9 + R() * 6, 2.5, 4)}" fill="#fff" opacity=".85"/>`; }
+  for (let i = 0; i < n; i++) { const x = R() * W, y = R() * H, r = R() * 2.2 + 0.4; g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#fff" opacity="${(0.3 + R() * 0.7).toFixed(2)}"/>`; }
+  for (let i = 0; i < Math.round(n / 16); i++) { const x = R() * W, y = R() * H; g += `<path d="${star(x, y, 9 + R() * 6, 2.5, 4)}" fill="#fff" opacity=".85"/>`; }
   return g;
 }
 function skyDefs() {
   return lin("sky", [[0, "#1b1150"], [0.5, "#121a48"], [1, "#0b1029"]]) +
     rad("neb1", [[0, "#7a3fc0", 0.55], [1, "#7a3fc0", 0]]) + rad("neb2", [[0, "#1f8fb0", 0.5], [1, "#1f8fb0", 0]]);
 }
-function closeup(v, done) {
-  const W = 900, H = 1300, c = VARIANTS[v];
+// Close-up geometry: where the 128-px critter() is drawn (scale s, translate tx/ty) in each backdrop.
+// Portrait 900x1300 (the original); WIDE 1600x900 for landscape phones: the same face, centred,
+// as big as the height allows without clipping (solid art spans local y 3..111, x 22..106;
+// its glow halo, 112 local px wide, fills the middle ~55% of the width).
+const CLOSEUP = {
+  tall: (() => { const W = 900, H = 1300, s = 7.2; return { W, H, s, tx: W / 2 - 64 * s, ty: H * 0.56 - 66 * s }; })(),
+  // wide: fits between y 0.17 (antenna balls, below the progress bar of a 2.16:1 phone) and 0.88 (feet)
+  wide: (() => { const W = 1600, H = 900, s = 5.9; return { W, H, s, tx: W / 2 - 64 * s, ty: H * 0.525 - 56.875 * s }; })(),
+};
+// The polish spot areas of the PORTRAIT backdrop (copy of game.config.js, action "polish",
+// closeup.spots.area): left cheek, right cheek, forehead, chin — around the big eye.
+const TALL_AREAS = [{ x: 0.25, y: 0.45, w: 0.1, h: 0.2 }, { x: 0.65, y: 0.45, w: 0.1, h: 0.2 },
+  { x: 0.40, y: 0.385, w: 0.2, h: 0.02 }, { x: 0.40, y: 0.70, w: 0.2, h: 0.03 }];
+// The same 4 areas (same order) as fractions of the WIDE backdrop → closeup.wide.area.
+function wideAreas() {
+  const T = CLOSEUP.tall, Wd = CLOSEUP.wide, r4 = (n) => Math.round(n * 10000) / 10000;
+  return TALL_AREAS.map((a) => {
+    const lx = (a.x * T.W - T.tx) / T.s, ly = (a.y * T.H - T.ty) / T.s;   // portrait fraction -> critter-local px
+    return { x: r4((Wd.tx + lx * Wd.s) / Wd.W), y: r4((Wd.ty + ly * Wd.s) / Wd.H),
+      w: r4(a.w * T.W / T.s * Wd.s / Wd.W), h: r4(a.h * T.H / T.s * Wd.s / Wd.H) };
+  });
+}
+// Station details for the wide backdrop's side wings (kept outside the critter's middle band):
+// a ringed planet + a distant ring station in the sky, and two curved deck rims with lights.
+function stationWings(W, H) {
+  let g = "";
+  // ringed planet, top-left: back half of the ring, planet, then the front half over it
+  const ringArc = (front) => `<path d="M80 215 A150 34 0 0 ${front ? 0 : 1} 380 215" fill="none" stroke="${INK}" stroke-width="15" opacity="${front ? 0.9 : 0.6}"/><path d="M80 215 A150 34 0 0 ${front ? 0 : 1} 380 215" fill="none" stroke="#d9c4ff" stroke-width="8" opacity="${front ? 0.95 : 0.6}"/>`;
+  g += `<g transform="rotate(-16 230 215)">${ringArc(false)}</g>`;
+  g += `<circle cx="230" cy="215" r="74" fill="url(#wplanet)" stroke="${INK}" stroke-width="5"/>`;
+  g += `<path d="M168 196 Q230 176 292 200" fill="none" stroke="#ffffff" stroke-width="6" opacity=".18"/><path d="M164 236 Q230 222 296 240" fill="none" stroke="${INK}" stroke-width="5" opacity=".18"/>`;
+  g += `<circle cx="196" cy="186" r="14" fill="#ffffff" opacity=".35"/>`;
+  g += `<g transform="rotate(-16 230 215)">${ringArc(true)}</g>`;
+  // distant ring station, top-right: hub on a spoke, the ring's front half passes in front of it
+  const sArc = (front, col, w) => `<path d="M-96 0 A96 30 0 0 ${front ? 0 : 1} 96 0" fill="none" stroke="${col}" stroke-width="${w}"/>`;
+  g += `<g transform="translate(1390 190)">${sArc(false, INK, 15)}${sArc(false, "#6f7fd0", 8)}`;
+  g += `<rect x="-7" y="-30" width="14" height="60" rx="5" fill="#5a67a8" stroke="${INK}" stroke-width="4"/>`;
+  g += `<circle r="20" fill="url(#wpm)" stroke="${INK}" stroke-width="4.5"/>`;
+  g += `${sArc(true, INK, 15)}${sArc(true, "#6f7fd0", 8)}`;
+  [-70, -35, 35, 70].forEach((x) => { g += `<circle cx="${x}" cy="${Math.sqrt(1 - (x / 96) ** 2) * 30}" r="4.5" fill="#3fe0e8" filter="url(#wlg)"/>`; });
+  g += `<circle cx="0" cy="-36" r="5" fill="#ff8fd0" filter="url(#wlg)"/></g>`;
+  // curved deck rims rising from the bottom corners (mirrored), with panel seams and lights
+  const rim = (m) => {
+    const X = (x) => (m ? W - x : x), d = `M${X(-12)} ${H * 0.62 - 3} Q${X(190)} ${H * 0.7} ${X(434)} ${H + 12} L${X(-12)} ${H + 12} Z`;
+    let r = `<path d="${d}" fill="url(#wdeck)" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>`;
+    r += `<path d="M${X(0)} ${H * 0.62 + 26} Q${X(176)} ${H * 0.7 + 24} ${X(398)} ${H}" fill="none" stroke="#3fe0e8" stroke-width="5" opacity=".8" filter="url(#wlg)"/>`;
+    [[60, 0.72], [150, 0.8], [240, 0.9]].forEach(([x, y]) => { r += `<path d="M${X(x)} ${H * y} L${X(x - 40)} ${H}" stroke="${INK}" stroke-width="3" opacity=".45"/>`; });
+    [[34, 0.68], [126, 0.74], [214, 0.82], [296, 0.93]].forEach(([x, y], i) => { r += `<circle cx="${X(x)}" cy="${H * y + 4}" r="${i % 2 ? 6 : 7.5}" fill="${i % 2 ? "#ff8fd0" : "#ffd24a"}" stroke="${INK}" stroke-width="2.5" filter="url(#wlg)"/>`; });
+    return r;
+  };
+  g += rim(false) + rim(true);
+  return g;
+}
+function stationWingDefs() {
+  return rad("wplanet", [[0, "#ffc4e6"], [0.55, "#c27ad9"], [1, "#5b3a9e"]], 0.38, 0.32, 0.8) +
+    rad("wpm", [[0, "#ffffff"], [0.6, "#a9b6ff"], [1, "#5a67a8"]], 0.4, 0.35, 0.7) +
+    lin("wdeck", [[0, "#4a58a8"], [1, "#1f275e"]]) + glow("wlg", 4);
+}
+function closeup(v, done, wide) {
+  const G = wide ? CLOSEUP.wide : CLOSEUP.tall, { W, H, s, tx, ty } = G, c = VARIANTS[v];
   const r = critter({ c, uid: "z", eye: done ? "happy" : "open", look: 0 });
-  // draw the 128-px critter scaled up ×7 around the screen centre
-  const s = 7.2, tx = W / 2 - 64 * s, ty = H * 0.56 - 66 * s;
-  let g = starfield(W, H, 11);
-  if (done) g += `<circle cx="${W / 2}" cy="${H * 0.55}" r="${W * 0.62}" fill="url(#doneglow)"/>`;
+  let g = starfield(W, H, 11, wide ? 230 : 160);
+  if (wide) g += stationWings(W, H);
+  const gcx = tx + 64 * s, gcy = ty + 56.875 * s;   // wide: glow on the critter centre
+  if (done) g += `<circle cx="${gcx}" cy="${wide ? gcy : H * 0.55}" r="${wide ? H * 0.6 : W * 0.62}" fill="url(#doneglow)"/>`;
   g += `<g transform="translate(${tx} ${ty}) scale(${s})">${r.body}</g>`;
-  if (done) [[0.2, 0.3], [0.8, 0.26], [0.16, 0.7], [0.84, 0.72], [0.5, 0.12]].forEach(([a, b], i) => { g += `<path d="${star(W * a, H * b, 34 - i * 3, 11, 4)}" fill="#fff6c8" filter="url(#sg)"/>`; });
-  const defs = skyDefs() + r.defs + glow("sg", 6) + rad("doneglow", [[0, c, 0.5], [1, c, 0]]);
-  return job(`assets/img/critter_closeup_${v}${done ? "_done" : ""}.png`, W, H, g, defs);
+  const sparkles = wide ? [[0.31, 0.27], [0.69, 0.25], [0.28, 0.74], [0.72, 0.76], [0.16, 0.52], [0.84, 0.5]]
+    : [[0.2, 0.3], [0.8, 0.26], [0.16, 0.7], [0.84, 0.72], [0.5, 0.12]];
+  if (done) sparkles.forEach(([a, b], i) => { g += `<path d="${star(W * a, H * b, 34 - (i % 5) * 3, 11, 4)}" fill="#fff6c8" filter="url(#sg)"/>`; });
+  const defs = skyDefs() + r.defs + glow("sg", 6) + rad("doneglow", [[0, c, 0.5], [1, c, 0]]) + (wide ? stationWingDefs() : "");
+  return job(`assets/img/critter_closeup_${v}${wide ? "_wide" : ""}${done ? "_done" : ""}.png`, W, H, g, defs);
 }
 // a fluffy cosmic dust bunny (two variants), the polishing sponge, and the "polish me" bubble
 function dust(file, col) {
@@ -424,34 +492,158 @@ function keeperRide(name, pal) {
 }
 
 /* ---------------- 3. Critter seen from behind, keeper on its back (race sprite) ---------------- */
-function critterBack(v) {
-  const c = VARIANTS[v], u = "cb", W = 200, H = 170;
-  const body = mix("#ffffff", c, 0.28), bodyD = mix("#c9d6ff", c, 0.35);
-  const cx = 100, cy = 96, rx = 76, ry = 58;
-  const kr = robot("up", 0, false, KEEPERS.keeper, "kb", { seated: true });
+// Race rear view: the critter alone (critterBack) + the keeper seen from behind (riderBack), two layers
+// in the SAME 200x170 frame — the engine draws character.raceRider over raceSprite. Both layers read the
+// antenna geometry from cbAntenna() and the rider joints from RB[pose], so they always line up.
+// The keeper is the walk sheet's robot (big round head, small pod, short sausage arms, NO legs: it hovers),
+// drawn with its own shapes + palette. Owner verdict (Oct 2026): long legs hanging down the flanks were
+// "very ugly, a robot can't bend like that" — never draw long legs here. Two poses:
+//   "A" = sitting upright, low in a small saddle; legs hidden (in front of it, behind the critter's body
+//         from this viewpoint): back of the head, the pod, short arms out to the antennae.
+//   "B" = the first design, polished: lying forward on its belly, clinging to the antennae, head tucked
+//         down behind its shoulders, two short tucked legs (boot soles) at the pod's bottom.
+// RIDER_POSE env override only renders previews of the other option (default "A").
+const RIDER_POSE = process.env.RIDER_POSE || "A";
+const CB = { W: 200, H: 170, cx: 100, cy: 106, rx: 54, ry: 52 };   // narrow "pony barrel"
+const RB = {   // frame px (left side; mirrored about x 100). k = keeper scale; seat = frame y of the pod bottom
+  A: { k: 0.78, seat: 96, head: { cx: 100, cy: 49, rx: 25.7, ry: 21 }, shoulder: [86, 74], fist: [63, 64],
+    root: [71, 82], tip: [36, 24] },   // root on the back beside the pod: ~12 px of stalk below the mitt
+  B: { k: 0.78, seat: 98, head: { cx: 100, cy: 61, rx: 23.5, ry: 18.5 }, shoulder: [85, 80], fist: [67, 63],
+    root: [90, 84], tip: [40, 20] },
+};
+function cbAntenna(m, pose = RIDER_POSE) {    // m = -1 left, +1 right: root hidden behind the rider → through the fist → up/out to the tip
+  const P = RB[pose], X = (x) => (m < 0 ? x : 200 - x);
+  // ONE smooth quadratic: root (behind the rider) → through the fist at t = 0.4 → tip; ctl solved from the 3 points
+  const t = 0.4, root = [X(P.root[0]), P.root[1]], grip = [X(P.fist[0]), P.fist[1]], tip = [X(P.tip[0]), P.tip[1]];
+  const ctl = [0, 1].map((k) => (grip[k] - (1 - t) ** 2 * root[k] - t * t * tip[k]) / (2 * t * (1 - t)));
+  const tan = [0, 1].map((k) => 2 * (1 - t) * (ctl[k] - root[k]) + 2 * t * (tip[k] - ctl[k]));
+  return { root, grip, ctl, tip, tan, d: `M${root[0]} ${root[1]} Q${ctl[0].toFixed(1)} ${ctl[1].toFixed(1)} ${tip[0]} ${tip[1]}` };
+}
+function critterBack(v, pose = RIDER_POSE) {
+  const c = VARIANTS[v], u = "cb", { W, H, cx, cy, rx, ry } = CB;
+  const body = mix("#ffffff", c, 0.42), bodyD = mix("#c9d6ff", c, 0.5);   // richer than the walk sheet: pale mounts must differ
   const defs = rad(`${u}b`, [[0, "#ffffff"], [0.5, body], [1, bodyD]], 0.5, 0.28, 0.78) +
+    rad(`${u}th`, [[0, "#ffffff"], [0.35, "#fff3b0"], [1, mix("#ffd24a", c, 0.5), 0]]) +
     rad(`${u}g`, [[0, c, 0.5], [1, c, 0]]) + rad(`${u}t`, [[0, "#ffffff"], [0.35, shade(c, 0.3)], [1, c]], 0.4, 0.35, 0.6) +
-    rad(`${u}l`, [[0, "#ffffff"], [0.35, "#fff3b0"], [1, "#ffd24a", 0]]) + glow(`${u}gl`, 3) + blur(`${u}bl`, 3) + kr.defs;
-  let g = `<ellipse cx="${cx}" cy="${cy}" rx="98" ry="74" fill="url(#${u}g)"/>`;
-  g += `<ellipse cx="${cx}" cy="160" rx="72" ry="7" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
+    rad(`${u}l`, [[0, "#ffffff"], [0.35, "#fff3b0"], [1, "#ffd24a", 0]]) + glow(`${u}gl`, 3) + blur(`${u}bl`, 3);
+  let g = `<ellipse cx="${cx}" cy="${cy}" rx="84" ry="60" fill="url(#${u}g)"/>`;   // halo stays inside the frame
+  g += `<ellipse cx="${cx}" cy="164" rx="52" ry="3.5" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
   const foot = (x, y) => `<ellipse cx="${x}" cy="${y}" rx="15" ry="9" fill="${bodyD}" ${stk(3.5)}/>`;
-  g += foot(56, 152) + foot(144, 152) + foot(cx, 157);
-  const ant = (x0, x1, y1) => `<path d="M${x0} ${cy - ry + 10} Q${(x0 + x1) / 2} ${y1 + 10} ${x1} ${y1}" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="${x1}" cy="${y1}" r="9" fill="url(#${u}t)" ${stk(3)} filter="url(#${u}gl)"/>`;
-  g += ant(76, 46, 22) + ant(124, 154, 22);
+  g += `<ellipse cx="${cx}" cy="161" rx="13" ry="7" fill="${shade(bodyD, -0.12)}" ${stk(3.5)}/>`;   // third foot, behind the body
+  g += foot(68, 158) + foot(132, 158);
   g += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${u}b)" ${stk(4)}/>`;
+  // antennae = the rider's handlebars: an outward V from roots on the back (hidden by the rider),
+  // light core so the stalk reads against the dark race sky, glowing ball on top
+  [-1, 1].forEach((m) => { const a = cbAntenna(m, pose);
+    g += `<ellipse cx="${a.root[0]}" cy="${a.root[1] + 1}" rx="5" ry="3" fill="${bodyD}" ${stk(2.5)}/>`;   // root bump on the back
+    g += `<path d="${a.d}" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="${a.d}" fill="none" stroke="${bodyD}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+    g += `<circle cx="${a.tip[0]}" cy="${a.tip[1]}" r="8.5" fill="url(#${u}t)" ${stk(3)} filter="url(#${u}gl)"/>`; });
   // soft back shading (lower half) + rim light — no spots (they read as a face from behind)
-  g += `<path d="M${cx - rx + 8} ${cy + 14} Q${cx} ${cy + 44} ${cx + rx - 8} ${cy + 14} Q${cx + rx - 14} ${cy + ry - 6} ${cx} ${cy + ry - 3} Q${cx - rx + 14} ${cy + ry - 6} ${cx - rx + 8} ${cy + 14} Z" fill="${c}" opacity=".22"/>`;
-  g += `<path d="M42 78 Q52 52 82 44" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"/>`;
-  // little tail nub with a glowing thruster spark (reads as a tail-light in the race)
-  g += `<circle cx="${cx}" cy="140" r="22" fill="url(#${u}l)"/>`;
-  g += `<ellipse cx="${cx}" cy="140" rx="11" ry="9" fill="${bodyD}" ${stk(3)}/>`;
-  g += `<ellipse cx="${cx}" cy="141" rx="6" ry="4.5" fill="#fff6c8" filter="url(#${u}gl)"/><ellipse cx="${cx - 2}" cy="139.5" rx="2.2" ry="1.5" fill="#fff"/>`;
-  // the keeper, seen from behind, sitting on the back
-  g += `<g transform="translate(${cx} 66) scale(0.55) translate(-64 -106)">${kr.body}</g>`;
+  g += `<path d="M${cx - rx + 8} ${cy + 14} Q${cx} ${cy + 44} ${cx + rx - 8} ${cy + 14} Q${cx + rx - 14} ${cy + ry - 6} ${cx} ${cy + ry - 3} Q${cx - rx + 14} ${cy + ry - 6} ${cx - rx + 8} ${cy + 14} Z" fill="${c}" opacity=".3"/>`;
+  g += `<path d="M55 108 Q55 87 64 73" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"/>`;
   return job(`assets/img/critter_back_${v}.png`, W, H, g, defs);
 }
-
+// The keeper's back-of-head (local 128 px space of robot()): collar ring, head, highlight, rival stripe,
+// battery hatch, head antenna. `collar` / `hatch` false when the pod hides the neck (pose B).
+function keeperBackHeadLocal(pal, u, stripe, collar, hatch = true) {
+  const B = pal.body, BD = shade(pal.body, -0.18), A = pal.accent;
+  let hd = collar ? keeperBackCollar(BD) : "";
+  hd += `<path d="M64 22 V7" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M64 21 V9" stroke="${BD}" stroke-width="2.4" stroke-linecap="round"/>`;
+  hd += `<circle cx="64" cy="4" r="6" fill="${A}" stroke="${INK}" stroke-width="2.5"/><circle cx="62" cy="2.2" r="1.6" fill="#fff" opacity=".8"/>`;
+  hd += `<ellipse cx="64" cy="46" rx="33" ry="27" fill="url(#${u}h)" stroke="${INK}" stroke-width="3.5"/>`;
+  hd += `<ellipse cx="52" cy="32" rx="9" ry="5" fill="#ffffff" opacity=".9" transform="rotate(-20 52 32)"/>`;
+  if (stripe) hd += `<g clip-path="url(#${u}hc)"><path d="M59 10 H69 L71 49 Q71 54 64 54 Q57 54 57 49 Z" fill="${A}" stroke="${shade(A, -0.3)}" stroke-width="1.5" stroke-linejoin="round"/><path d="M62 16 L61 34" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".45"/></g><ellipse cx="64" cy="46" rx="33" ry="27" fill="none" stroke="${INK}" stroke-width="3.5"/>`;
+  if (hatch) hd += keeperBackHatch(B, BD);
+  return hd;
+}
+// short sausage arm (on-foot arm: 12 px local + 3 px ink) from the shoulder ball to a white mitt wrapped
+// across the antenna stalk at the grip (accent only on the wrist cuff: an accent mitt read as a bead on the
+// stalk). part: "arm" (arm + mitt), "ball" (shoulder joints, drawn over the pod in pose A) or "all".
+function keeperBackArms(pal, P, pose, part = "all") {
+  const B = pal.body, BD = shade(pal.body, -0.18), A = pal.accent, k = P.k;
+  let g = "";
+  [[(x) => x, -1], [(x) => 200 - x, 1]].forEach(([X, m]) => {
+    const a = cbAntenna(m, pose), [sx, sy] = P.shoulder, [gx, gy] = a.grip;
+    if (part !== "ball") {
+      const d = `M${X(sx)} ${sy} L${gx} ${gy}`;
+      g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${f2(15 * k)}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${B}" stroke-width="${f2(9 * k)}" stroke-linecap="round"/>`;
+      g += `<path d="M${X(sx)} ${sy + 2.2} L${f2(gx + (X(sx) - gx) * 0.25)} ${f2(gy + 2.2 + (sy - gy) * 0.25)}" fill="none" stroke="${BD}" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>`;
+      // wrist cuff: an accent band across the forearm just before the mitt
+      const L = Math.hypot(X(sx) - gx, sy - gy) || 1, ux = (X(sx) - gx) / L, uy = (sy - gy) / L, px = -uy * 4.6, py = ux * 4.6;
+      const cx = gx + ux * 8.5, cy = gy + uy * 8.5, cuff = `M${f2(cx + px)} ${f2(cy + py)} L${f2(cx - px)} ${f2(cy - py)}`;
+      g += `<path d="${cuff}" stroke="${INK}" stroke-width="5.5" stroke-linecap="round"/><path d="${cuff}" stroke="${A}" stroke-width="2.8" stroke-linecap="round"/>`;
+      const ang = Math.atan2(a.tan[1], a.tan[0]) * 180 / Math.PI + 90;   // mitt across the horn
+      g += `<g transform="translate(${f2(gx)} ${f2(gy)}) rotate(${f2(ang)})"><rect x="-8" y="-6.5" width="16" height="13" rx="6" fill="${B}" stroke="${INK}" stroke-width="2.4"/>` +
+        `<path d="M${4 * m} -4 V4" stroke="${BD}" stroke-width="1.8" stroke-linecap="round"/><circle cx="${-3 * m}" cy="-2.6" r="1.6" fill="#fff" opacity=".9"/></g>`;
+    }
+    if (part !== "arm") g += `<circle cx="${X(sx)}" cy="${sy}" r="${f2(5 * k)}" fill="${BD}" stroke="${INK}" stroke-width="2.2"/>`;
+  });
+  return g;
+}
+// Pose A: sitting upright, low in a small saddle on the back; no legs visible.
+function keeperBackSitting(pal, u, stripe) {
+  const B = pal.body, BD = shade(pal.body, -0.18), P = RB.A, H = P.head, k = P.k, SEAT = "#6a52b8";
+  const loc = (s) => `<g transform="translate(100 ${P.seat}) scale(${k}) translate(-64 -106)">${s}</g>`;
+  let g = "";
+  // saddle pad bent over the round back: back edge behind the pod (higher in the middle), quilted seam
+  const s = P.seat;
+  g += `<path d="M75 ${s + 4.5} Q73.5 ${s - 4} 81 ${s - 7.5} Q100 ${s - 12.5} 119 ${s - 7.5} Q126.5 ${s - 4} 125 ${s + 4.5} Z" fill="${SEAT}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  g += keeperBackArms(pal, P, "A", "arm");   // behind the pod: the arms come out of its sides, sloping up
+  // the pod (torso): the walk sheet's back row, slightly wider at the hips (sitting)
+  g += loc(`<path d="M42 66 Q36 104 64 106 Q92 104 86 66 Z" fill="url(#${u}h)" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>` +
+    `<path d="M52 80 L76 80 M52 88 L76 88" stroke="${BD}" stroke-width="3" stroke-linecap="round"/>`);
+  // saddle front rim: covers the pod's bottom curve (it sits IN the saddle, on the back)
+  g += `<ellipse cx="100" cy="${s + 11}" rx="25" ry="4" fill="#0b1030" opacity=".25" filter="url(#${u}ss)"/>`;   // underside shadow on the back
+  g += `<path d="M74 ${s - 1} Q100 ${s + 4} 126 ${s - 1} Q128.5 ${s + 4} 125 ${s + 7.5} Q100 ${s + 12.5} 75 ${s + 7.5} Q71.5 ${s + 4} 74 ${s - 1} Z" fill="${SEAT}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  g += `<path d="M78 ${s + 2.5} Q100 ${s + 7} 122 ${s + 2.5}" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>`;
+  g += keeperBackArms(pal, P, "A", "ball");   // shoulder joints on the pod's upper sides
+  g += `<g transform="translate(${H.cx} ${H.cy}) scale(${H.rx / 33} ${H.ry / 27}) translate(-64 -46)">${keeperBackHeadLocal(pal, u, stripe, true)}</g>`;
+  return g;
+}
+// Pose B: lying forward on its belly, clinging to the antennae: head tucked behind the shoulders (the pod,
+// foreshortened, overlaps its bottom), two short legs folded under with the boot soles showing.
+function keeperBackLying(pal, u, stripe) {
+  const B = pal.body, BD = shade(pal.body, -0.18), A = pal.accent, P = RB.B, H = P.head, k = P.k;
+  let g = "";
+  // tucked legs: a short folded stub at each side of the pod's bottom + the boot sole facing us
+  [[(x) => x, 1], [(x) => 200 - x, -1]].forEach(([X, m]) => {
+    const d = `M${X(92)} ${P.seat - 6} L${X(85)} ${P.seat - 1}`;
+    g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="12" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${BD}" stroke-width="7" stroke-linecap="round"/>`;
+    const x = X(83), y = P.seat + 2;
+    g += `<g transform="rotate(${m * -14} ${x} ${y})"><ellipse cx="${x}" cy="${y}" rx="8" ry="5.5" fill="#2b3370" stroke="${INK}" stroke-width="2.5"/>` +
+      `<path d="M${x - 5.5} ${y - 1.5} Q${x} ${y - 3.5} ${x + 5.5} ${y - 1.5}" fill="none" stroke="#8592d6" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>` +
+      `<path d="M${x - 6.5} ${y + 2.5} Q${x} ${y + 4.5} ${x + 6.5} ${y + 2.5}" fill="none" stroke="${A}" stroke-width="1.4" stroke-linecap="round"/></g>`;
+  });
+  g += keeperBackArms(pal, P, "B");
+  // head first (farther away), then the pod over its bottom
+  g += `<g transform="translate(${H.cx} ${H.cy}) scale(${H.rx / 33} ${H.ry / 27}) translate(-64 -46)">${keeperBackHeadLocal(pal, u, stripe, false, false)}</g>`;
+  // the pod seen from its back end, foreshortened (lying along the critter's back)
+  g += `<g transform="translate(100 ${P.seat}) scale(${k} 0.55) translate(-64 -106)"><path d="M41 64 Q38 104 64 106 Q90 104 87 64 Q64 56 41 64 Z" fill="url(#${u}h)" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/></g>`;
+  g += `<path d="M90 ${P.seat - 16} H110 M91 ${P.seat - 11} H109" stroke="${BD}" stroke-width="2.4" stroke-linecap="round"/>`;
+  return g;
+}
+function keeperBackSeated(pal, u, stripe, pose = RIDER_POSE) {
+  const B = pal.body, BD = shade(pal.body, -0.18);
+  const defs = rad(`${u}h`, [[0, "#ffffff"], [0.6, B], [1, BD]], 0.38, 0.3, 0.8) + glow(`${u}gl`, 2) + blur(`${u}ss`, 2) +
+    `<clipPath id="${u}hc"><ellipse cx="64" cy="46" rx="33" ry="27"/></clipPath>`;
+  return { defs, body: pose === "B" ? keeperBackLying(pal, u, stripe) : keeperBackSitting(pal, u, stripe) };
+}
+function riderBack(id, pal, stripe, pose = RIDER_POSE) {
+  const { W, H, cx, cy, rx, ry } = CB, u = `rb${id}`;
+  const kr = keeperBackSeated(pal, u, stripe, pose);
+  const defs = kr.defs + blur(`${u}sb`, 3) +
+    `<clipPath id="${u}on"><ellipse cx="${cx}" cy="${cy}" rx="${rx - 2}" ry="${ry - 2}"/></clipPath>` +
+    `<filter id="${u}ds" x="-20%" y="-20%" width="140%" height="140%"><feOffset in="SourceAlpha" dy="4" result="o"/><feGaussianBlur in="o" stdDeviation="2.5" result="b"/>` +
+    `<feFlood flood-color="#1a1440" flood-opacity=".25"/><feComposite in2="b" operator="in"/></filter>`;
+  // contact shadow + the rider's drop shadow on the critter (clipped to the body)
+  let g = `<g clip-path="url(#${u}on)"><ellipse cx="${cx}" cy="${RB[pose].seat}" rx="26" ry="6" fill="#1a1440" opacity=".3" filter="url(#${u}sb)"/>` +
+    `<g filter="url(#${u}ds)">${kr.body}</g></g>`;
+  g += kr.body;
+  return job(`assets/img/rider_${id}.png`, W, H, g, defs);
+}
+// Rival riders: the same keeper with other accent palettes (white head kept) + a coloured helmet stripe
+// across the crown (one big accent mass, readable at 80 px) — real colours, not a tint.
+const RIVALS = [["#ff8a3d"], ["#5fd36a"], ["#a06bff"], ["#ff5db1"], ["#ffd24a"]];
 /* ---------------- 4. Environment ---------------- */
 function pathTile() {   // moon-dust path, seamless 256 tile
   const S = 256, R = rng(21);
@@ -657,7 +849,7 @@ function dock() {   // Delivery Dock: small hangar + stacked glowing crates + la
   g += `<path d="M74 168 V114 Q74 86 112 84 Q150 86 150 114 V168 Q112 174 74 168 Z" fill="url(#${u}i)" ${stk(3.5)}/>`;
   g += `<ellipse cx="112" cy="146" rx="34" ry="22" fill="url(#${u}il)"/>`;
   g += starCrate(94, 166, 0.62, 3, u);
-  g += `<path d="M82 94 H142" stroke="#3fe0e8" stroke-width="3" stroke-linecap="round" opacity=".7" filter="url(#${u}gl)"/>`;
+  g += `<rect x="80.5" y="92.5" width="63" height="3" rx="1.5" fill="#3fe0e8" opacity=".7" filter="url(#${u}gl)"/>`;   // a rect: a filtered H/V path has a 0-size bbox → no glow
   [[96, 40], [128, 40]].forEach(([x]) => { g += `<circle cx="${x}" cy="50" r="3.5" fill="#3fe0e8" filter="url(#${u}gl)"/>`; });
   // stacked crates (right)
   g += starCrate(160, 178, 0.68, 3.2, u) + starCrate(196, 172, 0.56, 3, u) + starCrate(170, 150, 0.6, 3, u);
@@ -766,7 +958,8 @@ function drone(dir, blink, u, o) {
   o = o || {};
   const sw = o.sw || 3.5, on = blink ? "#3fe0e8" : "#ff5db1";
   const defs = rad(`${u}b`, [[0, "#ffffff"], [0.5, "#cdbfff"], [1, "#7a62d6"]], 0.42, 0.3, 0.8) + lin(`${u}v`, [[0, "#2b3370"], [1, "#11153a"]]) +
-    rad(`${u}l`, [[0, on, 0.75], [1, on, 0]]) + glow(`${u}gl`, 2.5) + blur(`${u}bl`, 3) + rad(`${u}e`, [[0, "#ffffff"], [0.45, "#bff8ff"], [1, "#3fb8e8"]], 0.4, 0.35, 0.7);
+    rad(`${u}l`, [[0, on, 0.75], [1, on, 0]]) + rad(`${u}pr`, [[0, "#ff4d6d", 0.7], [1, "#ff4d6d", 0]]) + rad(`${u}pb`, [[0, "#4d8bff", 0.7], [1, "#4d8bff", 0]]) +
+    lin(`${u}cr`, [[0, "#ff4d6d", 0], [1, "#ff4d6d", 0.35]], 0, 0, 0, 1) + lin(`${u}cb`, [[0, "#4d8bff", 0], [1, "#4d8bff", 0.35]], 0, 0, 0, 1) + glow(`${u}gl`, 2.5) + blur(`${u}bl`, 3) + rad(`${u}e`, [[0, "#ffffff"], [0.45, "#bff8ff"], [1, "#3fb8e8"]], 0.4, 0.35, 0.7);
   const side = dir === "left" || dir === "right";
   let g = "";
   if (o.shadow !== false) g += `<ellipse cx="64" cy="117" rx="24" ry="6" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
@@ -777,37 +970,68 @@ function drone(dir, blink, u, o) {
   g += `<path d="M${kx - 8} 96 Q${kx - 11} 106 ${kx - 4} 109 M${kx + 8} 96 Q${kx + 11} 106 ${kx + 4} 109" fill="none" stroke="${INK}" stroke-width="${sw + 4}" stroke-linecap="round"/><path d="M${kx - 8} 96 Q${kx - 11} 106 ${kx - 4} 109 M${kx + 8} 96 Q${kx + 11} 106 ${kx + 4} 109" fill="none" stroke="#e4e8ff" stroke-width="3.5" stroke-linecap="round"/>`;
   g += `<circle cx="${kx}" cy="96" r="5" fill="#8592d6" stroke="${INK}" stroke-width="${sw * 0.75}"/>`;
   // propeller ring: back half, blur disc
+  const rr = o.police ? 15 : 11;   // police (race) views: ring tilted forward ~9 deg → a rounder ellipse
   const ring = (d) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${sw + 4}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#e4e8ff" stroke-width="3.5" stroke-linecap="round"/>`;
-  g += `<ellipse cx="64" cy="38" rx="44" ry="11" fill="#e8f6ff" opacity=".22"/>`;
-  g += ring("M20 38 A44 11 0 0 1 108 38");
+  g += `<ellipse cx="64" cy="38" rx="44" ry="${rr}" fill="#e8f6ff" opacity=".22"/>`;
+  g += ring(`M20 38 A44 ${rr} 0 0 1 108 38`);
   g += `<path d="M28 44 L38 52 M100 44 L90 52" stroke="${INK}" stroke-width="${sw + 2}" stroke-linecap="round"/>`;
   // body
   g += `<ellipse cx="64" cy="62" rx="32" ry="28" fill="url(#${u}b)" stroke="${INK}" stroke-width="${sw}"/>`;
   g += `<path d="M42 50 Q46 40 58 37" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>`;
   // siren light on top (blinks pink / cyan between frames)
-  g += `<circle cx="64" cy="28" r="15" fill="url(#${u}l)"/>`;
-  g += `<rect x="56" y="31" width="16" height="6" rx="2.5" fill="#5866b4" stroke="${INK}" stroke-width="${sw * 0.75}"/>`;
-  g += `<path d="M57 32 Q57 21 64 21 Q71 21 71 32 Z" fill="${on}" stroke="${INK}" stroke-width="${sw * 0.75}" stroke-linejoin="round" filter="url(#${u}gl)"/><circle cx="61.5" cy="26" r="2" fill="#fff"/>`;
+  if (o.police) {   // red / blue split siren (race chase view); front: dome x1.4 + two light cones
+    g += `<circle cx="56" cy="27" r="23" fill="url(#${u}pr)"/><circle cx="72" cy="27" r="23" fill="url(#${u}pb)"/>`;
+    if (dir === "down") g += `<path d="M60 24 L34 4 L50 2 Z" fill="url(#${u}cr)" filter="url(#${u}bl)"/><path d="M68 24 L94 4 L78 2 Z" fill="url(#${u}cb)" filter="url(#${u}bl)"/><g transform="translate(64 34) scale(1.4) translate(-64 -34)">`;
+    g += `<rect x="54" y="31" width="20" height="6" rx="2.5" fill="#5866b4" stroke="${INK}" stroke-width="${sw * 0.75}"/>`;
+    g += `<path d="M64 32 V21 Q56 21 56 32 Z" fill="#ff4d6d" filter="url(#${u}gl)"/><path d="M64 32 V21 Q72 21 72 32 Z" fill="#4d8bff" filter="url(#${u}gl)"/>`;
+    g += `<path d="M56 32 Q56 21 64 21 Q72 21 72 32 Z M64 21 V32" fill="none" stroke="${INK}" stroke-width="${sw * 0.75}" stroke-linejoin="round"/><circle cx="59.5" cy="26" r="2" fill="#fff"/>`;
+    if (dir === "down") g += `</g>`;
+  } else {
+    g += `<circle cx="64" cy="28" r="15" fill="url(#${u}l)"/>`;
+    g += `<rect x="56" y="31" width="16" height="6" rx="2.5" fill="#5866b4" stroke="${INK}" stroke-width="${sw * 0.75}"/>`;
+    g += `<path d="M57 32 Q57 21 64 21 Q71 21 71 32 Z" fill="${on}" stroke="${INK}" stroke-width="${sw * 0.75}" stroke-linejoin="round" filter="url(#${u}gl)"/><circle cx="61.5" cy="26" r="2" fill="#fff"/>`;
+  }
   // face
   if (dir === "down") {
     g += `<rect x="40" y="50" width="48" height="26" rx="13" fill="url(#${u}v)" stroke="${INK}" stroke-width="${sw * 0.85}"/>`;
     g += `<circle cx="64" cy="63" r="9.5" fill="url(#${u}e)" filter="url(#${u}gl)"/><circle cx="67" cy="60" r="3" fill="#fff"/>`;
-    g += `<path d="M52 54 Q64 50 76 56" fill="none" stroke="#7a62d6" stroke-width="3" stroke-linecap="round"/>`;   // cheeky raised lid
-    g += `<path d="M55 81 Q64 87 74 79" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
-    g += `<ellipse cx="44" cy="80" rx="5" ry="3" fill="#ff8fc4" opacity=".6"/><ellipse cx="84" cy="80" rx="5" ry="3" fill="#ff8fc4" opacity=".6"/>`;
+    if (o.police) {   // pursuer: a flat determined lid (angled down toward the centre) + a small straight mouth
+      g += `<path d="M50 55 L64 59 L78 55 L78 51 L50 51 Z" fill="#1b1f4a"/><path d="M50 56 L64 60 L78 56" fill="none" stroke="#7a62d6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      g += `<path d="M58 82 H70" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+    } else {
+      g += `<path d="M52 54 Q64 50 76 56" fill="none" stroke="#7a62d6" stroke-width="3" stroke-linecap="round"/>`;   // cheeky raised lid
+      g += `<path d="M55 81 Q64 87 74 79" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+      g += `<ellipse cx="44" cy="80" rx="5" ry="3" fill="#ff8fc4" opacity=".6"/><ellipse cx="84" cy="80" rx="5" ry="3" fill="#ff8fc4" opacity=".6"/>`;
+    }
   } else if (side) {
     let f = `<rect x="30" y="50" width="30" height="26" rx="13" fill="url(#${u}v)" stroke="${INK}" stroke-width="${sw * 0.85}"/>`;
     f += `<ellipse cx="41" cy="63" rx="6.5" ry="9" fill="url(#${u}e)" filter="url(#${u}gl)"/><circle cx="39.5" cy="60" r="2.4" fill="#fff"/>`;
     f += `<path d="M35 81 Q41 86 49 80" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><ellipse cx="54" cy="80" rx="4.5" ry="2.8" fill="#ff8fc4" opacity=".6"/>`;
     f += `<circle cx="80" cy="62" r="7" fill="#9d8ce6" stroke="${INK}" stroke-width="${sw * 0.7}"/><circle cx="80" cy="62" r="2.5" fill="#5866b4"/>`;
     g += dir === "right" ? `<g transform="translate(128 0) scale(-1 1)">${f}</g>` : f;
+  } else if (o.police) {   // back, chase view: an exhaust grille + two red rear lights (stern, not a face)
+    g += `<rect x="44" y="50" width="40" height="20" rx="8" fill="url(#${u}v)" stroke="${INK}" stroke-width="${sw * 0.8}"/>`;
+    g += `<path d="M52 54 V66 M58 54 V66 M64 54 V66 M70 54 V66 M76 54 V66" stroke="#5866b4" stroke-width="2.5" stroke-linecap="round"/>`;
+    [38, 90].forEach((x) => { g += `<ellipse cx="${x}" cy="60" rx="7" ry="4.5" fill="#ff3b5c" opacity=".35" filter="url(#${u}bl)"/><rect x="${x - 4.5}" y="57.5" width="9" height="5" rx="2.5" fill="#ff3b5c" stroke="${INK}" stroke-width="1.8" filter="url(#${u}gl)"/>`; });   // pill tail-lights level with the grille
   } else {   // back: vents + status light
     g += `<path d="M50 56 H78 M52 64 H76 M56 72 H72" stroke="#7a62d6" stroke-width="3.5" stroke-linecap="round"/><circle cx="64" cy="82" r="3" fill="${on}" filter="url(#${u}gl)"/>`;
   }
   // propeller ring: front half
-  g += ring("M20 38 A44 11 0 0 0 108 38");
+  g += ring(`M20 38 A44 ${rr} 0 0 0 108 38`);
   [[20, 38], [108, 38]].forEach(([x, y]) => { g += `<circle cx="${x}" cy="${y}" r="4.5" fill="#8592d6" stroke="${INK}" stroke-width="${sw * 0.7}"/>`; });
   return { defs, body: g };
+}
+// The security drone seen from BEHIND (dir "up" of the same drone()), red/blue siren on top: the race
+// sprite of the drone that catches up and passes the player in the chase race. 200x170 like critter_back.
+function droneBack() {
+  const r = drone("up", 0, "db", { police: true }), s = 1.3;
+  return job("assets/img/drone_back.png", 200, 170, `<g transform="translate(${100 - 64 * s} 0) scale(${s})">${r.body}</g>`, r.defs);
+}
+// The same drone seen from the FRONT (dir "down": glowing eye, cheeky face), red/blue siren on top —
+// the pursuer shown in the chase race's rear-view holo-screen. 200x170, shadow base at y ~160.
+function droneFront() {
+  const r = drone("down", 0, "df", { police: true }), s = 1.3;
+  return job("assets/img/drone_front.png", 200, 170, `<g transform="translate(${100 - 64 * s} 0) scale(${s})">${r.body}</g>`, r.defs);
 }
 function droneSheet() {
   let defs = ""; const frames = [];
@@ -815,6 +1039,37 @@ function droneSheet() {
   return job("assets/sheet/drone.png", 256, 512, sheet(frames, 128, 128, 2), defs);
 }
 
+// Comet Race START gate (race overlay, seen from behind/above, spans the road): two glowing pylons at the
+// edges + a holographic chequered band across the top; the middle/bottom stay transparent. 400x220.
+function startGate() {
+  const W = 400, H = 220, u = "sg";
+  const defs = lin(`${u}p`, [[0, "#6c79c2"], [0.5, "#3a4790"], [1, "#222a66"]], 0, 0, 1, 0) + lin(`${u}b`, [[0, "#ff5db1", 0.35], [0.5, "#a97bff", 0.28], [1, "#3fe0e8", 0.35]], 0, 0, 1, 0) +
+    rad(`${u}h`, [[0, "#3fe0e8", 0.5], [1, "#3fe0e8", 0]]) + rad(`${u}k`, [[0, "#ff5db1", 0.5], [1, "#ff5db1", 0]]) + glow(`${u}gl`, 3) + blur(`${u}bl`, 4);
+  let g = "";
+  // pylons (base on y 215), glowing strip + caps
+  [[26, "#3fe0e8", `${u}h`], [374, "#ff5db1", `${u}k`]].forEach(([x, c, halo]) => {
+    g += `<ellipse cx="${x}" cy="213" rx="16" ry="4" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
+    g += `<ellipse cx="${x}" cy="120" rx="22" ry="100" fill="url(#${halo})"/>`;
+    g += `<path d="M${x - 10} 215 L${x - 8} 30 Q${x} 22 ${x + 8} 30 L${x + 10} 215 Z" fill="url(#${u}p)" ${stk(3.5)}/>`;
+    g += `<path d="M${x + 5} 213 L${x + 4.5} 31 Q${x + 7} 31 ${x + 8} 33 L${x + 9.5} 213 Z" fill="#141a45" opacity=".55"/>`;   // darker side face
+    g += `<rect x="${x - 2}" y="38" width="4" height="169" rx="2" fill="${c}" filter="url(#${u}gl)"/>`;   // rect, not a V path: filters need a non-empty bbox
+    g += `<rect x="${x - 14}" y="203" width="28" height="12" rx="4" fill="#2c3577" ${stk(3)}/>`;
+    g += `<circle cx="${x}" cy="24" r="8" fill="${c}" ${stk(3)} filter="url(#${u}gl)"/><circle cx="${x - 2.5}" cy="21.5" r="2.5" fill="#fff" opacity=".9"/>`;
+  });
+  // holographic band (y 15..60): translucent glow, chequered light strip, edge rails, orbiting lights
+  const x0 = 34, x1 = 366, y0 = 18, y1 = 58;
+  g += `<rect x="${x0}" y="${y0 - 3}" width="${x1 - x0}" height="${y1 - y0 + 6}" rx="8" fill="url(#${u}b)" filter="url(#${u}bl)"/>`;
+  g += `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="6" fill="#1b1f4a" opacity=".55"/>`;
+  const n = 16, cw = (x1 - x0 - 16) / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) if ((i + j) % 2 === 0)
+    g += `<rect x="${(x0 + 8 + i * cw).toFixed(1)}" y="${26 + j * 12}" width="${cw.toFixed(1)}" height="12" fill="#ffffff" opacity=".85"/>`;
+  g += `<rect x="${x0 + 8}" y="26" width="${x1 - x0 - 16}" height="24" fill="none" stroke="#ffffff" stroke-width="1.5" opacity=".6"/>`;
+  [[y0, "#ff5db1"], [y1, "#3fe0e8"]].forEach(([y, c]) => { g += `<rect x="${x0 - 3.75}" y="${y - 3.75}" width="${x1 - x0 + 7.5}" height="7.5" rx="3.75" fill="${INK}"/><rect x="${x0 - 2.25}" y="${y - 2.25}" width="${x1 - x0 + 4.5}" height="4.5" rx="2.25" fill="${c}" filter="url(#${u}gl)"/>`; });
+  for (let i = 0; i < 9; i++) { const x = x0 + 18 + i * ((x1 - x0 - 36) / 8), y = i % 2 ? y0 - 1 : y1 + 1, c = i % 2 ? "#ff8fd0" : "#9ff7ff";
+    g += `<circle cx="${x.toFixed(1)}" cy="${y}" r="3.5" fill="${c}" filter="url(#${u}gl)"/><circle cx="${x.toFixed(1)}" cy="${y}" r="1.4" fill="#fff"/>`; }
+  [[60, 24], [200, 52], [340, 22]].forEach(([x, y], i) => { g += `<path d="${star(x, y, 6 - i % 2, 2.2, 4)}" fill="#fff6c8" filter="url(#${u}gl)"/>`; });
+  return job("assets/img/start_gate.png", W, H, g, defs);
+}
 /* ---------------- 8. Race props (upright billboards) ---------------- */
 function asteroid() {
   const W = 140, H = 120, u = "as";
@@ -1245,12 +1500,14 @@ const HIDPI = [
   [/assets\/(img|sheet)\//, { scale: 2, type: "webp", ext: ".webp" }],
 ];
 function build(jobs) {
-  Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v), critterThumb(v), closeup(v, false), closeup(v, true)); });
+  Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v), critterThumb(v), closeup(v, false), closeup(v, true), closeup(v, false, true), closeup(v, true, true)); });
   Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v, true), critterBack(v)); });
+  jobs.push(riderBack("back_aqua", KEEPERS.keeper), riderBack("back_amber", KEEPERS.keeper_amber));
+  RIVALS.forEach(([a], i) => jobs.push(riderBack(`rival_${i + 1}`, { body: "#eef2ff", accent: a }, true)));
   Object.entries(KEEPERS).forEach(([n, p]) => jobs.push(keeperSheet(n, p), keeperThumb(n, p), keeperRide(n, p)));
   jobs.push(arenaFloor(), spire(), beamV(), cometRock(),
     market(), salon(), dock(), hatchery(), energyPad(), portal(),
-    crateMarker(), target(), droneSheet(), asteroid(), beacon(), ...gameIcons());
+    crateMarker(), target(), droneSheet(), droneBack(), droneFront(), startGate(), asteroid(), beacon(), ...gameIcons());
   jobs.push(voidTile(), roadTile(), plazaTile(), walkwayTile(), rimTile(),
     bollard(), rock(), container(), neonSign(), antenna(), shuttle(), landingPad());
   jobs.push(ground(), penFloor(600, 470), fence(), pod(),
@@ -1262,3 +1519,6 @@ function build(jobs) {
     ...IK.jobs(PAL, ["star", "heart", "heartEmpty", "sound", "soundOff", "help", "avatar", "goals", "close", "play", "resume", "check", "calendar", "gift", "hand", "sparkle", "moon", "refresh", "arrow", "trophy", "palette", "ball", "battery", "smile", "meh", "sad", "joy", "home", "lock"]));
   return jobs;
 };
+
+// `node tools/art/nebula.cjs` prints the wide close-up spot areas (paste into closeup.wide.area).
+if (require.main === module) console.log("closeup.wide.area =", JSON.stringify(wideAreas()));
