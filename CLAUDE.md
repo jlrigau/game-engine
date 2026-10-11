@@ -49,7 +49,10 @@ Whenever the engine gains a capability, **add it to Nebula too** (it must show e
   DM Sans self-hosted in `landing/fonts/`). ALL brand art in `tools/art/brand.cjs`: `mark()` (speech
   bubble + play + spark), `guide(pose)` = « Lu », the mark with a face (hello/point/idea, max once per
   screen, never in games), and the brand icon set (icon-kit in the Ludea palette + own icons) →
-  `landing/brand/`. Never use a game's art (Nebula…) as Ludea branding. Published by the template only: `deploy.yml` drops `landing/` when
+  `landing/brand/`. Never use a game's art (Nebula…) as Ludea branding. The owner bought **ludea.ai**
+  (Oct 2026) and wants the brand to **keep a games atmosphere** (playful, game-like, not corporate).
+  Planned: move the 4 repos to a dedicated GitHub organisation (owner creates it) and serve ludea.ai —
+  see §11 before doing anything. Published by the template only: `deploy.yml` drops `landing/` when
   the repo is not a GitHub template, so games publish just the game. **When a game is added or gains a
   mode, update its catalogue card.** Live: https://jlrigau.github.io/game-engine/landing/
 - `.github/workflows/deploy.yml` — GitHub Pages deploy.
@@ -177,3 +180,16 @@ like a game made by a studio — not a prototype. Concretely:
   world layout (a fenced pen + arena + forest loop read as "the horse game"). Each game must
   look like its own universe.
 - New owner feedback → add it to this section (via **capitalize-learnings**).
+
+## 11. Planned: Ludea organisation + ludea.ai (not started — wait for the owner)
+- The owner creates the GitHub org, then we decide the migration together. Never transfer a repo
+  or change DNS / Pages settings without the owner's explicit go.
+- **Players' saves and home-screen icons are tied to the site address** (localStorage and installed
+  apps are per origin). Moving a game from jlrigau.github.io to another address loses them unless the
+  old address keeps a small page that reads the save and hands it to the new address (needs a generic
+  engine "import save" feature + one stub repo per game left under jlrigau). Plan this BEFORE moving
+  Dr Smile / Mon Centre Équestre (the owner's daughter plays them).
+- GitHub redirects git URLs of transferred repos, but NOT GitHub Pages URLs.
+- After a move: update every hard-coded URL (landing links, QR codes, hreflang, README, CLAUDE.md,
+  skills), re-enable Pages, install the Claude GitHub App on the org, verify the domain in the org.
+
