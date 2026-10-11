@@ -38,9 +38,13 @@ Whenever the engine gains a capability, **add it to Nebula too** (it must show e
 - `tools/art/<game>.cjs` — ALL the game's art as parametric SVG, rendered to PNG by
   `node .claude/skills/_shared/render-svg.cjs tools/art/<game>.cjs [--only key]`.
   Never hand-edit the PNGs: change the art module and re-render.
-- `landing/` — the engine's public landing page (French): principle, how to use it, catalogue of
-  the games built with it, game modes, features, skills. Static HTML + `landing/shots/*.webp`
-  (390×844 in-game screenshots). Published by the template only: `deploy.yml` drops `landing/` when
+- `landing/` — the engine's public landing page, **English by default** (`landing/`) + French
+  (`landing/fr/`): principle, how to use it, catalogue of the games built with it, game modes,
+  features, skills. ONE source `landing/src/index.html` (bilingual text as `[[English||Français]]`)
+  → `node landing/build.cjs` writes both pages (never edit them by hand); shared `landing/landing.css`;
+  `landing/shots/*.webp` (390×844 in-game screenshots). Brand art (logo, guide character):
+  `tools/art/brand.cjs`. Brand name not chosen yet — any name must be international, with its
+  domains checked (RDAP: .ai/.com/.games/.studio/.app); the owner already holds marel.ai. Published by the template only: `deploy.yml` drops `landing/` when
   the repo is not a GitHub template, so games publish just the game. **When a game is added or gains a
   mode, update its catalogue card.** Live: https://jlrigau.github.io/game-engine/landing/
 - `.github/workflows/deploy.yml` — GitHub Pages deploy.

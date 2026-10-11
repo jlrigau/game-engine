@@ -1,197 +1,17 @@
 <!doctype html>
-<html lang="fr">
+<!-- Generated from landing/src/index.html by landing/build.cjs — do not edit. -->
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Game Engine — on décrit un jeu, l'agent le fabrique</title>
-<meta name="description" content="Un moteur de jeu 2D piloté par la configuration et par Claude Code : on lance un agent, on répond à quelques questions, on donne du feedback. Catalogue des jeux créés avec le moteur.">
+<title>Game Engine — describe a game, the agent builds it</title>
+<meta name="description" content="A 2D game engine driven by its config and by Claude Code: start an agent, answer a few questions, give feedback. Catalogue of the games made with it.">
 <meta name="theme-color" content="#0b1029">
+<link rel="alternate" hreflang="en" href="https://jlrigau.github.io/game-engine/landing/">
+<link rel="alternate" hreflang="fr" href="https://jlrigau.github.io/game-engine/landing/fr/">
+<link rel="alternate" hreflang="x-default" href="https://jlrigau.github.io/game-engine/landing/">
 <link rel="icon" href="../assets/favicon.png">
-<style>
-@font-face { font-family: "Fredoka"; font-weight: 300 700; font-display: swap; src: url("../vendor/fonts/fredoka-latin.woff2") format("woff2"); }
-:root {
-  --bg: #0b1029; --bg2: #120c34; --card: #18153f; --card2: #211c55; --edge: rgba(160,150,255,.18);
-  --text: #eef0ff; --muted: #a9acd6; --aqua: #5ee7ff; --pink: #ff7ac8; --gold: #ffd25e; --lime: #9cf06b;
-  --radius: 22px; --shadow: 0 18px 50px rgba(0,0,0,.45);
-}
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.55 "Fredoka", system-ui, sans-serif; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
-img { display: block; max-width: 100%; }
-a { color: var(--aqua); }
-.wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
-h1, h2, h3 { line-height: 1.12; margin: 0; font-weight: 700; letter-spacing: -.01em; }
-h2 { font-size: clamp(30px, 4.6vw, 44px); }
-h3 { font-size: 21px; }
-p { margin: 0; }
-.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--aqua); margin-bottom: 14px; }
-.eyebrow img { width: 26px; height: 26px; }
-.lead { color: var(--muted); font-size: 19px; max-width: 680px; margin-top: 14px; }
-section { padding: 96px 0; position: relative; }
-.ico { width: 44px; height: 44px; flex: none; }
-
-/* nav */
-nav { position: sticky; top: 0; z-index: 10; background: rgba(11,16,41,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--edge); }
-nav .wrap { display: flex; align-items: center; gap: 18px; height: 60px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; color: var(--text); text-decoration: none; margin-right: auto; }
-.brand img { width: 32px; height: 32px; border-radius: 9px; }
-nav .links a { color: var(--muted); text-decoration: none; font-weight: 500; font-size: 15px; margin-left: 18px; }
-nav .links a:hover { color: var(--text); }
-@media (max-width: 760px) { nav .links { display: none; } }
-
-.btn { display: inline-flex; align-items: center; gap: 10px; height: 50px; padding: 0 22px 0 14px; border-radius: 999px; font-weight: 600; font-size: 17px; text-decoration: none; color: #10133a;
-  background: linear-gradient(180deg, #8ff1ff, #34c6ea); box-shadow: 0 4px 0 #1b8fb0, 0 10px 24px rgba(52,198,234,.35); transition: transform .15s; }
-.btn:hover { transform: translateY(-2px); }
-.btn img { width: 34px; height: 34px; }
-.btn.ghost { background: rgba(255,255,255,.07); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--edge); }
-.btn.small { height: 44px; font-size: 15px; padding: 0 18px 0 10px; }
-.btn.small img { width: 30px; height: 30px; }
-
-/* hero */
-.hero { padding: 84px 0 70px; background: radial-gradient(1200px 600px at 75% 10%, #2a1d74 0%, transparent 60%), radial-gradient(800px 500px at 5% 90%, #0f3a5c 0%, transparent 60%), var(--bg); overflow: hidden; }
-.hero .wrap { display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; }
-.hero h1 { font-size: clamp(40px, 6.4vw, 70px); }
-.hero h1 em { font-style: normal; background: linear-gradient(90deg, var(--aqua), var(--pink)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.hero .lead { font-size: 20px; }
-.cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px; }
-.stats { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 36px; }
-.stats b { display: block; font-size: 32px; color: var(--gold); }
-.stats span { color: var(--muted); font-size: 14px; }
-.fan { position: relative; height: 560px; }
-.fan .phone { position: absolute; top: 50%; left: 50%; width: 210px; }
-.fan .phone:nth-child(1) { transform: translate(-122%, -46%) rotate(-10deg); }
-.fan .phone:nth-child(2) { transform: translate(-72%, -54%) rotate(-4deg); z-index: 2; }
-.fan .phone:nth-child(3) { transform: translate(-20%, -50%) rotate(4deg); z-index: 3; }
-.fan .phone:nth-child(4) { transform: translate(26%, -44%) rotate(10deg); z-index: 1; }
-@media (max-width: 900px) {
-  .hero .wrap { grid-template-columns: 1fr; }
-  .fan { height: 420px; }
-  .fan .phone { width: 170px; }
-}
-@media (max-width: 480px) {
-  .fan { height: 330px; }
-  .fan .phone { width: 128px; }
-}
-
-.phone { border-radius: 28px; padding: 7px; background: linear-gradient(160deg, #3b3478, #15123a); box-shadow: var(--shadow), inset 0 0 0 1.5px rgba(255,255,255,.12); }
-.phone img { border-radius: 22px; width: 100%; aspect-ratio: 390/844; object-fit: cover; background: #222; }
-
-/* the model */
-.model { background: var(--bg2); }
-.eq { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1.15fr; gap: 14px; align-items: stretch; margin-top: 44px; }
-.eq .op { align-self: center; font-size: 34px; font-weight: 700; color: var(--muted); }
-.block { background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius); padding: 22px; }
-.block .ico { margin-bottom: 12px; }
-.block h3 { margin-bottom: 6px; }
-.block p { color: var(--muted); font-size: 15.5px; }
-.block code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13.5px; color: var(--gold); }
-.block.result { background: linear-gradient(160deg, #2b2470, #1a1650); border-color: rgba(94,231,255,.4); }
-@media (max-width: 900px) { .eq { grid-template-columns: 1fr; } .eq .op { justify-self: center; font-size: 26px; margin: -4px 0; } }
-.code { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: center; }
-pre { margin: 0; background: #070b20; border: 1px solid var(--edge); border-radius: 18px; padding: 20px 22px; overflow-x: auto; font: 13.5px/1.6 ui-monospace, "SF Mono", Menlo, monospace; color: #cfd3ff; }
-pre .k { color: var(--pink); } pre .s { color: var(--lime); } pre .c { color: #6c70a8; } pre .n { color: var(--gold); }
-.code ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
-.code li { display: flex; gap: 14px; align-items: flex-start; color: var(--muted); }
-.code li b { color: var(--text); }
-.code li .ico { width: 38px; height: 38px; }
-@media (max-width: 900px) { .code { grid-template-columns: 1fr; } }
-
-/* steps */
-.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 46px; counter-reset: s; }
-.step { background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius); padding: 24px 22px 22px; position: relative; }
-.step::before { counter-increment: s; content: counter(s); position: absolute; top: -16px; left: 22px; width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(180deg, var(--gold), #f29d2a); color: #3a2200; font-weight: 700; display: grid; place-items: center; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
-.step .ico { margin: 6px 0 12px; }
-.step h3 { margin-bottom: 8px; }
-.step p { color: var(--muted); font-size: 15.5px; }
-.step .say { margin-top: 14px; background: rgba(94,231,255,.08); border: 1px dashed rgba(94,231,255,.35); border-radius: 14px; padding: 10px 12px; font-size: 14.5px; color: #c9f6ff; }
-.step .say::before { content: "Vous : "; font-weight: 600; color: var(--aqua); }
-@media (max-width: 980px) { .steps { grid-template-columns: 1fr 1fr; row-gap: 34px; } }
-@media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
-
-.chat { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
-.bubbles { background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius); padding: 22px; display: grid; gap: 10px; align-content: start; }
-.bubbles h3 { margin-bottom: 6px; font-size: 18px; display: flex; gap: 10px; align-items: center; }
-.bubbles h3 img { width: 34px; height: 34px; }
-.b { max-width: 88%; padding: 10px 14px; border-radius: 18px; font-size: 15px; }
-.b.u { justify-self: end; background: linear-gradient(180deg, #3fd0f0, #24a9d0); color: #071a2a; border-bottom-right-radius: 6px; }
-.b.a { background: var(--card2); border-bottom-left-radius: 6px; }
-.b.a small { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
-@media (max-width: 860px) { .chat { grid-template-columns: 1fr; } }
-
-/* catalogue */
-.catalogue { background: linear-gradient(180deg, var(--bg2), var(--bg)); }
-.games { display: grid; gap: 30px; margin-top: 46px; }
-.game { display: grid; grid-template-columns: 1fr 1.25fr; gap: 34px; align-items: center; background: var(--card); border: 1px solid var(--edge); border-radius: 30px; padding: 30px; overflow: hidden; position: relative; }
-.game::after { content: ""; position: absolute; inset: auto -120px -160px auto; width: 380px; height: 380px; border-radius: 50%; background: var(--g, var(--aqua)); opacity: .14; filter: blur(30px); pointer-events: none; }
-.game .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.game .shots .phone { padding: 5px; border-radius: 20px; }
-.game .shots .phone img { border-radius: 16px; }
-.game .shots .phone:nth-child(2) { transform: translateY(-14px); }
-.tag { display: inline-block; font-size: 13px; font-weight: 600; padding: 4px 11px; border-radius: 999px; background: rgba(255,255,255,.08); color: var(--muted); margin: 0 6px 6px 0; }
-.tag.hot { background: var(--g); color: #120c34; }
-.game h3 { font-size: 30px; margin: 8px 0 4px; }
-.game .tagline { color: var(--g); font-weight: 600; margin-bottom: 12px; }
-.game p.desc { color: var(--muted); margin-bottom: 16px; font-size: 16px; }
-.game .sys { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.game .sys span { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; background: rgba(255,255,255,.05); border: 1px solid var(--edge); border-radius: 999px; padding: 3px 12px 3px 4px; }
-.game .sys img { width: 26px; height: 26px; }
-.game .links { display: flex; gap: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
-.game.flip .shots { order: 2; }
-@media (max-width: 900px) { .game, .game.flip { grid-template-columns: 1fr; padding: 22px; } .game.flip .shots { order: 0; } }
-
-/* modes */
-.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 46px; }
-.mode { background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
-.mode .pic { height: 240px; overflow: hidden; background: #000; position: relative; }
-.mode .pic img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
-.mode .body { padding: 20px 22px 24px; }
-.mode h3 { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.mode h3 img { width: 38px; height: 38px; }
-.mode p { color: var(--muted); font-size: 15.5px; }
-.mode .in { margin-top: 12px; font-size: 13.5px; color: var(--muted); }
-.mode .in b { color: var(--text); font-weight: 600; }
-@media (max-width: 980px) { .modes { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 620px) { .modes { grid-template-columns: 1fr; } }
-
-/* features */
-.feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 46px; }
-.feat { background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius); padding: 22px; }
-.feat h3 { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 19px; }
-.feat ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 15px; display: grid; gap: 5px; }
-.feat li::marker { color: var(--aqua); }
-@media (max-width: 980px) { .feats { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 620px) { .feats { grid-template-columns: 1fr; } }
-
-/* skills */
-.skills { background: var(--bg2); }
-.sk { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 46px; }
-.skg { background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius); padding: 20px; }
-.skg h3 { font-size: 16px; text-transform: uppercase; letter-spacing: .06em; color: var(--aqua); margin-bottom: 12px; }
-.skg dl { margin: 0; display: grid; gap: 10px; }
-.skg dt { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; color: var(--gold); }
-.skg dd { margin: 0; color: var(--muted); font-size: 14.5px; }
-@media (max-width: 980px) { .sk { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 560px) { .sk { grid-template-columns: 1fr; } }
-
-/* quality */
-.qual { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 46px; }
-.q { display: flex; gap: 16px; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius); padding: 20px 22px; }
-.q h3 { font-size: 18px; margin-bottom: 4px; }
-.q p { color: var(--muted); font-size: 15px; }
-@media (max-width: 760px) { .qual { grid-template-columns: 1fr; } }
-
-/* loop */
-.loop { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-top: 34px; }
-.loop span { background: var(--card2); border: 1px solid var(--edge); border-radius: 999px; padding: 8px 16px; font-weight: 500; font-size: 15px; }
-.loop i { color: var(--aqua); font-style: normal; font-weight: 700; }
-
-footer { padding: 70px 0 50px; text-align: center; color: var(--muted); border-top: 1px solid var(--edge); }
-footer h2 { color: var(--text); margin-bottom: 14px; }
-footer .cta { justify-content: center; }
-footer small { display: block; margin-top: 40px; font-size: 13px; }
-
-.center { text-align: center; } .center .lead { margin-left: auto; margin-right: auto; }
-</style>
+<link rel="stylesheet" href="landing.css">
 </head>
 <body>
 
@@ -199,13 +19,14 @@ footer small { display: block; margin-top: 40px; font-size: 13px; }
   <div class="wrap">
     <a class="brand" href="#top"><img src="../assets/icon-192.png" alt="">Game Engine</a>
     <div class="links">
-      <a href="#principe">Le principe</a>
-      <a href="#utiliser">Comment l'utiliser</a>
-      <a href="#catalogue">Les jeux</a>
-      <a href="#modes">Modes de jeu</a>
-      <a href="#features">Fonctionnalités</a>
+      <a href="#principle">How it works</a>
+      <a href="#use">Getting started</a>
+      <a href="#catalogue">Games</a>
+      <a href="#modes">Game modes</a>
+      <a href="#features">Features</a>
       <a href="#skills">Skills</a>
     </div>
+    <div class="lang"><a href="" class="on" hreflang="en" lang="en">EN</a><a href="fr/" class="" hreflang="fr" lang="fr">FR</a></div>
   </div>
 </nav>
 
@@ -213,18 +34,18 @@ footer small { display: block; margin-top: 40px; font-size: 13px; }
 <header class="hero" id="top">
   <div class="wrap">
     <div>
-      <div class="eyebrow"><img src="../assets/ui/icons/sparkle.webp" alt="">Moteur de jeu 2D + agent Claude Code</div>
-      <h1>On ne code pas un jeu.<br><em>On le décrit.</em></h1>
-      <p class="lead">Un moteur de jeu mobile générique, et un agent qui fait tout le travail technique : vous lancez une session, vous répondez à quelques questions, vous jouez, vous donnez votre avis. Le jeu grandit à chaque retour — et il est en ligne, sur iPhone, en quelques minutes.</p>
+      <div class="eyebrow"><img src="../assets/ui/icons/sparkle.webp" alt="">2D game engine + Claude Code agent</div>
+      <h1>You don't code a game.<br><em>You describe it.</em></h1>
+      <p class="lead">A generic mobile game engine, and an agent that does all the technical work: you start a session, answer a few questions, play, and say what you think. The game grows with every piece of feedback — and it's online, on your phone, within minutes.</p>
       <div class="cta">
-        <a class="btn" href="#catalogue"><img src="../assets/ui/icons/play.webp" alt="">Voir les jeux</a>
-        <a class="btn ghost" href="#utiliser"><img src="../assets/ui/icons/help.webp" alt="">Comment ça marche</a>
+        <a class="btn" href="#catalogue"><img src="../assets/ui/icons/play.webp" alt="">See the games</a>
+        <a class="btn ghost" href="#use"><img src="../assets/ui/icons/help.webp" alt="">How it works</a>
       </div>
       <div class="stats">
-        <div><b>4</b><span>jeux publiés</span></div>
-        <div><b>1</b><span>seul moteur, partagé</span></div>
-        <div><b>16</b><span>skills pour l'agent</span></div>
-        <div><b>0</b><span>ligne de code à écrire</span></div>
+        <div><b>4</b><span>games published</span></div>
+        <div><b>1</b><span>shared engine</span></div>
+        <div><b>16</b><span>agent skills</span></div>
+        <div><b>0</b><span>lines of code to write</span></div>
       </div>
     </div>
     <div class="fan" aria-hidden="true">
@@ -236,42 +57,42 @@ footer small { display: block; margin-top: 40px; font-size: 13px; }
   </div>
 </header>
 
-<!-- ============ PRINCIPE ============ -->
-<section class="model" id="principe">
+<!-- ============ PRINCIPLE ============ -->
+<section class="model" id="principle">
   <div class="wrap">
-    <div class="eyebrow"><img src="../assets/ui/icons/goals.webp" alt="">Le principe</div>
-    <h2>Un jeu = le moteur + une fiche + des dessins</h2>
-    <p class="lead">Le moteur sait déjà tout faire : déplacer un personnage, soigner des créatures, monter à cheval, conduire, faire une course, gérer une boutique, sauvegarder la partie… Chaque jeu n'est qu'une <b>fiche de description</b> qui dit lequel de ces systèmes allumer, avec quels textes et quels dessins.</p>
+    <div class="eyebrow"><img src="../assets/ui/icons/goals.webp" alt="">How it works</div>
+    <h2>A game = the engine + a sheet + drawings</h2>
+    <p class="lead">The engine already knows how to do everything: move a character, look after creatures, ride a horse, drive, race, run a shop, save the game… Each game is just a <b>description sheet</b> saying which of these systems to switch on, with which texts and which drawings.</p>
 
     <div class="eq">
       <div class="block">
         <img class="ico" src="../assets/ui/icons/pad.webp" alt="">
-        <h3>Le moteur</h3>
-        <p>Tous les systèmes de jeu, génériques. <b>Il ne contient aucun contenu de jeu</b> et il est identique dans tous les jeux. <code>engine.js</code></p>
+        <h3>The engine</h3>
+        <p>Every game system, generic. <b>It holds no game content</b> and it is identical in every game. <code>engine.js</code></p>
       </div>
       <div class="op">+</div>
       <div class="block">
         <img class="ico" src="../assets/ui/icons/goals.webp" alt="">
-        <h3>La fiche du jeu</h3>
-        <p>Le monde, les personnages, les créatures, leurs besoins, les actions, les textes, les objectifs. <code>game.config.js</code></p>
+        <h3>The game sheet</h3>
+        <p>The world, the characters, the creatures, their needs, the actions, the texts, the goals. <code>game.config.js</code></p>
       </div>
       <div class="op">+</div>
       <div class="block">
         <img class="ico" src="../assets/ui/icons/palette.webp" alt="">
-        <h3>Les dessins</h3>
-        <p>Toute l'illustration est générée en vectoriel, propre à l'univers du jeu, nette sur iPhone. <code>tools/art/</code></p>
+        <h3>The drawings</h3>
+        <p>All the artwork is generated as vector art, specific to the game's world, crisp on phones. <code>tools/art/</code></p>
       </div>
       <div class="op">=</div>
       <div class="block result">
         <img class="ico" src="../assets/ui/icons/trophy.webp" alt="">
-        <h3>Un jeu complet</h3>
-        <p>Publié automatiquement sur le web, installable sur l'écran d'accueil de l'iPhone comme une vraie appli.</p>
+        <h3>A complete game</h3>
+        <p>Published to the web automatically, installable on the phone's home screen like a real app.</p>
       </div>
     </div>
 
     <div class="code">
-      <pre><span class="c">// Extrait de la fiche de Nebula Nursery :</span>
-<span class="c">// une créature et deux actions, décrites, pas codées.</span>
+      <pre><span class="c">// From the Nebula Nursery sheet:</span>
+<span class="c">// one creature and two actions, described, not coded.</span>
 creature: {
   label: <span class="s">"critters"</span>, sheet: <span class="s">"critter"</span>,
   needs: [
@@ -286,70 +107,70 @@ creature: {
       effects: { joy: <span class="n">22</span>, fuel: <span class="n">-6</span> },
       anim: { motion: <span class="s">"hop"</span>, particle: <span class="s">"star"</span> } },
   ],
-  ride: { … },  <span class="c">// on l'ajoute → on peut la monter</span>
+  ride: { … },  <span class="c">// add it → you can ride it</span>
 }</pre>
       <ul>
-        <li><img class="ico" src="../assets/ui/icons/check.webp" alt=""><div><b>Tout s'allume ou s'éteint.</b> Pas de boutique ? On n'écrit pas de boutique. Envie d'équitation ? On ajoute <span class="mono">ride</span>. Les systèmes absents disparaissent simplement.</div></li>
-        <li><img class="ico" src="../assets/ui/icons/refresh.webp" alt=""><div><b>Un progrès profite à tous.</b> Quand un jeu a besoin d'une nouvelle capacité, elle est ajoutée au moteur de façon générique, puis recopiée dans tous les jeux.</div></li>
-        <li><img class="ico" src="../assets/ui/icons/lock.webp" alt=""><div><b>Les parties ne se perdent jamais.</b> La sauvegarde est automatique et reste compatible quand le jeu évolue — même lors d'une refonte complète.</div></li>
-        <li><img class="ico" src="../assets/ui/icons/home.webp" alt=""><div><b>100 % statique.</b> Aucun serveur, aucune compilation : le jeu marche hors-ligne et se publie gratuitement sur GitHub Pages.</div></li>
+        <li><img class="ico" src="../assets/ui/icons/check.webp" alt=""><div><b>Everything switches on or off.</b> No shop? Don't write one. Want riding? Add <span class="mono">ride</span>. Systems you leave out simply disappear.</div></li>
+        <li><img class="ico" src="../assets/ui/icons/refresh.webp" alt=""><div><b>Progress benefits every game.</b> When a game needs a new capability, it is added to the engine in a generic way, then copied into every game.</div></li>
+        <li><img class="ico" src="../assets/ui/icons/lock.webp" alt=""><div><b>Saved games are never lost.</b> Saving is automatic and stays compatible as the game evolves — even through a complete rebuild.</div></li>
+        <li><img class="ico" src="../assets/ui/icons/home.webp" alt=""><div><b>100% static.</b> No server, no build step: the game works offline and is published for free on GitHub Pages.</div></li>
       </ul>
     </div>
   </div>
 </section>
 
-<!-- ============ COMMENT L'UTILISER ============ -->
-<section id="utiliser">
+<!-- ============ GETTING STARTED ============ -->
+<section id="use">
   <div class="wrap">
-    <div class="eyebrow"><img src="../assets/ui/icons/hand.webp" alt="">Comment l'utiliser</div>
-    <h2>Du modèle au jeu en ligne, en conversant</h2>
-    <p class="lead">Le moteur est un <b>modèle de dépôt</b> GitHub. Chaque jeu a son propre dépôt, et c'est l'agent Claude Code qui écrit, dessine, teste et publie. Vous, vous parlez de votre jeu.</p>
+    <div class="eyebrow"><img src="../assets/ui/icons/hand.webp" alt="">Getting started</div>
+    <h2>From template to live game, by talking</h2>
+    <p class="lead">The engine is a GitHub <b>template repository</b>. Each game gets its own repository, and the Claude Code agent writes, draws, tests and publishes. You just talk about your game.</p>
 
     <div class="steps">
       <div class="step">
         <img class="ico" src="../assets/ui/icons/egg.webp" alt="">
-        <h3>Partir du modèle</h3>
-        <p>Sur GitHub, « Use this template » crée un nouveau dépôt qui contient déjà le moteur et un jeu qui tourne. On active GitHub Pages une fois.</p>
+        <h3>Start from the template</h3>
+        <p>On GitHub, “Use this template” creates a new repository that already contains the engine and a running game. Turn on GitHub Pages once.</p>
       </div>
       <div class="step">
         <img class="ico" src="../assets/ui/icons/keeper.webp" alt="">
-        <h3>Lancer un agent</h3>
-        <p>On ouvre le dépôt dans Claude Code (sur la branche <span class="mono">main</span>) et on tape <span class="mono">/new-game</span>.</p>
-        <div class="say">/new-game</div>
+        <h3>Start an agent</h3>
+        <p>Open the repository in Claude Code (on the <span class="mono">main</span> branch) and type <span class="mono">/new-game</span>.</p>
+        <div class="say" data-who="You: ">/new-game</div>
       </div>
       <div class="step">
         <img class="ico" src="../assets/ui/icons/help.webp" alt="">
-        <h3>Répondre aux questions</h3>
-        <p>L'agent pose quelques questions : le thème, l'âge des joueurs, le style graphique, la langue, ce qu'on fait dans le jeu. Il écrit la fiche, dessine, teste et publie une première version <b>volontairement petite</b>.</p>
+        <h3>Answer a few questions</h3>
+        <p>The agent asks a few questions: the theme, the players' age, the art style, the language, what you do in the game. It writes the sheet, draws, tests and publishes a first version that is <b>deliberately small</b>.</p>
       </div>
       <div class="step">
         <img class="ico" src="../assets/ui/icons/heart.webp" alt="">
-        <h3>Jouer et donner du feedback</h3>
-        <p>On joue sur son téléphone, puis on dit ce qu'on veut, avec ses mots. Chaque retour devient une nouvelle version, publiée et vérifiée.</p>
-        <div class="say">Je voudrais pouvoir monter les chevaux</div>
+        <h3>Play and give feedback</h3>
+        <p>Play on your phone, then say what you want, in your own words. Every piece of feedback becomes a new version, published and checked.</p>
+        <div class="say" data-who="You: ">I'd like to be able to ride the horses</div>
       </div>
     </div>
 
     <div class="chat">
       <div class="bubbles">
-        <h3><img src="../assets/ui/icons/keeper.webp" alt="">Mode créateur</h3>
-        <div class="b u">Ajoute une boutique où on peut acheter des décorations</div>
-        <div class="b a">C'est en ligne : la Sellerie vend maintenant des fleurs, des bancs et des abreuvoirs, à poser où l'on veut.<small>Testé sur iPhone (Safari) et sur un grand et un petit écran. Numéro de version à vérifier en bas de l'accueil.</small></div>
-        <div class="b u">Le cheval passe à travers la barrière</div>
-        <div class="b a">Corrigé : la barrière bloque maintenant le passage, mais on peut toujours sauter par-dessus à cheval.</div>
+        <h3><img src="../assets/ui/icons/keeper.webp" alt="">Creator mode</h3>
+        <div class="b u">Add a shop where you can buy decorations</div>
+        <div class="b a">It's live: the Tack Shop now sells flowers, benches and water troughs, to place anywhere you like.<small>Tested on iPhone (Safari) on a tall and a short screen. Check the build number at the bottom of the home screen.</small></div>
+        <div class="b u">The horse walks through the fence</div>
+        <div class="b a">Fixed: the fence now blocks the way, but you can still jump over it on horseback.</div>
       </div>
       <div class="bubbles">
-        <h3><img src="../assets/ui/icons/smile.webp" alt="">Mode feedback (pour un enfant ou un client)</h3>
-        <div class="b u">Ma fille va faire des retours</div>
-        <div class="b a">Super ! Je t'écoute — dis-moi ce que tu aimerais changer dans ton jeu.</div>
-        <div class="b u">Je veux des papillons dans la forêt !</div>
-        <div class="b a">C'est fait ! Il y a maintenant des papillons qui volent dans la forêt. Rafraîchis et va voir !</div>
-        <div class="b a"><small>Aucune question technique : l'agent dessine, teste et publie en silence.</small></div>
+        <h3><img src="../assets/ui/icons/smile.webp" alt="">Feedback mode (for a child or a client)</h3>
+        <div class="b u">My daughter is going to give feedback</div>
+        <div class="b a">Great! I'm listening — tell me what you'd like to change in your game.</div>
+        <div class="b u">I want butterflies in the forest!</div>
+        <div class="b a">Done! There are butterflies flying in the forest now. Refresh and go and see!</div>
+        <div class="b a"><small>No technical questions: the agent draws, tests and publishes quietly.</small></div>
       </div>
     </div>
 
     <div class="loop">
-      <span>Une idée</span><i>→</i><span>l'agent dessine et code</span><i>→</i><span>tests automatiques</span><i>→</i><span>vérification visuelle</span><i>→</i><span>publication</span><i>→</i><span>on joue</span><i>↺</i>
+      <span>An idea</span><i>→</i><span>the agent draws and codes</span><i>→</i><span>automated tests</span><i>→</i><span>visual check</span><i>→</i><span>publish</span><i>→</i><span>play</span><i>↺</i>
     </div>
   </div>
 </section>
@@ -357,108 +178,108 @@ creature: {
 <!-- ============ CATALOGUE ============ -->
 <section class="catalogue" id="catalogue">
   <div class="wrap">
-    <div class="eyebrow"><img src="../assets/ui/icons/star.webp" alt="">Le catalogue</div>
-    <h2>Quatre jeux, un seul moteur</h2>
-    <p class="lead">Des univers, des publics et des façons de jouer très différents — tous construits avec le même moteur et les mêmes skills. Chacun se joue dans le navigateur et s'installe sur l'écran d'accueil.</p>
+    <div class="eyebrow"><img src="../assets/ui/icons/star.webp" alt="">The catalogue</div>
+    <h2>Four games, one engine</h2>
+    <p class="lead">Very different worlds, audiences and ways to play — all built with the same engine and the same skills. Each one plays in the browser and installs on the home screen.</p>
 
     <div class="games">
 
       <article class="game" style="--g:#ff9bd2">
         <div class="shots">
-          <div class="phone"><img src="shots/drsmile-home.webp" alt="Écran d'accueil de Dr Smile"></div>
-          <div class="phone"><img src="shots/drsmile-world.webp" alt="Le cabinet dentaire"></div>
-          <div class="phone"><img src="shots/drsmile-closeup.webp" alt="Gros plan : brosser les dents"></div>
+          <div class="phone"><img src="shots/drsmile-home.webp" alt="Dr Smile home screen"></div>
+          <div class="phone"><img src="shots/drsmile-world.webp" alt="The dental office"></div>
+          <div class="phone"><img src="shots/drsmile-closeup.webp" alt="Close-up: brushing teeth"></div>
         </div>
         <div>
-          <span class="tag hot">6–7 ans</span><span class="tag">Français</span><span class="tag">Sans lecture</span>
+          <span class="tag hot">Ages 6–7</span><span class="tag">French</span><span class="tag">No reading needed</span>
           <h3>Dr Smile</h3>
-          <p class="tagline">Brosse les dents et rends tout le monde heureux !</p>
-          <p class="desc">Un cabinet de dentiste tout doux pour un enfant qui apprend à lire. On touche un enfant, on zoome sur sa bouche et on frotte les petites bêtes avec la brosse. Puis il repart avec un grand sourire et on sonne pour le suivant.</p>
+          <p class="tagline">“Brush the teeth and make everyone happy!”</p>
+          <p class="desc">A gentle dentist's office for a child who is learning to read. Tap a child, zoom into their mouth and scrub the little germs away with the brush. Then they leave with a big smile and you ring for the next one.</p>
           <div class="sys">
-            <span><img src="../assets/ui/icons/polish.webp" alt="">Gros plan à frotter</span>
-            <span><img src="../assets/ui/icons/hand.webp" alt="">Un toucher = une action</span>
-            <span><img src="../assets/ui/icons/arrow.webp" alt="">Flèche-guide</span>
-            <span><img src="../assets/ui/icons/gift.webp" alt="">Récompenses sans texte</span>
+            <span><img src="../assets/ui/icons/polish.webp" alt="">Scrub close-up</span>
+            <span><img src="../assets/ui/icons/hand.webp" alt="">One tap = one action</span>
+            <span><img src="../assets/ui/icons/arrow.webp" alt="">Guide arrow</span>
+            <span><img src="../assets/ui/icons/gift.webp" alt="">Text-free rewards</span>
           </div>
           <div class="links">
-            <a class="btn small" href="https://jlrigau.github.io/dr-smile/"><img src="../assets/ui/icons/play.webp" alt="">Jouer</a>
-            <a class="btn small ghost" href="https://github.com/jlrigau/dr-smile">Code source</a>
+            <a class="btn small" href="https://jlrigau.github.io/dr-smile/"><img src="../assets/ui/icons/play.webp" alt="">Play</a>
+            <a class="btn small ghost" href="https://github.com/jlrigau/dr-smile">Source code</a>
           </div>
         </div>
       </article>
 
       <article class="game flip" style="--g:#ffb44a">
         <div class="shots">
-          <div class="phone"><img src="shots/stable-home.webp" alt="Écran d'accueil de Mon Centre Équestre"></div>
-          <div class="phone"><img src="shots/stable-panel.webp" alt="Soigner un cheval"></div>
-          <div class="phone"><img src="shots/stable-closeup.webp" alt="Gros plan : brosser le cheval"></div>
+          <div class="phone"><img src="shots/stable-home.webp" alt="Mon Centre Équestre home screen"></div>
+          <div class="phone"><img src="shots/stable-panel.webp" alt="Caring for a horse"></div>
+          <div class="phone"><img src="shots/stable-closeup.webp" alt="Close-up: grooming the horse"></div>
         </div>
         <div>
-          <span class="tag hot">9–10 ans</span><span class="tag">Français</span><span class="tag">Filles et garçons</span>
+          <span class="tag hot">Ages 9–10</span><span class="tag">French</span><span class="tag">Girls and boys</span>
           <h3>Mon Centre Équestre</h3>
-          <p class="tagline">Soigne, brosse et monte tes chevaux !</p>
-          <p class="desc">Un centre équestre à faire vivre : nourrir, brosser et faire jouer ses chevaux, les monter au paddock, sauter des obstacles dans la carrière, partir sur le parcours de cross en forêt. Les poulains naissent la nuit, la Sellerie vend de quoi décorer.</p>
+          <p class="tagline">“Care for, groom and ride your horses!”</p>
+          <p class="desc">A riding stable to bring to life: feed, groom and play with your horses, ride them in the paddock, jump obstacles in the arena, head out on the cross-country trail in the forest. Foals are born at night, and the tack shop sells decorations.</p>
           <div class="sys">
-            <span><img src="../assets/ui/icons/heart.webp" alt="">Soins et humeur</span>
-            <span><img src="../assets/ui/icons/ride.webp" alt="">Équitation + sauts</span>
-            <span><img src="../assets/ui/icons/egg.webp" alt="">Naissances</span>
-            <span><img src="../assets/ui/icons/shop.webp" alt="">Boutique + déco</span>
-            <span><img src="../assets/ui/icons/moon.webp" alt="">Jour / nuit</span>
+            <span><img src="../assets/ui/icons/heart.webp" alt="">Care and mood</span>
+            <span><img src="../assets/ui/icons/ride.webp" alt="">Riding + jumps</span>
+            <span><img src="../assets/ui/icons/egg.webp" alt="">Births</span>
+            <span><img src="../assets/ui/icons/shop.webp" alt="">Shop + decor</span>
+            <span><img src="../assets/ui/icons/moon.webp" alt="">Day / night</span>
           </div>
           <div class="links">
-            <a class="btn small" href="https://jlrigau.github.io/my-little-stable/"><img src="../assets/ui/icons/play.webp" alt="">Jouer</a>
-            <a class="btn small ghost" href="https://github.com/jlrigau/my-little-stable">Code source</a>
+            <a class="btn small" href="https://jlrigau.github.io/my-little-stable/"><img src="../assets/ui/icons/play.webp" alt="">Play</a>
+            <a class="btn small ghost" href="https://github.com/jlrigau/my-little-stable">Source code</a>
           </div>
         </div>
       </article>
 
       <article class="game" style="--g:#ff5fa8">
         <div class="shots">
-          <div class="phone"><img src="shots/gta7-home.webp" alt="Écran d'accueil de GTA 7 Neon City"></div>
-          <div class="phone"><img src="shots/gta7-panel.webp" alt="Prendre une voiture en ville"></div>
-          <div class="phone"><img src="shots/gta7-race.webp" alt="Course en pseudo-3D"></div>
+          <div class="phone"><img src="shots/gta7-home.webp" alt="GTA 7 Neon City home screen"></div>
+          <div class="phone"><img src="shots/gta7-panel.webp" alt="Taking a car in the city"></div>
+          <div class="phone"><img src="shots/gta7-race.webp" alt="Pseudo-3D race"></div>
         </div>
         <div>
-          <span class="tag hot">10 ans et +</span><span class="tag">Français</span><span class="tag">Arcade</span>
+          <span class="tag hot">Ages 10+</span><span class="tag">French</span><span class="tag">Arcade</span>
           <h3>GTA 7 · Neon City</h3>
-          <p class="tagline">Roule, livre, fais la course… et sème la police !</p>
-          <p class="desc">Une ville néon vue de dessus : on monte dans une voiture, on enchaîne les livraisons, on sème la police, on repeint sa voiture au garage pour se faire oublier, on en achète une plus rapide à la concession et on se lance dans une course en vue arrière. Sans armes ni violence.</p>
+          <p class="tagline">“Drive, deliver, race… and shake off the police!”</p>
+          <p class="desc">A neon city seen from above: jump into a car, chain deliveries, shake off the police, repaint your car at the garage to lie low, buy a faster one at the dealership and enter a race seen from behind. No weapons, no violence.</p>
           <div class="sys">
-            <span><img src="../assets/ui/icons/crate.webp" alt="">Livraisons</span>
-            <span><img src="../assets/ui/icons/drone.webp" alt="">Poursuite</span>
-            <span><img src="../assets/ui/icons/flag.webp" alt="">Course pseudo-3D</span>
-            <span><img src="../assets/ui/icons/speed.webp" alt="">Modèles à acheter</span>
+            <span><img src="../assets/ui/icons/crate.webp" alt="">Deliveries</span>
+            <span><img src="../assets/ui/icons/drone.webp" alt="">Chase</span>
+            <span><img src="../assets/ui/icons/flag.webp" alt="">Pseudo-3D race</span>
+            <span><img src="../assets/ui/icons/speed.webp" alt="">Cars to buy</span>
             <span><img src="../assets/ui/icons/palette.webp" alt="">Garage</span>
           </div>
           <div class="links">
-            <a class="btn small" href="https://jlrigau.github.io/gta7/"><img src="../assets/ui/icons/play.webp" alt="">Jouer</a>
-            <a class="btn small ghost" href="https://github.com/jlrigau/gta7">Code source</a>
+            <a class="btn small" href="https://jlrigau.github.io/gta7/"><img src="../assets/ui/icons/play.webp" alt="">Play</a>
+            <a class="btn small ghost" href="https://github.com/jlrigau/gta7">Source code</a>
           </div>
         </div>
       </article>
 
       <article class="game flip" style="--g:#5ee7ff">
         <div class="shots">
-          <div class="phone"><img src="shots/nebula-home.webp" alt="Écran d'accueil de Nebula Nursery"></div>
-          <div class="phone"><img src="shots/nebula-panel.webp" alt="S'occuper d'une créature"></div>
-          <div class="phone"><img src="shots/nebula-race.webp" alt="Course sur l'anneau stellaire"></div>
+          <div class="phone"><img src="shots/nebula-home.webp" alt="Nebula Nursery home screen"></div>
+          <div class="phone"><img src="shots/nebula-panel.webp" alt="Looking after a critter"></div>
+          <div class="phone"><img src="shots/nebula-race.webp" alt="Racing on the Star Ring"></div>
         </div>
         <div>
-          <span class="tag hot">La vitrine du moteur</span><span class="tag">Anglais</span><span class="tag">Tous âges</span>
+          <span class="tag hot">The engine's showcase</span><span class="tag">English</span><span class="tag">All ages</span>
           <h3>Nebula Nursery</h3>
-          <p class="tagline">Look after the little glowing critters!</p>
-          <p class="desc">Le jeu de démonstration livré avec le modèle : un robot gardien s'occupe de petites créatures lumineuses sur une station spatiale. Il allume (presque) tous les systèmes du moteur à la fois — c'est l'exemple vivant de chaque fonctionnalité, et le point de départ pour en voir le branchement.</p>
+          <p class="tagline">“Look after the little glowing critters!”</p>
+          <p class="desc">The demo that ships with the template: a keeper robot looks after little glowing critters on a space station. It switches on (nearly) every engine system at once — the living example of each feature, and the place to see how each one is wired.</p>
           <div class="sys">
-            <span><img src="../assets/ui/icons/critter.webp" alt="">Soins + gros plan</span>
-            <span><img src="../assets/ui/icons/ride.webp" alt="">Monture + sauts</span>
-            <span><img src="../assets/ui/icons/portal.webp" alt="">Portail d'arrivée</span>
-            <span><img src="../assets/ui/icons/crate.webp" alt="">Livraisons + drones</span>
-            <span><img src="../assets/ui/icons/flag.webp" alt="">Course</span>
-            <span><img src="../assets/ui/icons/shop.webp" alt="">Boutique</span>
+            <span><img src="../assets/ui/icons/critter.webp" alt="">Care + close-up</span>
+            <span><img src="../assets/ui/icons/ride.webp" alt="">Mount + jumps</span>
+            <span><img src="../assets/ui/icons/portal.webp" alt="">Arrival portal</span>
+            <span><img src="../assets/ui/icons/crate.webp" alt="">Deliveries + drones</span>
+            <span><img src="../assets/ui/icons/flag.webp" alt="">Race</span>
+            <span><img src="../assets/ui/icons/shop.webp" alt="">Shop</span>
           </div>
           <div class="links">
-            <a class="btn small" href="https://jlrigau.github.io/game-engine/"><img src="../assets/ui/icons/play.webp" alt="">Jouer</a>
-            <a class="btn small ghost" href="https://github.com/jlrigau/game-engine">Le modèle (template)</a>
+            <a class="btn small" href="https://jlrigau.github.io/game-engine/"><img src="../assets/ui/icons/play.webp" alt="">Play</a>
+            <a class="btn small ghost" href="https://github.com/jlrigau/game-engine">The template</a>
           </div>
         </div>
       </article>
@@ -467,60 +288,60 @@ creature: {
   </div>
 </section>
 
-<!-- ============ MODES DE JEU ============ -->
+<!-- ============ GAME MODES ============ -->
 <section id="modes">
   <div class="wrap">
-    <div class="eyebrow"><img src="../assets/ui/icons/pad.webp" alt="">Les modes de jeu</div>
-    <h2>Des façons de jouer, à combiner</h2>
-    <p class="lead">Chaque mode est une brique du moteur. Un jeu en prend une, deux ou toutes — c'est la fiche qui décide.</p>
+    <div class="eyebrow"><img src="../assets/ui/icons/pad.webp" alt="">Game modes</div>
+    <h2>Ways to play, to mix and match</h2>
+    <p class="lead">Each mode is a building block of the engine. A game takes one, two or all of them — the sheet decides.</p>
 
     <div class="modes">
       <div class="mode">
         <div class="pic"><img src="shots/stable-panel.webp" alt=""></div>
         <div class="body">
-          <h3><img src="../assets/ui/icons/heart.webp" alt="">Prendre soin</h3>
-          <p>Des créatures qui se promènent, avec des besoins (faim, propreté, joie…) qui baissent avec le temps. On s'approche, une carte s'ouvre avec des boutons d'action ronds, l'humeur remonte.</p>
-          <p class="in">Dans : <b>Mon Centre Équestre, Nebula</b></p>
+          <h3><img src="../assets/ui/icons/heart.webp" alt="">Caring</h3>
+          <p>Creatures that wander about, with needs (hunger, cleanliness, joy…) that drop over time. Walk up, a card opens with round action buttons, and their mood goes back up.</p>
+          <p class="in">In: <b>Mon Centre Équestre, Nebula</b></p>
         </div>
       </div>
       <div class="mode">
         <div class="pic"><img src="shots/drsmile-closeup.webp" alt="" style="object-position:center 55%"></div>
         <div class="body">
-          <h3><img src="../assets/ui/icons/polish.webp" alt="">Le gros plan</h3>
-          <p>La caméra plonge sur la créature et on frotte du doigt les taches pour les faire disparaître, avec un avant/après qui se révèle. Presque sans texte : idéal pour les petits.</p>
-          <p class="in">Dans : <b>Dr Smile, Mon Centre Équestre, Nebula</b></p>
+          <h3><img src="../assets/ui/icons/polish.webp" alt="">The close-up</h3>
+          <p>The camera dives onto the creature and you rub the spots away with your finger, with a before/after reveal. Almost no text: perfect for little ones.</p>
+          <p class="in">In: <b>Dr Smile, Mon Centre Équestre, Nebula</b></p>
         </div>
       </div>
       <div class="mode">
         <div class="pic"><img src="shots/stable-ride.webp" alt=""></div>
         <div class="body">
-          <h3><img src="../assets/ui/icons/ride.webp" alt="">Monter et sauter</h3>
-          <p>On monte sa créature, elle se fatigue en route. Une carrière avec des obstacles et une boucle en forêt, avec des barrières qu'on saute.</p>
-          <p class="in">Dans : <b>Mon Centre Équestre, Nebula</b></p>
+          <h3><img src="../assets/ui/icons/ride.webp" alt="">Ride and jump</h3>
+          <p>Climb on your creature; it gets tired along the way. An arena with obstacles and a loop through the forest, with barriers to jump.</p>
+          <p class="in">In: <b>Mon Centre Équestre, Nebula</b></p>
         </div>
       </div>
       <div class="mode">
         <div class="pic"><img src="shots/nebula-missions.webp" alt="" style="object-position:center 60%"></div>
         <div class="body">
-          <h3><img src="../assets/ui/icons/crate.webp" alt="">Missions et poursuites</h3>
-          <p>Récupérer un colis puis le livrer, guidé par une flèche ; les missions risquées déclenchent une poursuite (police, drones). Se cacher au garage efface les recherches.</p>
-          <p class="in">Dans : <b>GTA 7, Nebula</b></p>
+          <h3><img src="../assets/ui/icons/crate.webp" alt="">Missions and chases</h3>
+          <p>Pick up a parcel then deliver it, guided by an arrow; risky missions trigger a chase (police, drones). Hiding at the garage clears your wanted level.</p>
+          <p class="in">In: <b>GTA 7, Nebula</b></p>
         </div>
       </div>
       <div class="mode">
         <div class="pic"><img src="shots/gta7-race.webp" alt="" style="object-position:center 70%"></div>
         <div class="body">
-          <h3><img src="../assets/ui/icons/flag.webp" alt="">La course</h3>
-          <p>Un mini-jeu en fausse 3D, vu de derrière : virages, obstacles, chrono. Le véhicule acheté change vraiment la vitesse et la tenue de route.</p>
-          <p class="in">Dans : <b>GTA 7, Nebula</b></p>
+          <h3><img src="../assets/ui/icons/flag.webp" alt="">The race</h3>
+          <p>A mini-game in fake 3D, seen from behind: bends, obstacles, a timer. The vehicle you bought really changes speed and grip.</p>
+          <p class="in">In: <b>GTA 7, Nebula</b></p>
         </div>
       </div>
       <div class="mode">
         <div class="pic"><img src="shots/nebula-shop.webp" alt="" style="object-position:center 40%"></div>
         <div class="body">
-          <h3><img src="../assets/ui/icons/shop.webp" alt="">Gérer et décorer</h3>
-          <p>Gagner des pièces, acheter dans une boutique, agrandir son centre, adopter, puis poser des décorations où l'on veut, en voyant l'aperçu à l'emplacement.</p>
-          <p class="in">Dans : <b>Mon Centre Équestre, GTA 7, Nebula</b></p>
+          <h3><img src="../assets/ui/icons/shop.webp" alt="">Manage and decorate</h3>
+          <p>Earn coins, buy in a shop, grow your place, adopt, then place decorations anywhere, with a live preview where they'll go.</p>
+          <p class="in">In: <b>Mon Centre Équestre, GTA 7, Nebula</b></p>
         </div>
       </div>
     </div>
@@ -530,91 +351,91 @@ creature: {
 <!-- ============ FEATURES ============ -->
 <section id="features" style="padding-top:20px">
   <div class="wrap">
-    <div class="eyebrow"><img src="../assets/ui/icons/sparkle.webp" alt="">Les fonctionnalités</div>
-    <h2>Tout ce que le moteur sait faire</h2>
-    <p class="lead">Chaque ligne est une option de la fiche : on l'active quand le jeu en a besoin.</p>
+    <div class="eyebrow"><img src="../assets/ui/icons/sparkle.webp" alt="">Features</div>
+    <h2>Everything the engine can do</h2>
+    <p class="lead">Each line is an option in the sheet: switch it on when the game needs it.</p>
 
     <div class="feats">
       <div class="feat">
-        <h3><img class="ico" src="../assets/ui/icons/home.webp" alt="">Monde et caméra</h3>
+        <h3><img class="ico" src="../assets/ui/icons/home.webp" alt="">World and camera</h3>
         <ul>
-          <li>Monde en tuiles vu de dessus, quartiers au sol</li>
-          <li>Caméra fluide, zoom adapté à chaque écran</li>
-          <li>Rendu net sur iPhone (haute résolution)</li>
-          <li>Ombres douces, particules d'ambiance, vignette</li>
-          <li>Jour et nuit, dormir pour passer au lendemain</li>
+          <li>Top-down tiled world, ground districts</li>
+          <li>Smooth camera, zoom fitted to every screen</li>
+          <li>Crisp on phones (high resolution)</li>
+          <li>Soft shadows, ambient particles, vignette</li>
+          <li>Day and night, sleep to move on to the next day</li>
         </ul>
       </div>
       <div class="feat">
-        <h3><img class="ico" src="../assets/ui/icons/avatar.webp" alt="">Personnages</h3>
+        <h3><img class="ico" src="../assets/ui/icons/avatar.webp" alt="">Characters</h3>
         <ul>
-          <li>Toucher pour aller quelque part (trouve son chemin)</li>
-          <li>Clavier, course en double-tap</li>
-          <li>Plusieurs personnages au choix, écran de création</li>
-          <li>Passagers visibles ou cachés (voitures)</li>
+          <li>Tap to go somewhere (finds its own way)</li>
+          <li>Keyboard, double-tap to run</li>
+          <li>Several characters to choose from, create screen</li>
+          <li>Visible or hidden riders (cars)</li>
         </ul>
       </div>
       <div class="feat">
-        <h3><img class="ico" src="../assets/ui/icons/critter.webp" alt="">Créatures</h3>
+        <h3><img class="ico" src="../assets/ui/icons/critter.webp" alt="">Creatures</h3>
         <ul>
-          <li>Besoins, humeur, actions avec effets et animations</li>
-          <li>Couleurs et races, renommer et relooker</li>
-          <li>Grandir, avoir des petits</li>
-          <li>Monture avec fatigue, sauts d'obstacles</li>
-          <li>Bulle « j'ai besoin de toi », départ une fois soigné</li>
+          <li>Needs, mood, actions with effects and animations</li>
+          <li>Colours and breeds, rename and restyle</li>
+          <li>Growing up, having babies</li>
+          <li>Mount with fatigue, jumping obstacles</li>
+          <li>“I need you” bubble, leaving once cared for</li>
         </ul>
       </div>
       <div class="feat">
-        <h3><img class="ico" src="../assets/ui/icons/shop.webp" alt="">Bâtiments et économie</h3>
+        <h3><img class="ico" src="../assets/ui/icons/shop.webp" alt="">Buildings and economy</h3>
         <ul>
-          <li>Bâtiments : dormir, boutique, menu, portail d'arrivée</li>
-          <li>Pièces, ressources, agrandissement</li>
-          <li>Décorations à acheter et placer</li>
-          <li>Modèles à acheter avec caractéristiques</li>
-          <li>Relooking payant (garage, salon)</li>
+          <li>Buildings: sleep, shop, menu, arrival portal</li>
+          <li>Coins, resources, expansion</li>
+          <li>Decorations to buy and place</li>
+          <li>Models to buy, with stats</li>
+          <li>Paid restyle (garage, salon)</li>
         </ul>
       </div>
       <div class="feat">
-        <h3><img class="ico" src="../assets/ui/icons/speed.webp" alt="">Véhicules et ville</h3>
+        <h3><img class="ico" src="../assets/ui/icons/speed.webp" alt="">Vehicles and city</h3>
         <ul>
-          <li>Véhicules vus de dessus, orientés dans 4 directions</li>
-          <li>Missions en deux étapes, flèche de guidage</li>
-          <li>Niveau de recherche et poursuivants</li>
-          <li>Course pseudo-3D avec chrono</li>
+          <li>Top-down vehicles facing 4 directions</li>
+          <li>Two-step missions, guide arrow</li>
+          <li>Wanted level and pursuers</li>
+          <li>Pseudo-3D race with timer</li>
         </ul>
       </div>
       <div class="feat">
         <h3><img class="ico" src="../assets/ui/icons/trophy.webp" alt="">Progression</h3>
         <ul>
-          <li>Objectifs et niveaux</li>
-          <li>Déblocages : le décor s'enrichit en avançant</li>
-          <li>Flèche-guide pour les petits</li>
-          <li>Confettis, récompenses qui volent, zooms</li>
+          <li>Goals and levels</li>
+          <li>Unlocks: the scenery grows as you progress</li>
+          <li>Guide arrow for little ones</li>
+          <li>Confetti, flying rewards, zooms</li>
         </ul>
       </div>
       <div class="feat">
-        <h3><img class="ico" src="../assets/ui/icons/sound.webp" alt="">Son</h3>
+        <h3><img class="ico" src="../assets/ui/icons/sound.webp" alt="">Sound</h3>
         <ul>
-          <li>Effets sonores et musique générés en direct</li>
-          <li>Aucun fichier audio à fournir</li>
-          <li>Bouton muet, compatible iPhone</li>
+          <li>Sound effects and music generated live</li>
+          <li>No audio files to provide</li>
+          <li>Mute button, iPhone-friendly</li>
         </ul>
       </div>
       <div class="feat">
-        <h3><img class="ico" src="../assets/ui/icons/lock.webp" alt="">Sauvegarde</h3>
+        <h3><img class="ico" src="../assets/ui/icons/lock.webp" alt="">Saving</h3>
         <ul>
-          <li>Sauvegarde automatique sur l'appareil</li>
-          <li>Anciennes parties toujours lisibles</li>
-          <li>Reprise d'une sauvegarde d'un ancien jeu</li>
+          <li>Automatic save on the device</li>
+          <li>Old saves always readable</li>
+          <li>Import a save from an older version of the game</li>
         </ul>
       </div>
       <div class="feat">
-        <h3><img class="ico" src="../assets/ui/icons/pad.webp" alt="">Mobile et appli</h3>
+        <h3><img class="ico" src="../assets/ui/icons/pad.webp" alt="">Mobile and app</h3>
         <ul>
-          <li>Installable sur l'écran d'accueil (iPhone, Android)</li>
-          <li>Plein écran, encoches et barres gérées</li>
-          <li>Fonctionne hors-ligne, sans serveur</li>
-          <li>Icônes illustrées partout, aucun emoji</li>
+          <li>Installable on the home screen (iPhone, Android)</li>
+          <li>Full screen, notches and bars handled</li>
+          <li>Works offline, no server</li>
+          <li>Illustrated icons everywhere, no emoji</li>
         </ul>
       </div>
     </div>
@@ -624,74 +445,74 @@ creature: {
 <!-- ============ SKILLS ============ -->
 <section class="skills" id="skills">
   <div class="wrap">
-    <div class="eyebrow"><img src="../assets/ui/icons/keeper.webp" alt="">Sous le capot de l'agent</div>
-    <h2>16 skills : le savoir-faire de l'agent</h2>
-    <p class="lead">Les skills sont des recettes que l'agent Claude Code suit pour chaque type de demande. On ne les appelle presque jamais soi-même : on décrit ce qu'on veut et l'agent enchaîne les bonnes.</p>
+    <div class="eyebrow"><img src="../assets/ui/icons/keeper.webp" alt="">Under the agent's hood</div>
+    <h2>16 skills: the agent's know-how</h2>
+    <p class="lead">Skills are recipes the Claude Code agent follows for each kind of request. You almost never call them yourself: describe what you want and the agent chains the right ones.</p>
 
     <div class="sk">
       <div class="skg">
-        <h3>Chefs d'orchestre</h3>
+        <h3>Orchestrators</h3>
         <dl>
-          <dt>new-game</dt><dd>Crée un nouveau jeu à partir de quelques questions.</dd>
-          <dt>feedback-session</dt><dd>Mode « retours » sans aucune question technique, pour un enfant ou un client.</dd>
+          <dt>new-game</dt><dd>Creates a new game from a few questions.</dd>
+          <dt>feedback-session</dt><dd>“Feedback” mode with no technical questions, for a child or a client.</dd>
         </dl>
       </div>
       <div class="skg">
-        <h3>Contenu</h3>
+        <h3>Content</h3>
         <dl>
-          <dt>add-character</dt><dd>Un nouveau personnage jouable.</dd>
-          <dt>add-creature-variant</dt><dd>Une nouvelle couleur ou race.</dd>
-          <dt>add-decor-item</dt><dd>Une décoration à acheter et placer.</dd>
-          <dt>add-collision · place-scatter</dt><dd>Obstacles, sauts, forêt et chemins.</dd>
-          <dt>asset-search · asset-add</dt><dd>Trouver des images adaptées à l'âge et à la licence.</dd>
-          <dt>state-migration</dt><dd>Faire évoluer la sauvegarde sans casser les parties.</dd>
+          <dt>add-character</dt><dd>A new playable character.</dd>
+          <dt>add-creature-variant</dt><dd>A new colour or breed.</dd>
+          <dt>add-decor-item</dt><dd>A decoration to buy and place.</dd>
+          <dt>add-collision · place-scatter</dt><dd>Obstacles, jumps, forest and paths.</dd>
+          <dt>asset-search · asset-add</dt><dd>Find images suited to the age and the licence.</dd>
+          <dt>state-migration</dt><dd>Evolve the save without breaking games in progress.</dd>
         </dl>
       </div>
       <div class="skg">
-        <h3>Qualité</h3>
+        <h3>Quality</h3>
         <dl>
-          <dt>test-debug</dt><dd>Reproduire, corriger et prouver chaque bug.</dd>
-          <dt>visual-review</dt><dd>Inspecter les dessins et les écrans en taille réelle.</dd>
-          <dt>map-verify</dt><dd>Vérifier que chaque élément est bien placé et qu'on circule.</dd>
-          <dt>ios-pwa-check</dt><dd>Garder un affichage parfait sur iPhone.</dd>
+          <dt>test-debug</dt><dd>Reproduce, fix and prove every bug.</dd>
+          <dt>visual-review</dt><dd>Inspect the art and the screens at full size.</dd>
+          <dt>map-verify</dt><dd>Check each element is well placed and the way is clear.</dd>
+          <dt>ios-pwa-check</dt><dd>Keep a perfect layout on iPhone.</dd>
         </dl>
       </div>
       <div class="skg">
-        <h3>Publication et mémoire</h3>
+        <h3>Publishing and memory</h3>
         <dl>
-          <dt>release-deploy</dt><dd>Mettre en ligne et vérifier la publication.</dd>
-          <dt>capitalize-learnings</dt><dd>Après chaque changement : ranger ce qu'on a appris dans le moteur, les skills et la doc.</dd>
-          <dt>sync-engine</dt><dd>Remonter les améliorations d'un jeu vers le modèle.</dd>
+          <dt>release-deploy</dt><dd>Put it online and check the release.</dd>
+          <dt>capitalize-learnings</dt><dd>After every change: fold what was learned into the engine, the skills and the docs.</dd>
+          <dt>sync-engine</dt><dd>Bring a game's improvements back into the template.</dd>
         </dl>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ QUALITÉ ============ -->
-<section id="qualite">
+<!-- ============ QUALITY ============ -->
+<section id="quality">
   <div class="wrap">
-    <div class="eyebrow"><img src="../assets/ui/icons/check.webp" alt="">Exigence</div>
-    <h2>Un rendu de studio, vérifié à chaque version</h2>
-    <p class="lead">L'objectif n'est pas un prototype : chaque version passe une batterie de vérifications automatiques avant d'être publiée.</p>
+    <div class="eyebrow"><img src="../assets/ui/icons/check.webp" alt="">Standards</div>
+    <h2>Studio-grade, checked on every release</h2>
+    <p class="lead">The goal isn't a prototype: every release goes through a battery of automated checks before it is published.</p>
     <div class="qual">
-      <div class="q"><img class="ico" src="../assets/ui/icons/pad.webp" alt=""><div><h3>Testé comme sur un vrai iPhone</h3><p>Le jeu est piloté par un robot dans le moteur de Safari, sur un grand et un petit écran, dans l'onglet comme en appli installée.</p></div></div>
-      <div class="q"><img class="ico" src="../assets/ui/icons/palette.webp" alt=""><div><h3>Dessins inspectés en taille réelle</h3><p>Anatomie, contours, rien de coupé, jamais flou : les images sont produites au double de leur taille d'affichage.</p></div></div>
-      <div class="q"><img class="ico" src="../assets/ui/icons/timer.webp" alt=""><div><h3>Animations jugées image par image</h3><p>Les entrées et transitions sont filmées et regardées en pellicule, pas sur une simple capture.</p></div></div>
-      <div class="q"><img class="ico" src="../assets/ui/icons/refresh.webp" alt=""><div><h3>Un défaut trouvé = un contrôle de plus</h3><p>Quand un problème passe entre les mailles, l'agent corrige le jeu et renforce aussi ses outils de vérification.</p></div></div>
+      <div class="q"><img class="ico" src="../assets/ui/icons/pad.webp" alt=""><div><h3>Tested as on a real iPhone</h3><p>A robot plays the game in Safari's engine, on a tall and a short screen, in the browser tab as well as the installed app.</p></div></div>
+      <div class="q"><img class="ico" src="../assets/ui/icons/palette.webp" alt=""><div><h3>Art inspected at full size</h3><p>Anatomy, outlines, nothing clipped, never blurry: images are rendered at twice their display size.</p></div></div>
+      <div class="q"><img class="ico" src="../assets/ui/icons/timer.webp" alt=""><div><h3>Animations judged frame by frame</h3><p>Entrances and transitions are filmed and reviewed as a filmstrip, not from a single screenshot.</p></div></div>
+      <div class="q"><img class="ico" src="../assets/ui/icons/refresh.webp" alt=""><div><h3>A defect found = one more check</h3><p>When a problem slips through, the agent fixes the game and strengthens its own checking tools too.</p></div></div>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <h2>Envie de créer le vôtre ?</h2>
-    <p>Partez du modèle, lancez un agent, répondez à quelques questions.</p>
+    <h2>Want to make your own?</h2>
+    <p>Start from the template, launch an agent, answer a few questions.</p>
     <div class="cta">
-      <a class="btn" href="https://github.com/jlrigau/game-engine"><img src="../assets/ui/icons/egg.webp" alt="">Utiliser le modèle</a>
-      <a class="btn ghost" href="https://jlrigau.github.io/game-engine/"><img src="../assets/ui/icons/play.webp" alt="">Essayer la démo</a>
+      <a class="btn" href="https://github.com/jlrigau/game-engine"><img src="../assets/ui/icons/egg.webp" alt="">Use the template</a>
+      <a class="btn ghost" href="https://jlrigau.github.io/game-engine/"><img src="../assets/ui/icons/play.webp" alt="">Try the demo</a>
     </div>
-    <small>Moteur sur Phaser 3 · 100 % statique · Illustrations générées en vectoriel · Développé avec Claude Code</small>
+    <small>Engine built on Phaser 3 · 100% static · Vector-generated artwork · Built with Claude Code</small>
   </div>
 </footer>
 
