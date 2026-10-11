@@ -137,8 +137,8 @@ function robot(dir, phase, moving, pal, u, opt) {
   if (seated && side) g += leg(0, 0, B);
   // head
   if (backSeat) {   // race rear view: a short straight nub (never reads as a 3rd ball next to the mount's two)
-    g += `<path d="M68 21 L75 16" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M68 21 L75 16" fill="none" stroke="${A}" stroke-width="2" stroke-linecap="round"/>`;
-    g += `<circle cx="76" cy="15" r="4.5" fill="${A}" stroke="${INK}" stroke-width="2.5"/>`;
+    g += `<path d="M68 22 L75 19" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M68 22 L75 19" fill="none" stroke="${A}" stroke-width="2" stroke-linecap="round"/>`;
+    g += `<circle cx="77" cy="18" r="4" fill="${A}" stroke="${INK}" stroke-width="2.5"/>`;
   } else {
     g += `<line x1="64" y1="22" x2="64" y2="9" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>`;
     g += `<circle cx="64" cy="8" r="6.5" fill="${A}" stroke="${INK}" stroke-width="2.5" filter="url(#${u}gl)"/>`;
@@ -569,11 +569,12 @@ function critterBack(v) {
   // soft back shading (lower half) + rim light — no spots (they read as a face from behind)
   g += `<path d="M${cx - rx + 8} ${cy + 14} Q${cx} ${cy + 44} ${cx + rx - 8} ${cy + 14} Q${cx + rx - 14} ${cy + ry - 6} ${cx} ${cy + ry - 3} Q${cx - rx + 14} ${cy + ry - 6} ${cx - rx + 8} ${cy + 14} Z" fill="${c}" opacity=".3"/>`;
   g += `<path d="M44 108 Q44 86 54 72" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"/>`;
-  // two rear ENGINES (nozzle + a short downward flame in the variant tint) — glowing discs read as eyes
-  [80, 120].forEach((x) => {
-    g += `<path d="M${x - 5} 147 Q${x - 6} 154 ${x} 159 Q${x + 6} 154 ${x + 5} 147 Z" fill="${mix(c, "#fff3b0", 0.45)}" opacity=".9" filter="url(#${u}gl)"/>`;
-    g += `<circle cx="${x}" cy="150" r="3.5" fill="#fff6c8" opacity=".7"/>`;
-    g += `<rect x="${x - 7}" y="140" width="14" height="8" rx="3.5" fill="#1b1f4a" ${stk(2.5)}/><rect x="${x - 4}" y="142.5" width="8" height="3" rx="1.5" fill="${shade(c, -0.2)}" opacity=".8"/>`;
+  // two rear ENGINES tucked under the belly edge (nozzle in a dark body tone + a short flame BELOW the
+  // silhouette): placed higher on the back face, glowing discs / dark slits read as eyes
+  [82, 118].forEach((x) => {
+    g += `<path d="M${x - 4.5} 156 Q${x - 5} 160 ${x} 164 Q${x + 5} 160 ${x + 4.5} 156 Z" fill="${mix(c, "#fff3b0", 0.45)}" opacity=".9" filter="url(#${u}gl)"/>`;
+    g += `<circle cx="${x}" cy="159" r="3.5" fill="#fff6c8" opacity=".7"/>`;
+    g += `<rect x="${x - 6.5}" y="150" width="13" height="7" rx="3" fill="${shade(bodyD, -0.35)}" ${stk(2.5)}/>`;
   });
   return job(`assets/img/critter_back_${v}.png`, W, H, g, defs);
 }
@@ -955,7 +956,7 @@ function drone(dir, blink, u, o) {
     g += `<rect x="40" y="50" width="48" height="26" rx="13" fill="url(#${u}v)" stroke="${INK}" stroke-width="${sw * 0.85}"/>`;
     g += `<circle cx="64" cy="63" r="9.5" fill="url(#${u}e)" filter="url(#${u}gl)"/><circle cx="67" cy="60" r="3" fill="#fff"/>`;
     if (o.police) {   // pursuer: a flat determined lid (angled down toward the centre) + a small straight mouth
-      g += `<path d="M51 51 L64 55 L77 51 L77 49 L51 49 Z" fill="#1b1f4a"/><path d="M51 53 L64 56.5 L77 53" fill="none" stroke="#7a62d6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      g += `<path d="M50 55 L64 59 L78 55 L78 51 L50 51 Z" fill="#1b1f4a"/><path d="M50 56 L64 60 L78 56" fill="none" stroke="#7a62d6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
       g += `<path d="M58 82 H70" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
     } else {
       g += `<path d="M52 54 Q64 50 76 56" fill="none" stroke="#7a62d6" stroke-width="3" stroke-linecap="round"/>`;   // cheeky raised lid
@@ -998,6 +999,36 @@ function droneSheet() {
   return job("assets/sheet/drone.png", 256, 512, sheet(frames, 128, 128, 2), defs);
 }
 
+// Comet Race START gate (race overlay, seen from behind/above, spans the road): two glowing pylons at the
+// edges + a holographic chequered band across the top; the middle/bottom stay transparent. 400x220.
+function startGate() {
+  const W = 400, H = 220, u = "sg";
+  const defs = lin(`${u}p`, [[0, "#6c79c2"], [0.5, "#3a4790"], [1, "#222a66"]], 0, 0, 1, 0) + lin(`${u}b`, [[0, "#ff5db1", 0.35], [0.5, "#a97bff", 0.28], [1, "#3fe0e8", 0.35]], 0, 0, 1, 0) +
+    rad(`${u}h`, [[0, "#3fe0e8", 0.5], [1, "#3fe0e8", 0]]) + rad(`${u}k`, [[0, "#ff5db1", 0.5], [1, "#ff5db1", 0]]) + glow(`${u}gl`, 3) + blur(`${u}bl`, 4);
+  let g = "";
+  // pylons (base on y 215), glowing strip + caps
+  [[26, "#3fe0e8", `${u}h`], [374, "#ff5db1", `${u}k`]].forEach(([x, c, halo]) => {
+    g += `<ellipse cx="${x}" cy="213" rx="16" ry="4" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
+    g += `<ellipse cx="${x}" cy="120" rx="22" ry="100" fill="url(#${halo})"/>`;
+    g += `<path d="M${x - 10} 215 L${x - 8} 30 Q${x} 22 ${x + 8} 30 L${x + 10} 215 Z" fill="url(#${u}p)" ${stk(3.5)}/>`;
+    g += `<path d="M${x} 40 V205" stroke="${c}" stroke-width="4" stroke-linecap="round" filter="url(#${u}gl)"/>`;
+    g += `<rect x="${x - 14}" y="203" width="28" height="12" rx="4" fill="#2c3577" ${stk(3)}/>`;
+    g += `<circle cx="${x}" cy="24" r="8" fill="${c}" ${stk(3)} filter="url(#${u}gl)"/><circle cx="${x - 2.5}" cy="21.5" r="2.5" fill="#fff" opacity=".9"/>`;
+  });
+  // holographic band (y 15..60): translucent glow, chequered light strip, edge rails, orbiting lights
+  const x0 = 34, x1 = 366, y0 = 18, y1 = 58;
+  g += `<rect x="${x0}" y="${y0 - 3}" width="${x1 - x0}" height="${y1 - y0 + 6}" rx="8" fill="url(#${u}b)" filter="url(#${u}bl)"/>`;
+  g += `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="6" fill="#1b1f4a" opacity=".55"/>`;
+  const n = 26, cw = (x1 - x0 - 16) / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) if ((i + j) % 2 === 0)
+    g += `<rect x="${(x0 + 8 + i * cw).toFixed(1)}" y="${30 + j * 8}" width="${cw.toFixed(1)}" height="8" fill="#ffffff" opacity=".85"/>`;
+  g += `<rect x="${x0 + 8}" y="30" width="${x1 - x0 - 16}" height="16" fill="none" stroke="#ffffff" stroke-width="1.5" opacity=".6"/>`;
+  [[y0, "#ff5db1"], [y1, "#3fe0e8"]].forEach(([y, c]) => { g += `<path d="M${x0} ${y} H${x1}" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M${x0} ${y} H${x1}" stroke="${c}" stroke-width="3" stroke-linecap="round" filter="url(#${u}gl)"/>`; });
+  for (let i = 0; i < 9; i++) { const x = x0 + 18 + i * ((x1 - x0 - 36) / 8), y = i % 2 ? y0 - 1 : y1 + 1, c = i % 2 ? "#ff8fd0" : "#9ff7ff";
+    g += `<circle cx="${x.toFixed(1)}" cy="${y}" r="3.5" fill="${c}" filter="url(#${u}gl)"/><circle cx="${x.toFixed(1)}" cy="${y}" r="1.4" fill="#fff"/>`; }
+  [[60, 24], [200, 52], [340, 22]].forEach(([x, y], i) => { g += `<path d="${star(x, y, 6 - i % 2, 2.2, 4)}" fill="#fff6c8" filter="url(#${u}gl)"/>`; });
+  return job("assets/img/start_gate.png", W, H, g, defs);
+}
 /* ---------------- 8. Race props (upright billboards) ---------------- */
 function asteroid() {
   const W = 140, H = 120, u = "as";
@@ -1434,7 +1465,7 @@ function build(jobs) {
   Object.entries(KEEPERS).forEach(([n, p]) => jobs.push(keeperSheet(n, p), keeperThumb(n, p), keeperRide(n, p)));
   jobs.push(arenaFloor(), spire(), beamV(), cometRock(),
     market(), salon(), dock(), hatchery(), energyPad(), portal(),
-    crateMarker(), target(), droneSheet(), droneBack(), droneFront(), asteroid(), beacon(), ...gameIcons());
+    crateMarker(), target(), droneSheet(), droneBack(), droneFront(), startGate(), asteroid(), beacon(), ...gameIcons());
   jobs.push(voidTile(), roadTile(), plazaTile(), walkwayTile(), rimTile(),
     bollard(), rock(), container(), neonSign(), antenna(), shuttle(), landingPad());
   jobs.push(ground(), penFloor(600, 470), fence(), pod(),
