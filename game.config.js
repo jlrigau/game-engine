@@ -144,7 +144,7 @@ window.GAME = {
       critter_back_aqua: { path: "assets/img/critter_back_aqua.webp", res: 2 }, critter_back_lime: { path: "assets/img/critter_back_lime.webp", res: 2 },
       critter_back_violet: { path: "assets/img/critter_back_violet.webp", res: 2 },
       // race: the keeper robot seen from behind, drawn over the critter (character.raceRider)
-      drone_back: { path: "assets/img/drone_back.webp", res: 2 },   // the Escape pursuer (race.chase)
+      drone_back: { path: "assets/img/drone_back.webp", res: 2 }, drone_front: { path: "assets/img/drone_front.webp", res: 2 },   // the Escape pursuer (race.chase)
       rider_back_aqua: { path: "assets/img/rider_back_aqua.webp", res: 2 }, rider_back_amber: { path: "assets/img/rider_back_amber.webp", res: 2 },
       dust: "assets/img/dust.webp", dust_b: "assets/img/dust_b.webp", cloth: "assets/img/cloth.webp",
       want_dust: { path: "assets/img/want_dust.webp", res: 2 },
@@ -324,7 +324,7 @@ window.GAME = {
     horizon: 0.42,                           // tall phones: more road, less empty sky
     // CHASE variant ("Escape"): a security drone starts behind and closes in; obstacles slow you, it catches up
     chase: {
-      name: "the drone", sprite: "drone_back", scale: 5.5, icon: "drone",
+      name: "the drone", sprite: "drone_back", front: "drone_front", scale: 5.5, icon: "drone",
       startGap: 28, skill: [0.9, 1.05], catchGap: 0.8,
       reward: 35, caughtReward: 3, stat: "chaseEscape",
       startMessage: "{i:drone} A security drone is after you! Reach the finish before it catches you!",
@@ -351,7 +351,7 @@ window.GAME = {
       bumpMessage: "Bump! You hit {name}.",
       goLabel: "GO!",
     },
-    colors: { sky: ["#0b1029", "#2a1d6e", "#7a3fc0"], sun: ["#ffd6ef", "#ff5db1"], sunPos: { x: 0.78, y: 0.55, r: 0.07 }, skyline: false, ground: "#0e1430",
+    colors: { sky: ["#0b1029", "#2a1d6e", "#7a3fc0"], sun: ["#ffd6ef", "#ff5db1"], sunPos: { x: 0.78, y: 0.55, r: 0.07 }, stars: { count: 110, color: "#e9f3ff" }, skyline: false, ground: "#0e1430",
               grass: ["#18214a", "#141c43"], road: ["#2e3b78", "#283470"], rumble: ["#3fe0e8", "#ff5db1"], lane: "#bff6ff", finish: ["#ffffff", "#1d2147"] },
     icons: { time: "timer", distance: "distance", speed: "speed", quit: "quit", left: "left", right: "right", place: "flag" },
     quitLabel: "Quit", hint: "Tap left or right to steer",
