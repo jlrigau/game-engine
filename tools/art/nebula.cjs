@@ -303,7 +303,8 @@ function skyDefs() {
 // its glow halo, 112 local px wide, fills the middle ~55% of the width).
 const CLOSEUP = {
   tall: (() => { const W = 900, H = 1300, s = 7.2; return { W, H, s, tx: W / 2 - 64 * s, ty: H * 0.56 - 66 * s }; })(),
-  wide: (() => { const W = 1600, H = 900, s = 7.8; return { W, H, s, tx: W / 2 - 64 * s, ty: H / 2 - 56.9 * s }; })(),
+  // wide: fits between y 0.17 (antenna balls, below the progress bar of a 2.16:1 phone) and 0.88 (feet)
+  wide: (() => { const W = 1600, H = 900, s = 5.9; return { W, H, s, tx: W / 2 - 64 * s, ty: H * 0.525 - 56.875 * s }; })(),
 };
 // The polish spot areas of the PORTRAIT backdrop (copy of game.config.js, action "polish",
 // closeup.spots.area): left cheek, right cheek, forehead, chin — around the big eye.
@@ -359,7 +360,7 @@ function closeup(v, done, wide) {
   const r = critter({ c, uid: "z", eye: done ? "happy" : "open", look: 0 });
   let g = starfield(W, H, 11, wide ? 230 : 160);
   if (wide) g += stationWings(W, H);
-  const gcx = tx + 64 * s, gcy = ty + 56.9 * s;   // wide: glow on the critter centre
+  const gcx = tx + 64 * s, gcy = ty + 56.875 * s;   // wide: glow on the critter centre
   if (done) g += `<circle cx="${gcx}" cy="${wide ? gcy : H * 0.55}" r="${wide ? H * 0.6 : W * 0.62}" fill="url(#doneglow)"/>`;
   g += `<g transform="translate(${tx} ${ty}) scale(${s})">${r.body}</g>`;
   const sparkles = wide ? [[0.3, 0.2], [0.7, 0.18], [0.27, 0.74], [0.73, 0.76], [0.5, 0.06], [0.12, 0.5], [0.88, 0.48]]
