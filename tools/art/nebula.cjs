@@ -284,30 +284,89 @@ function fountain() {
 }
 
 /* ---------------- Close-up: a big critter face on a starfield ---------------- */
-function starfield(W, H, seed) {
+function starfield(W, H, seed, n = 160) {
   const R = rng(seed);
   let g = `<rect width="${W}" height="${H}" fill="url(#sky)"/>`;
   g += `<ellipse cx="${W * 0.2}" cy="${H * 0.18}" rx="${W * 0.5}" ry="${H * 0.2}" fill="url(#neb1)"/>`;
   g += `<ellipse cx="${W * 0.85}" cy="${H * 0.85}" rx="${W * 0.55}" ry="${H * 0.22}" fill="url(#neb2)"/>`;
-  for (let i = 0; i < 160; i++) { const x = R() * W, y = R() * H, r = R() * 2.2 + 0.4; g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#fff" opacity="${(0.3 + R() * 0.7).toFixed(2)}"/>`; }
-  for (let i = 0; i < 10; i++) { const x = R() * W, y = R() * H; g += `<path d="${star(x, y, 9 + R() * 6, 2.5, 4)}" fill="#fff" opacity=".85"/>`; }
+  for (let i = 0; i < n; i++) { const x = R() * W, y = R() * H, r = R() * 2.2 + 0.4; g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#fff" opacity="${(0.3 + R() * 0.7).toFixed(2)}"/>`; }
+  for (let i = 0; i < Math.round(n / 16); i++) { const x = R() * W, y = R() * H; g += `<path d="${star(x, y, 9 + R() * 6, 2.5, 4)}" fill="#fff" opacity=".85"/>`; }
   return g;
 }
 function skyDefs() {
   return lin("sky", [[0, "#1b1150"], [0.5, "#121a48"], [1, "#0b1029"]]) +
     rad("neb1", [[0, "#7a3fc0", 0.55], [1, "#7a3fc0", 0]]) + rad("neb2", [[0, "#1f8fb0", 0.5], [1, "#1f8fb0", 0]]);
 }
-function closeup(v, done) {
-  const W = 900, H = 1300, c = VARIANTS[v];
+// Close-up geometry: where the 128-px critter() is drawn (scale s, translate tx/ty) in each backdrop.
+// Portrait 900x1300 (the original); WIDE 1600x900 for landscape phones: the same face, centred,
+// as big as the height allows without clipping (solid art spans local y 3..111, x 22..106;
+// its glow halo, 112 local px wide, fills the middle ~55% of the width).
+const CLOSEUP = {
+  tall: (() => { const W = 900, H = 1300, s = 7.2; return { W, H, s, tx: W / 2 - 64 * s, ty: H * 0.56 - 66 * s }; })(),
+  wide: (() => { const W = 1600, H = 900, s = 7.8; return { W, H, s, tx: W / 2 - 64 * s, ty: H / 2 - 56.9 * s }; })(),
+};
+// The polish spot areas of the PORTRAIT backdrop (copy of game.config.js, action "polish",
+// closeup.spots.area): left cheek, right cheek, forehead, chin — around the big eye.
+const TALL_AREAS = [{ x: 0.25, y: 0.45, w: 0.1, h: 0.2 }, { x: 0.65, y: 0.45, w: 0.1, h: 0.2 },
+  { x: 0.40, y: 0.385, w: 0.2, h: 0.02 }, { x: 0.40, y: 0.70, w: 0.2, h: 0.03 }];
+// The same 4 areas (same order) as fractions of the WIDE backdrop → closeup.wide.area.
+function wideAreas() {
+  const T = CLOSEUP.tall, Wd = CLOSEUP.wide, r4 = (n) => Math.round(n * 10000) / 10000;
+  return TALL_AREAS.map((a) => {
+    const lx = (a.x * T.W - T.tx) / T.s, ly = (a.y * T.H - T.ty) / T.s;   // portrait fraction -> critter-local px
+    return { x: r4((Wd.tx + lx * Wd.s) / Wd.W), y: r4((Wd.ty + ly * Wd.s) / Wd.H),
+      w: r4(a.w * T.W / T.s * Wd.s / Wd.W), h: r4(a.h * T.H / T.s * Wd.s / Wd.H) };
+  });
+}
+// Station details for the wide backdrop's side wings (kept outside the critter's middle band):
+// a ringed planet + a distant ring station in the sky, and two curved deck rims with lights.
+function stationWings(W, H) {
+  let g = "";
+  // ringed planet, top-left: back half of the ring, planet, then the front half over it
+  const ringArc = (front) => `<path d="M80 215 A150 34 0 0 ${front ? 0 : 1} 380 215" fill="none" stroke="${INK}" stroke-width="15" opacity="${front ? 0.9 : 0.6}"/><path d="M80 215 A150 34 0 0 ${front ? 0 : 1} 380 215" fill="none" stroke="#d9c4ff" stroke-width="8" opacity="${front ? 0.95 : 0.6}"/>`;
+  g += `<g transform="rotate(-16 230 215)">${ringArc(false)}</g>`;
+  g += `<circle cx="230" cy="215" r="74" fill="url(#wplanet)" stroke="${INK}" stroke-width="5"/>`;
+  g += `<path d="M168 196 Q230 176 292 200" fill="none" stroke="#ffffff" stroke-width="6" opacity=".18"/><path d="M164 236 Q230 222 296 240" fill="none" stroke="${INK}" stroke-width="5" opacity=".18"/>`;
+  g += `<circle cx="196" cy="186" r="14" fill="#ffffff" opacity=".35"/>`;
+  g += `<g transform="rotate(-16 230 215)">${ringArc(true)}</g>`;
+  // distant ring station, top-right: hub on a spoke, the ring's front half passes in front of it
+  const sArc = (front, col, w) => `<path d="M-96 0 A96 30 0 0 ${front ? 0 : 1} 96 0" fill="none" stroke="${col}" stroke-width="${w}"/>`;
+  g += `<g transform="translate(1390 190)">${sArc(false, INK, 15)}${sArc(false, "#6f7fd0", 8)}`;
+  g += `<rect x="-7" y="-30" width="14" height="60" rx="5" fill="#5a67a8" stroke="${INK}" stroke-width="4"/>`;
+  g += `<circle r="20" fill="url(#wpm)" stroke="${INK}" stroke-width="4.5"/>`;
+  g += `${sArc(true, INK, 15)}${sArc(true, "#6f7fd0", 8)}`;
+  [-70, -35, 35, 70].forEach((x) => { g += `<circle cx="${x}" cy="${Math.sqrt(1 - (x / 96) ** 2) * 30}" r="4.5" fill="#3fe0e8" filter="url(#wlg)"/>`; });
+  g += `<circle cx="0" cy="-36" r="5" fill="#ff8fd0" filter="url(#wlg)"/></g>`;
+  // curved deck rims rising from the bottom corners (mirrored), with panel seams and lights
+  const rim = (m) => {
+    const X = (x) => (m ? W - x : x), d = `M${X(-12)} ${H * 0.62 - 3} Q${X(190)} ${H * 0.7} ${X(434)} ${H + 12} L${X(-12)} ${H + 12} Z`;
+    let r = `<path d="${d}" fill="url(#wdeck)" stroke="${INK}" stroke-width="6" stroke-linejoin="round"/>`;
+    r += `<path d="M${X(0)} ${H * 0.62 + 26} Q${X(176)} ${H * 0.7 + 24} ${X(398)} ${H}" fill="none" stroke="#3fe0e8" stroke-width="5" opacity=".8" filter="url(#wlg)"/>`;
+    [[60, 0.72], [150, 0.8], [240, 0.9]].forEach(([x, y]) => { r += `<path d="M${X(x)} ${H * y} L${X(x - 40)} ${H}" stroke="${INK}" stroke-width="3" opacity=".45"/>`; });
+    [[34, 0.68], [126, 0.74], [214, 0.82], [296, 0.93]].forEach(([x, y], i) => { r += `<circle cx="${X(x)}" cy="${H * y + 4}" r="${i % 2 ? 6 : 7.5}" fill="${i % 2 ? "#ff8fd0" : "#ffd24a"}" stroke="${INK}" stroke-width="2.5" filter="url(#wlg)"/>`; });
+    return r;
+  };
+  g += rim(false) + rim(true);
+  return g;
+}
+function stationWingDefs() {
+  return rad("wplanet", [[0, "#ffc4e6"], [0.55, "#c27ad9"], [1, "#5b3a9e"]], 0.38, 0.32, 0.8) +
+    rad("wpm", [[0, "#ffffff"], [0.6, "#a9b6ff"], [1, "#5a67a8"]], 0.4, 0.35, 0.7) +
+    lin("wdeck", [[0, "#4a58a8"], [1, "#1f275e"]]) + glow("wlg", 4);
+}
+function closeup(v, done, wide) {
+  const G = wide ? CLOSEUP.wide : CLOSEUP.tall, { W, H, s, tx, ty } = G, c = VARIANTS[v];
   const r = critter({ c, uid: "z", eye: done ? "happy" : "open", look: 0 });
-  // draw the 128-px critter scaled up ×7 around the screen centre
-  const s = 7.2, tx = W / 2 - 64 * s, ty = H * 0.56 - 66 * s;
-  let g = starfield(W, H, 11);
-  if (done) g += `<circle cx="${W / 2}" cy="${H * 0.55}" r="${W * 0.62}" fill="url(#doneglow)"/>`;
+  let g = starfield(W, H, 11, wide ? 230 : 160);
+  if (wide) g += stationWings(W, H);
+  const gcx = tx + 64 * s, gcy = ty + 56.9 * s;   // wide: glow on the critter centre
+  if (done) g += `<circle cx="${gcx}" cy="${wide ? gcy : H * 0.55}" r="${wide ? H * 0.6 : W * 0.62}" fill="url(#doneglow)"/>`;
   g += `<g transform="translate(${tx} ${ty}) scale(${s})">${r.body}</g>`;
-  if (done) [[0.2, 0.3], [0.8, 0.26], [0.16, 0.7], [0.84, 0.72], [0.5, 0.12]].forEach(([a, b], i) => { g += `<path d="${star(W * a, H * b, 34 - i * 3, 11, 4)}" fill="#fff6c8" filter="url(#sg)"/>`; });
-  const defs = skyDefs() + r.defs + glow("sg", 6) + rad("doneglow", [[0, c, 0.5], [1, c, 0]]);
-  return job(`assets/img/critter_closeup_${v}${done ? "_done" : ""}.png`, W, H, g, defs);
+  const sparkles = wide ? [[0.3, 0.2], [0.7, 0.18], [0.27, 0.74], [0.73, 0.76], [0.5, 0.06], [0.12, 0.5], [0.88, 0.48]]
+    : [[0.2, 0.3], [0.8, 0.26], [0.16, 0.7], [0.84, 0.72], [0.5, 0.12]];
+  if (done) sparkles.forEach(([a, b], i) => { g += `<path d="${star(W * a, H * b, 34 - (i % 5) * 3, 11, 4)}" fill="#fff6c8" filter="url(#sg)"/>`; });
+  const defs = skyDefs() + r.defs + glow("sg", 6) + rad("doneglow", [[0, c, 0.5], [1, c, 0]]) + (wide ? stationWingDefs() : "");
+  return job(`assets/img/critter_closeup_${v}${wide ? "_wide" : ""}${done ? "_done" : ""}.png`, W, H, g, defs);
 }
 // a fluffy cosmic dust bunny (two variants), the polishing sponge, and the "polish me" bubble
 function dust(file, col) {
@@ -1245,7 +1304,7 @@ const HIDPI = [
   [/assets\/(img|sheet)\//, { scale: 2, type: "webp", ext: ".webp" }],
 ];
 function build(jobs) {
-  Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v), critterThumb(v), closeup(v, false), closeup(v, true)); });
+  Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v), critterThumb(v), closeup(v, false), closeup(v, true), closeup(v, false, true), closeup(v, true, true)); });
   Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v, true), critterBack(v)); });
   Object.entries(KEEPERS).forEach(([n, p]) => jobs.push(keeperSheet(n, p), keeperThumb(n, p), keeperRide(n, p)));
   jobs.push(arenaFloor(), spire(), beamV(), cometRock(),
@@ -1262,3 +1321,6 @@ function build(jobs) {
     ...IK.jobs(PAL, ["star", "heart", "heartEmpty", "sound", "soundOff", "help", "avatar", "goals", "close", "play", "resume", "check", "calendar", "gift", "hand", "sparkle", "moon", "refresh", "arrow", "trophy", "palette", "ball", "battery", "smile", "meh", "sad", "joy", "home", "lock"]));
   return jobs;
 };
+
+// `node tools/art/nebula.cjs` prints the wide close-up spot areas (paste into closeup.wide.area).
+if (require.main === module) console.log("closeup.wide.area =", JSON.stringify(wideAreas()));

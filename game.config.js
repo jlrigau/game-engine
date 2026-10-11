@@ -147,10 +147,15 @@ window.GAME = {
       want_dust: { path: "assets/img/want_dust.webp", res: 2 },
       // per-variant close-up backdrops (+ the happy "after" version revealed when clean)
       critter_closeup_rose: { path: "assets/img/critter_closeup_rose.webp", res: 2 }, critter_closeup_rose_done: { path: "assets/img/critter_closeup_rose_done.webp", res: 2 },
+      critter_closeup_rose_wide: { path: "assets/img/critter_closeup_rose_wide.webp", res: 2 }, critter_closeup_rose_wide_done: { path: "assets/img/critter_closeup_rose_wide_done.webp", res: 2 },
       critter_closeup_amber: { path: "assets/img/critter_closeup_amber.webp", res: 2 }, critter_closeup_amber_done: { path: "assets/img/critter_closeup_amber_done.webp", res: 2 },
+      critter_closeup_amber_wide: { path: "assets/img/critter_closeup_amber_wide.webp", res: 2 }, critter_closeup_amber_wide_done: { path: "assets/img/critter_closeup_amber_wide_done.webp", res: 2 },
       critter_closeup_aqua: { path: "assets/img/critter_closeup_aqua.webp", res: 2 }, critter_closeup_aqua_done: { path: "assets/img/critter_closeup_aqua_done.webp", res: 2 },
+      critter_closeup_aqua_wide: { path: "assets/img/critter_closeup_aqua_wide.webp", res: 2 }, critter_closeup_aqua_wide_done: { path: "assets/img/critter_closeup_aqua_wide_done.webp", res: 2 },
       critter_closeup_lime: { path: "assets/img/critter_closeup_lime.webp", res: 2 }, critter_closeup_lime_done: { path: "assets/img/critter_closeup_lime_done.webp", res: 2 },
+      critter_closeup_lime_wide: { path: "assets/img/critter_closeup_lime_wide.webp", res: 2 }, critter_closeup_lime_wide_done: { path: "assets/img/critter_closeup_lime_wide_done.webp", res: 2 },
       critter_closeup_violet: { path: "assets/img/critter_closeup_violet.webp", res: 2 }, critter_closeup_violet_done: { path: "assets/img/critter_closeup_violet_done.webp", res: 2 },
+      critter_closeup_violet_wide: { path: "assets/img/critter_closeup_violet_wide.webp", res: 2 }, critter_closeup_violet_wide_done: { path: "assets/img/critter_closeup_violet_wide_done.webp", res: 2 },
     },
     sheets: {
       keeper: { path: "assets/sheet/keeper.webp", frameWidth: 128, frameHeight: 128, res: 2 },
@@ -225,11 +230,11 @@ window.GAME = {
     allHappy: { mood: 75, message: "{i:trophy} Cycle {day}: every critter is glowing — what a wonderful day!" },
     // Each variant has its own glow colour (sheet), close-up face, happy face and thumbnail.
     variants: [
-      { id: "rose", name: "Rose", color: "#ff5db1", sheet: "critter_rose", happySheet: "critter_happy_rose", raceSprite: "critter_back_rose", closeupBg: "critter_closeup_rose", closeupBgDone: "critter_closeup_rose_done", thumb: "assets/ui/critter_rose.webp" },
-      { id: "amber", name: "Amber", color: "#ffb43a", sheet: "critter_amber", happySheet: "critter_happy_amber", raceSprite: "critter_back_amber", closeupBg: "critter_closeup_amber", closeupBgDone: "critter_closeup_amber_done", thumb: "assets/ui/critter_amber.webp" },
-      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua", happySheet: "critter_happy_aqua", raceSprite: "critter_back_aqua", closeupBg: "critter_closeup_aqua", closeupBgDone: "critter_closeup_aqua_done", thumb: "assets/ui/critter_aqua.webp" },
-      { id: "lime", name: "Lime", color: "#86e55a", sheet: "critter_lime", happySheet: "critter_happy_lime", raceSprite: "critter_back_lime", closeupBg: "critter_closeup_lime", closeupBgDone: "critter_closeup_lime_done", thumb: "assets/ui/critter_lime.webp" },
-      { id: "violet", name: "Violet", color: "#a97bff", sheet: "critter_violet", happySheet: "critter_happy_violet", raceSprite: "critter_back_violet", closeupBg: "critter_closeup_violet", closeupBgDone: "critter_closeup_violet_done", thumb: "assets/ui/critter_violet.webp" },
+      { id: "rose", name: "Rose", color: "#ff5db1", sheet: "critter_rose", happySheet: "critter_happy_rose", raceSprite: "critter_back_rose", closeupBg: "critter_closeup_rose", closeupBgDone: "critter_closeup_rose_done", closeupBgWide: "critter_closeup_rose_wide", closeupBgWideDone: "critter_closeup_rose_wide_done", thumb: "assets/ui/critter_rose.webp" },
+      { id: "amber", name: "Amber", color: "#ffb43a", sheet: "critter_amber", happySheet: "critter_happy_amber", raceSprite: "critter_back_amber", closeupBg: "critter_closeup_amber", closeupBgDone: "critter_closeup_amber_done", closeupBgWide: "critter_closeup_amber_wide", closeupBgWideDone: "critter_closeup_amber_wide_done", thumb: "assets/ui/critter_amber.webp" },
+      { id: "aqua", name: "Aqua", color: "#3fe0e8", sheet: "critter_aqua", happySheet: "critter_happy_aqua", raceSprite: "critter_back_aqua", closeupBg: "critter_closeup_aqua", closeupBgDone: "critter_closeup_aqua_done", closeupBgWide: "critter_closeup_aqua_wide", closeupBgWideDone: "critter_closeup_aqua_wide_done", thumb: "assets/ui/critter_aqua.webp" },
+      { id: "lime", name: "Lime", color: "#86e55a", sheet: "critter_lime", happySheet: "critter_happy_lime", raceSprite: "critter_back_lime", closeupBg: "critter_closeup_lime", closeupBgDone: "critter_closeup_lime_done", closeupBgWide: "critter_closeup_lime_wide", closeupBgWideDone: "critter_closeup_lime_wide_done", thumb: "assets/ui/critter_lime.webp" },
+      { id: "violet", name: "Violet", color: "#a97bff", sheet: "critter_violet", happySheet: "critter_happy_violet", raceSprite: "critter_back_violet", closeupBg: "critter_closeup_violet", closeupBgDone: "critter_closeup_violet_done", closeupBgWide: "critter_closeup_violet_wide", closeupBgWideDone: "critter_closeup_violet_wide_done", thumb: "assets/ui/critter_violet.webp" },
     ],
     variantLabel: "Glow colour",
     customize: { rename: true, variant: true },
@@ -257,6 +262,10 @@ window.GAME = {
                    // around the big eye (never on it): left & right cheeks, forehead, chin
                    area: [{ x: 0.25, y: 0.45, w: 0.1, h: 0.2 }, { x: 0.65, y: 0.45, w: 0.1, h: 0.2 },
                           { x: 0.40, y: 0.385, w: 0.2, h: 0.02 }, { x: 0.40, y: 0.70, w: 0.2, h: 0.03 }] },
+          // phone held sideways: a landscape backdrop (same 4 areas, same order — wideAreas() in nebula.cjs)
+          wide: { bg: "critter_closeup_rose_wide", bgDone: "critter_closeup_rose_wide_done",
+                  area: [{ x: 0.3477, y: 0.4067, w: 0.0609, h: 0.313 }, { x: 0.5914, y: 0.4067, w: 0.0609, h: 0.313 },
+                         { x: 0.4391, y: 0.305, w: 0.1219, h: 0.0313 }, { x: 0.4391, y: 0.7979, w: 0.1219, h: 0.0469 }] },
           finishParticles: ["star", "sparkle", "heart"],
           foam: { colors: ["#ffffff", "#e3f9ff", "#ffe3f4"] },
         },
