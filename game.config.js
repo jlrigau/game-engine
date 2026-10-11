@@ -343,7 +343,7 @@ window.GAME = {
         { name: "Comet", sprite: "critter_back_amber", rider: "rider_back_aqua", riderTint: "#a98bff", color: "#a98bff" },
         { name: "Orbit", sprite: "critter_back_aqua", rider: "rider_back_amber", riderTint: "#ff8a66", color: "#ff8a66" },
       ],
-      scale: 6.5, hw: 0.3, skill: [0.82, 0.97], gridGap: 5, gridFirst: 4, lanes: [-0.62, 0.62],
+      scale: 6.5, hw: 0.3, skill: [0.82, 0.97], gridGap: 6, gridFirst: 4, lanes: [-0.62, 0.62],
       rewards: [40, 25, 15, 8, 5, 3],
       placeMessages: ["{i:trophy} You won the Comet Race!", "{i:star} 2nd place, so close!", "{i:star} 3rd: you made the podium!", "You finished {place}. Overtake more riders next time!"],
       resultsTitle: "{i:flag} Results",

@@ -96,7 +96,7 @@ function robot(dir, phase, moving, pal, u, opt) {
     g += sl(false) + sl(true);
     const gp = (opt && opt.grip) || [[15, 42], [113, 42]];
     [[40, 74, gp[0]], [88, 74, gp[1]]].forEach(([x0, y0, [x1, y1]]) => {
-      const ex = x1 < 64 ? 4 : 124, ey = 84;   // elbow down and out (clear of the antenna stalk)
+      const ex = x1 < 64 ? -4 : 132, ey = 84;   // elbow down and out: the forearm rises from OUTSIDE/below, so the stalk stays visible
       const d = `M${x0} ${y0} Q${ex} ${ey} ${x1} ${y1}`;
       armsLate += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${BD}" stroke-width="8" stroke-linecap="round"/>`;
     });
@@ -591,9 +591,7 @@ function riderBack(id, pal) {
   const shin = (m) => `<ellipse cx="${cx + m * 33}" cy="98" rx="4.5" ry="15" fill="#1a1440" opacity=".25" filter="url(#${u}sb)"/>`;   // inner side of each shin
   let g = `<g clip-path="url(#${u}on)"><ellipse cx="${cx}" cy="96" rx="30" ry="7" fill="#1a1440" opacity=".35" filter="url(#${u}sb)"/>` +
     shin(-1) + shin(1) + `<g filter="url(#${u}ds)">${place(body)}</g></g>`;
-  // saddle pad in the keeper's accent colour + a thin strap down each flank
-  [-1, 1].forEach((m) => { const d = `M${cx + m * 21} 94 Q${cx + m * 25} 108 ${cx + m * 24} 120`;
-    g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${shade(A, -0.2)}" stroke-width="2.5" stroke-linecap="round"/>`; });
+  // saddle pad in the keeper's accent colour (flank straps were tried: with the shins they read as stool legs)
   g += `<ellipse cx="${cx}" cy="90" rx="24" ry="9" fill="${shade(A, -0.2)}" stroke="${INK}" stroke-width="3"/>`;
   g += `<path d="M81 87 Q100 81 119 87" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".5"/>`;
   g += place(body);
@@ -972,13 +970,13 @@ function drone(dir, blink, u, o) {
 // sprite of the drone that catches up and passes the player in the chase race. 200x170 like critter_back.
 function droneBack() {
   const r = drone("up", 0, "db", { police: true }), s = 1.3;
-  return job("assets/img/drone_back.png", 200, 170, `<g transform="translate(${100 - 64 * s} -4) scale(${s})">${r.body}</g>`, r.defs);
+  return job("assets/img/drone_back.png", 200, 170, `<g transform="translate(${100 - 64 * s} 0) scale(${s})">${r.body}</g>`, r.defs);
 }
 // The same drone seen from the FRONT (dir "down": glowing eye, cheeky face), red/blue siren on top —
 // the pursuer shown in the chase race's rear-view holo-screen. 200x170, shadow base at y ~160.
 function droneFront() {
   const r = drone("down", 0, "df", { police: true }), s = 1.3;
-  return job("assets/img/drone_front.png", 200, 170, `<g transform="translate(${100 - 64 * s} -4) scale(${s})">${r.body}</g>`, r.defs);
+  return job("assets/img/drone_front.png", 200, 170, `<g transform="translate(${100 - 64 * s} 0) scale(${s})">${r.body}</g>`, r.defs);
 }
 function droneSheet() {
   let defs = ""; const frames = [];
