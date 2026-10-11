@@ -14,7 +14,7 @@ pseudo-3D race — every system
 switched on in `game.config.js`. A new game starts from a small seed instead
 (`.claude/skills/new-game/references/minimal-seed.config.js`).
 
-▶ **[Play the live demo](https://jlrigau.github.io/game-engine/)** · **[Landing page & game catalogue](https://jlrigau.github.io/game-engine/landing/)**
+▶ **[Play the live demo](https://jlrigau.github.io/game-engine/)** · **[Ludea — landing page & game catalogue](https://jlrigau.github.io/game-engine/landing/)**
 
 ---
 

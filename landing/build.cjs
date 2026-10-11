@@ -24,3 +24,4 @@ for (const L of LANGS) {
   fs.writeFileSync(f, html);
   console.log("✓", path.relative(process.cwd(), f));
 }
+require("./design.cjs");
