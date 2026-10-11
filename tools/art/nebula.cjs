@@ -506,8 +506,8 @@ function keeperRide(name, pal) {
 const RIDER_POSE = process.env.RIDER_POSE || "A";
 const CB = { W: 200, H: 170, cx: 100, cy: 106, rx: 54, ry: 52 };   // narrow "pony barrel"
 const RB = {   // frame px (left side; mirrored about x 100). k = keeper scale; seat = frame y of the pod bottom
-  A: { k: 0.78, seat: 96, head: { cx: 100, cy: 49, rx: 25.7, ry: 21 }, shoulder: [84, 68], fist: [64, 67],
-    root: [90, 76], tip: [42, 22] },
+  A: { k: 0.78, seat: 96, head: { cx: 100, cy: 49, rx: 25.7, ry: 21 }, shoulder: [86, 74], fist: [63, 64],
+    root: [71, 82], tip: [36, 24] },   // root on the back beside the pod: ~12 px of stalk below the mitt
   B: { k: 0.78, seat: 98, head: { cx: 100, cy: 61, rx: 23.5, ry: 18.5 }, shoulder: [85, 80], fist: [67, 63],
     root: [90, 84], tip: [40, 20] },
 };
@@ -535,6 +535,7 @@ function critterBack(v, pose = RIDER_POSE) {
   // antennae = the rider's handlebars: an outward V from roots on the back (hidden by the rider),
   // light core so the stalk reads against the dark race sky, glowing ball on top
   [-1, 1].forEach((m) => { const a = cbAntenna(m, pose);
+    g += `<ellipse cx="${a.root[0]}" cy="${a.root[1] + 1}" rx="5" ry="3" fill="${bodyD}" ${stk(2.5)}/>`;   // root bump on the back
     g += `<path d="${a.d}" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="${a.d}" fill="none" stroke="${bodyD}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
     g += `<circle cx="${a.tip[0]}" cy="${a.tip[1]}" r="8.5" fill="url(#${u}t)" ${stk(3)} filter="url(#${u}gl)"/>`; });
   // soft back shading (lower half) + rim light — no spots (they read as a face from behind)
@@ -551,24 +552,31 @@ function keeperBackHeadLocal(pal, u, stripe, collar, hatch = true) {
   hd += `<circle cx="64" cy="4" r="6" fill="${A}" stroke="${INK}" stroke-width="2.5"/><circle cx="62" cy="2.2" r="1.6" fill="#fff" opacity=".8"/>`;
   hd += `<ellipse cx="64" cy="46" rx="33" ry="27" fill="url(#${u}h)" stroke="${INK}" stroke-width="3.5"/>`;
   hd += `<ellipse cx="52" cy="32" rx="9" ry="5" fill="#ffffff" opacity=".9" transform="rotate(-20 52 32)"/>`;
-  if (stripe) hd += `<g clip-path="url(#${u}hc)"><rect x="57" y="10" width="14" height="32" fill="${A}"/><rect x="57" y="10" width="14" height="32" fill="none" stroke="${shade(A, -0.3)}" stroke-width="1.5"/></g><ellipse cx="64" cy="46" rx="33" ry="27" fill="none" stroke="${INK}" stroke-width="3.5"/>`;
+  if (stripe) hd += `<g clip-path="url(#${u}hc)"><path d="M59 10 H69 L71 49 Q71 54 64 54 Q57 54 57 49 Z" fill="${A}" stroke="${shade(A, -0.3)}" stroke-width="1.5" stroke-linejoin="round"/><path d="M62 16 L61 34" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".45"/></g><ellipse cx="64" cy="46" rx="33" ry="27" fill="none" stroke="${INK}" stroke-width="3.5"/>`;
   if (hatch) hd += keeperBackHatch(B, BD);
   return hd;
 }
-// short sausage arm (on-foot arm: 12 px local + 3 px ink) from the shoulder ball to an accent mitt wrapped
-// across the antenna stalk at the grip
-function keeperBackArms(pal, P, pose) {
+// short sausage arm (on-foot arm: 12 px local + 3 px ink) from the shoulder ball to a white mitt wrapped
+// across the antenna stalk at the grip (accent only on the wrist cuff: an accent mitt read as a bead on the
+// stalk). part: "arm" (arm + mitt), "ball" (shoulder joints, drawn over the pod in pose A) or "all".
+function keeperBackArms(pal, P, pose, part = "all") {
   const B = pal.body, BD = shade(pal.body, -0.18), A = pal.accent, k = P.k;
   let g = "";
   [[(x) => x, -1], [(x) => 200 - x, 1]].forEach(([X, m]) => {
     const a = cbAntenna(m, pose), [sx, sy] = P.shoulder, [gx, gy] = a.grip;
-    const d = `M${X(sx)} ${sy} L${gx} ${gy}`;
-    g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${f2(15 * k)}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${B}" stroke-width="${f2(9 * k)}" stroke-linecap="round"/>`;
-    g += `<path d="M${X(sx)} ${sy + 2.2} L${f2(gx + (X(sx) - gx) * 0.25)} ${f2(gy + 2.2 + (sy - gy) * 0.25)}" fill="none" stroke="${BD}" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>`;
-    if (pose === "B") g += `<circle cx="${X(sx)}" cy="${sy}" r="${f2(6 * k)}" fill="${BD}" stroke="${INK}" stroke-width="2.2"/>`;   // A: the head hides the joint
-    const ang = Math.atan2(a.tan[1], a.tan[0]) * 180 / Math.PI + 90;   // mitt across the horn
-    g += `<g transform="translate(${f2(gx)} ${f2(gy)}) rotate(${f2(ang)})"><rect x="-6.5" y="-5.5" width="13" height="11" rx="5.5" fill="${A}" stroke="${INK}" stroke-width="2.4"/>` +
-      `<path d="M${3.5 * m} -3.5 V3.5" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity=".7"/><circle cx="${-2.5 * m}" cy="-2.2" r="1.4" fill="#fff" opacity=".8"/></g>`;
+    if (part !== "ball") {
+      const d = `M${X(sx)} ${sy} L${gx} ${gy}`;
+      g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${f2(15 * k)}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${B}" stroke-width="${f2(9 * k)}" stroke-linecap="round"/>`;
+      g += `<path d="M${X(sx)} ${sy + 2.2} L${f2(gx + (X(sx) - gx) * 0.25)} ${f2(gy + 2.2 + (sy - gy) * 0.25)}" fill="none" stroke="${BD}" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>`;
+      // wrist cuff: an accent band across the forearm just before the mitt
+      const L = Math.hypot(X(sx) - gx, sy - gy) || 1, ux = (X(sx) - gx) / L, uy = (sy - gy) / L, px = -uy * 4.6, py = ux * 4.6;
+      const cx = gx + ux * 8.5, cy = gy + uy * 8.5, cuff = `M${f2(cx + px)} ${f2(cy + py)} L${f2(cx - px)} ${f2(cy - py)}`;
+      g += `<path d="${cuff}" stroke="${INK}" stroke-width="5.5" stroke-linecap="round"/><path d="${cuff}" stroke="${A}" stroke-width="2.8" stroke-linecap="round"/>`;
+      const ang = Math.atan2(a.tan[1], a.tan[0]) * 180 / Math.PI + 90;   // mitt across the horn
+      g += `<g transform="translate(${f2(gx)} ${f2(gy)}) rotate(${f2(ang)})"><rect x="-8" y="-6.5" width="16" height="13" rx="6" fill="${B}" stroke="${INK}" stroke-width="2.4"/>` +
+        `<path d="M${4 * m} -4 V4" stroke="${BD}" stroke-width="1.8" stroke-linecap="round"/><circle cx="${-3 * m}" cy="-2.6" r="1.6" fill="#fff" opacity=".9"/></g>`;
+    }
+    if (part !== "arm") g += `<circle cx="${X(sx)}" cy="${sy}" r="${f2(5 * k)}" fill="${BD}" stroke="${INK}" stroke-width="2.2"/>`;
   });
   return g;
 }
@@ -579,14 +587,16 @@ function keeperBackSitting(pal, u, stripe) {
   let g = "";
   // saddle pad bent over the round back: back edge behind the pod (higher in the middle), quilted seam
   const s = P.seat;
-  g += `<path d="M78 ${s + 2} Q77 ${s - 5} 83 ${s - 7} Q100 ${s - 12} 117 ${s - 7} Q123 ${s - 5} 122 ${s + 2} Z" fill="${SEAT}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
-  g += keeperBackArms(pal, P, "A");   // behind the pod: the arms come out of its sides, under the head
+  g += `<path d="M75 ${s + 4.5} Q73.5 ${s - 4} 81 ${s - 7.5} Q100 ${s - 12.5} 119 ${s - 7.5} Q126.5 ${s - 4} 125 ${s + 4.5} Z" fill="${SEAT}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  g += keeperBackArms(pal, P, "A", "arm");   // behind the pod: the arms come out of its sides, sloping up
   // the pod (torso): the walk sheet's back row, slightly wider at the hips (sitting)
   g += loc(`<path d="M42 66 Q36 104 64 106 Q92 104 86 66 Z" fill="url(#${u}h)" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>` +
     `<path d="M52 80 L76 80 M52 88 L76 88" stroke="${BD}" stroke-width="3" stroke-linecap="round"/>`);
   // saddle front rim: covers the pod's bottom curve (it sits IN the saddle, on the back)
-  g += `<path d="M78 ${s - 3} Q100 ${s + 4} 122 ${s - 3} Q124 ${s + 1.5} 121 ${s + 4.5} Q100 ${s + 11} 79 ${s + 4.5} Q76 ${s + 1.5} 78 ${s - 3} Z" fill="${SEAT}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
-  g += `<path d="M81 ${s} Q100 ${s + 6.5} 119 ${s}" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>`;
+  g += `<ellipse cx="100" cy="${s + 11}" rx="25" ry="4" fill="#0b1030" opacity=".25" filter="url(#${u}ss)"/>`;   // underside shadow on the back
+  g += `<path d="M74 ${s - 1} Q100 ${s + 4} 126 ${s - 1} Q128.5 ${s + 4} 125 ${s + 7.5} Q100 ${s + 12.5} 75 ${s + 7.5} Q71.5 ${s + 4} 74 ${s - 1} Z" fill="${SEAT}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  g += `<path d="M78 ${s + 2.5} Q100 ${s + 7} 122 ${s + 2.5}" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>`;
+  g += keeperBackArms(pal, P, "A", "ball");   // shoulder joints on the pod's upper sides
   g += `<g transform="translate(${H.cx} ${H.cy}) scale(${H.rx / 33} ${H.ry / 27}) translate(-64 -46)">${keeperBackHeadLocal(pal, u, stripe, true)}</g>`;
   return g;
 }
@@ -614,7 +624,7 @@ function keeperBackLying(pal, u, stripe) {
 }
 function keeperBackSeated(pal, u, stripe, pose = RIDER_POSE) {
   const B = pal.body, BD = shade(pal.body, -0.18);
-  const defs = rad(`${u}h`, [[0, "#ffffff"], [0.6, B], [1, BD]], 0.38, 0.3, 0.8) + glow(`${u}gl`, 2) +
+  const defs = rad(`${u}h`, [[0, "#ffffff"], [0.6, B], [1, BD]], 0.38, 0.3, 0.8) + glow(`${u}gl`, 2) + blur(`${u}ss`, 2) +
     `<clipPath id="${u}hc"><ellipse cx="64" cy="46" rx="33" ry="27"/></clipPath>`;
   return { defs, body: pose === "B" ? keeperBackLying(pal, u, stripe) : keeperBackSitting(pal, u, stripe) };
 }
