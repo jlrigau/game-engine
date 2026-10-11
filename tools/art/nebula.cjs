@@ -89,15 +89,15 @@ function robot(dir, phase, moving, pal, u, opt) {
     // hang down OVER the mount's edge (feet on its silhouette). opt.afterLegs = the saddle (drawn over the
     // thighs, under the torso). Arms are drawn AFTER the head (armsLate): shoulder → elbow out → up to the reins.
     const sl = (m) => { const X = (x) => (m ? 128 - x : x);
-      const d = `M${X(50)} 104 L${X(30)} 114 Q${X(4)} 122 ${X(-4)} 152`;
-      return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>` +
-        `<path d="${d}" fill="none" stroke="${BD}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>` +
-        `<circle cx="${X(30)}" cy="114" r="6" fill="${shade(BD, -0.08)}" stroke="${INK}" stroke-width="3"/>` +                       // knee
-        `<ellipse cx="${X(-6)}" cy="156" rx="7" ry="10" fill="${shade(A, -0.25)}" stroke="${INK}" stroke-width="3" transform="rotate(${m ? -20 : 20} ${X(-6)} 156)"/>`; };   // foot on the mount's edge
+      const d = `M${X(50)} 104 L${X(24)} 110 Q${X(15)} 116 ${X(14)} 136`;   // fat thigh stub, wide knee, near-vertical shin
+      return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `<path d="${d}" fill="none" stroke="${BD}" stroke-width="13.5" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `<circle cx="${X(24)}" cy="110" r="7" fill="${shade(BD, -0.08)}" stroke="${INK}" stroke-width="3"/>` +                       // knee
+        `<ellipse cx="${X(12)}" cy="141" rx="6" ry="8" fill="${shade(A, -0.25)}" stroke="${INK}" stroke-width="3" transform="rotate(${m ? -20 : 20} ${X(12)} 141)"/>`; };   // foot resting on the flank
     g += sl(false) + sl(true) + ((opt && opt.afterLegs) || "");
     const gp = (opt && opt.grip) || [[15, 42], [113, 42]];
     [[40, 74, gp[0]], [88, 74, gp[1]]].forEach(([x0, y0, [x1, y1]]) => {
-      const ex = x1 < 64 ? 6 : 122, ey = 66;   // elbow out, level with the shoulder: a forward-raised V (handlebar)
+      const ex = x1 < 64 ? -6 : 134, ey = 84;   // elbows bent DOWN and out (handlebar), the forearm meets the fist from outside
       const d = `M${x0} ${y0} Q${ex} ${ey} ${x1} ${y1}`;
       armsLate += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${BD}" stroke-width="8" stroke-linecap="round"/>`;
     });
@@ -542,10 +542,10 @@ const toLocal = ([x, y]) => [64 + (x - CB.cx) / RIDER.s, 106 + (y - RIDER.y) / R
 function cbAntenna(m) {    // m = -1 left, +1 right; quadratic stalk root → tip, pulled in by the grip
   const X = (dx) => CB.cx + m * dx;
   // reins held forward: rooted BEHIND the rider (its layer hides the lower stalk), out to the fists, up to the balls
-  const root = [X(28), 59], tip = [X(50), 12], ctl = [X(52), 22];   // grows from the top contour behind the upper arm
+  const root = [X(44), 66], tip = [X(50), 12], ctl = [X(50), 64];   // grows from the top contour just outside the shoulders
   const q = (t) => [0, 1].map((k) => (1 - t) ** 2 * root[k] + 2 * (1 - t) * t * ctl[k] + t * t * tip[k]);
   const dq = (t) => [0, 1].map((k) => 2 * (1 - t) * (ctl[k] - root[k]) + 2 * t * (tip[k] - ctl[k]));
-  return { root, tip, ctl, grip: q(0.36), tan: dq(0.36) };
+  return { root, tip, ctl, grip: q(0.5), tan: dq(0.5) };
 }
 function critterBack(v) {
   const c = VARIANTS[v], u = "cb", { W, H, cx, cy, rx, ry } = CB;
@@ -558,7 +558,6 @@ function critterBack(v) {
   g += `<ellipse cx="${cx}" cy="164" rx="62" ry="3.5" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
   const foot = (x, y) => `<ellipse cx="${x}" cy="${y}" rx="15" ry="9" fill="${bodyD}" ${stk(3.5)}/>`;
   g += foot(62, 158) + foot(138, 158);
-  g += `<ellipse cx="${cx}" cy="160" rx="10" ry="6" fill="${shade(bodyD, -0.15)}" ${stk(3.5)}/>`;   // small centre foot (not a 3rd leg)
   g += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${u}b)" ${stk(4)}/>`;
   // antennae = reins: they grow from the top contour beside the rider (base collar), the lower stalk stays
   // visible up to the fist; light core so the stalk reads against the dark race sky, glowing ball on top
@@ -572,9 +571,9 @@ function critterBack(v) {
   // two rear ENGINES tucked under the belly edge (nozzle in a dark body tone + a short flame BELOW the
   // silhouette): placed higher on the back face, glowing discs / dark slits read as eyes
   [82, 118].forEach((x) => {
-    g += `<path d="M${x - 4.5} 156 Q${x - 5} 160 ${x} 164 Q${x + 5} 160 ${x + 4.5} 156 Z" fill="${mix(c, "#fff3b0", 0.45)}" opacity=".9" filter="url(#${u}gl)"/>`;
-    g += `<circle cx="${x}" cy="159" r="3.5" fill="#fff6c8" opacity=".7"/>`;
-    g += `<rect x="${x - 6.5}" y="150" width="13" height="7" rx="3" fill="${shade(bodyD, -0.35)}" ${stk(2.5)}/>`;
+    g += `<path d="M${x - 4.5} 152 Q${x - 5} 156 ${x} 160 Q${x + 5} 156 ${x + 4.5} 152 Z" fill="${mix(c, "#fff3b0", 0.45)}" opacity=".9" filter="url(#${u}gl)"/>`;
+    g += `<circle cx="${x}" cy="155" r="3.5" fill="#fff6c8" opacity=".7"/>`;
+    g += `<rect x="${x - 6.5}" y="146" width="13" height="7" rx="3" fill="${shade(bodyD, -0.35)}" ${stk(2.5)}/>`;
   });
   return job(`assets/img/critter_back_${v}.png`, W, H, g, defs);
 }
@@ -809,7 +808,7 @@ function dock() {   // Delivery Dock: small hangar + stacked glowing crates + la
   g += `<path d="M74 168 V114 Q74 86 112 84 Q150 86 150 114 V168 Q112 174 74 168 Z" fill="url(#${u}i)" ${stk(3.5)}/>`;
   g += `<ellipse cx="112" cy="146" rx="34" ry="22" fill="url(#${u}il)"/>`;
   g += starCrate(94, 166, 0.62, 3, u);
-  g += `<path d="M82 94 H142" stroke="#3fe0e8" stroke-width="3" stroke-linecap="round" opacity=".7" filter="url(#${u}gl)"/>`;
+  g += `<rect x="80.5" y="92.5" width="63" height="3" rx="1.5" fill="#3fe0e8" opacity=".7" filter="url(#${u}gl)"/>`;   // a rect: a filtered H/V path has a 0-size bbox → no glow
   [[96, 40], [128, 40]].forEach(([x]) => { g += `<circle cx="${x}" cy="50" r="3.5" fill="#3fe0e8" filter="url(#${u}gl)"/>`; });
   // stacked crates (right)
   g += starCrate(160, 178, 0.68, 3.2, u) + starCrate(196, 172, 0.56, 3, u) + starCrate(170, 150, 0.6, 3, u);
@@ -972,7 +971,7 @@ function drone(dir, blink, u, o) {
   } else if (o.police) {   // back, chase view: an exhaust grille + two red rear lights (stern, not a face)
     g += `<rect x="44" y="50" width="40" height="20" rx="8" fill="url(#${u}v)" stroke="${INK}" stroke-width="${sw * 0.8}"/>`;
     g += `<path d="M52 54 V66 M58 54 V66 M64 54 V66 M70 54 V66 M76 54 V66" stroke="#5866b4" stroke-width="2.5" stroke-linecap="round"/>`;
-    [44, 84].forEach((x) => { g += `<circle cx="${x}" cy="78" r="6" fill="#ff3b5c" opacity=".35" filter="url(#${u}bl)"/><circle cx="${x}" cy="78" r="3.5" fill="#ff3b5c" stroke="${INK}" stroke-width="1.8" filter="url(#${u}gl)"/>`; });
+    [38, 90].forEach((x) => { g += `<ellipse cx="${x}" cy="60" rx="7" ry="4.5" fill="#ff3b5c" opacity=".35" filter="url(#${u}bl)"/><rect x="${x - 4.5}" y="57.5" width="9" height="5" rx="2.5" fill="#ff3b5c" stroke="${INK}" stroke-width="1.8" filter="url(#${u}gl)"/>`; });   // pill tail-lights level with the grille
   } else {   // back: vents + status light
     g += `<path d="M50 56 H78 M52 64 H76 M56 72 H72" stroke="#7a62d6" stroke-width="3.5" stroke-linecap="round"/><circle cx="64" cy="82" r="3" fill="${on}" filter="url(#${u}gl)"/>`;
   }
@@ -1011,7 +1010,7 @@ function startGate() {
     g += `<ellipse cx="${x}" cy="213" rx="16" ry="4" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
     g += `<ellipse cx="${x}" cy="120" rx="22" ry="100" fill="url(#${halo})"/>`;
     g += `<path d="M${x - 10} 215 L${x - 8} 30 Q${x} 22 ${x + 8} 30 L${x + 10} 215 Z" fill="url(#${u}p)" ${stk(3.5)}/>`;
-    g += `<path d="M${x} 40 V205" stroke="${c}" stroke-width="4" stroke-linecap="round" filter="url(#${u}gl)"/>`;
+    g += `<rect x="${x - 2}" y="38" width="4" height="169" rx="2" fill="${c}" filter="url(#${u}gl)"/>`;   // rect, not a V path: filters need a non-empty bbox
     g += `<rect x="${x - 14}" y="203" width="28" height="12" rx="4" fill="#2c3577" ${stk(3)}/>`;
     g += `<circle cx="${x}" cy="24" r="8" fill="${c}" ${stk(3)} filter="url(#${u}gl)"/><circle cx="${x - 2.5}" cy="21.5" r="2.5" fill="#fff" opacity=".9"/>`;
   });
@@ -1023,7 +1022,7 @@ function startGate() {
   for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) if ((i + j) % 2 === 0)
     g += `<rect x="${(x0 + 8 + i * cw).toFixed(1)}" y="${30 + j * 8}" width="${cw.toFixed(1)}" height="8" fill="#ffffff" opacity=".85"/>`;
   g += `<rect x="${x0 + 8}" y="30" width="${x1 - x0 - 16}" height="16" fill="none" stroke="#ffffff" stroke-width="1.5" opacity=".6"/>`;
-  [[y0, "#ff5db1"], [y1, "#3fe0e8"]].forEach(([y, c]) => { g += `<path d="M${x0} ${y} H${x1}" stroke="${INK}" stroke-width="7.5" stroke-linecap="round"/><path d="M${x0} ${y} H${x1}" stroke="${c}" stroke-width="4.5" stroke-linecap="round" filter="url(#${u}gl)"/>`; });
+  [[y0, "#ff5db1"], [y1, "#3fe0e8"]].forEach(([y, c]) => { g += `<rect x="${x0 - 3.75}" y="${y - 3.75}" width="${x1 - x0 + 7.5}" height="7.5" rx="3.75" fill="${INK}"/><rect x="${x0 - 2.25}" y="${y - 2.25}" width="${x1 - x0 + 4.5}" height="4.5" rx="2.25" fill="${c}" filter="url(#${u}gl)"/>`; });
   for (let i = 0; i < 9; i++) { const x = x0 + 18 + i * ((x1 - x0 - 36) / 8), y = i % 2 ? y0 - 1 : y1 + 1, c = i % 2 ? "#ff8fd0" : "#9ff7ff";
     g += `<circle cx="${x.toFixed(1)}" cy="${y}" r="3.5" fill="${c}" filter="url(#${u}gl)"/><circle cx="${x.toFixed(1)}" cy="${y}" r="1.4" fill="#fff"/>`; }
   [[60, 24], [200, 52], [340, 22]].forEach(([x, y], i) => { g += `<path d="${star(x, y, 6 - i % 2, 2.2, 4)}" fill="#fff6c8" filter="url(#${u}gl)"/>`; });
