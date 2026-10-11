@@ -251,3 +251,6 @@ footer .cta { justify-content: center; }
 footer small { display: block; margin-top: 40px; font-size: 13px; }
 footer .made { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 800; color: var(--ink); font-size: 18px; margin-top: 34px; }
 footer .made img { width: 26px; height: 26px; }
+.tag.langs { display: inline-flex; align-items: center; gap: 5px; vertical-align: top; }
+.tag.langs img { width: 20px; height: 20px; }
+.tag.langs i { width: 1px; height: 12px; background: var(--line2); margin: 0 4px; }

@@ -81,7 +81,16 @@ const OWN = {
     return { defs: d, body: `<circle cx="64" cy="64" r="52" fill="${f}" ${st()}/><path d="M64 30 A34 34 0 1 1 34 80 M64 46 A18 18 0 1 1 48 72" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><circle cx="64" cy="64" r="6" fill="#fff"/>` }; },
   siren: () => { const [d, f] = IK.fill(C.coral);
     return { defs: d, body: `<path d="M34 92 V62 Q34 30 64 30 Q94 30 94 62 V92 Z" fill="${f}" ${st()}/><rect x="22" y="90" width="84" height="22" rx="7" fill="#c9cfe6" ${st()}/><path d="M50 60 Q52 46 64 44" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".8"/><path d="M14 30 L26 40 M114 30 L102 40 M64 6 V18" ${st(7)}/>` }; },
+  // language flags (rounded, outlined, glossy like the rest of the set)
+  flagFr: () => flag("ffr", `<rect x="10" y="26" width="36" height="76" fill="#2f5bd8"/><rect x="46" y="26" width="36" height="76" fill="#fff"/><rect x="82" y="26" width="36" height="76" fill="#ef3e42"/>`),
+  flagGb: () => flag("fgb", `<rect x="10" y="26" width="108" height="76" fill="#24398f"/>
+    <path d="M10 26 L118 102 M118 26 L10 102" stroke="#fff" stroke-width="18"/><path d="M10 26 L118 102 M118 26 L10 102" stroke="#e5323b" stroke-width="6"/>
+    <path d="M64 26 V102 M10 64 H118" stroke="#fff" stroke-width="26"/><path d="M64 26 V102 M10 64 H118" stroke="#e5323b" stroke-width="14"/>`),
 };
+function flag(id, inner) {
+  const R = `<rect x="10" y="26" width="108" height="76" rx="14"/>`;
+  return { defs: `<clipPath id="${id}">${R}</clipPath>`, body: `<g clip-path="url(#${id})">${inner}<path d="M22 40 Q40 32 64 34" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none" opacity=".45"/></g><rect x="10" y="26" width="108" height="76" rx="14" fill="none" ${st(7)}/>` };
+}
 const CORE = ["star", "heart", "help", "avatar", "goals", "play", "check", "gift", "hand", "sparkle", "moon", "refresh", "arrow", "home", "lock", "palette", "sound", "smile", "trophy"];
 function icon(name) { return OWN[name] ? OWN[name]() : IK.ICONS[name](P); }
 
