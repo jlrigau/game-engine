@@ -144,7 +144,7 @@ window.GAME = {
       critter_back_aqua: { path: "assets/img/critter_back_aqua.webp", res: 2 }, critter_back_lime: { path: "assets/img/critter_back_lime.webp", res: 2 },
       critter_back_violet: { path: "assets/img/critter_back_violet.webp", res: 2 },
       // race: the keeper robot seen from behind, drawn over the critter (character.raceRider)
-      drone_back: { path: "assets/img/drone_back.webp", res: 2 }, drone_front: { path: "assets/img/drone_front.webp", res: 2 },   // the Escape pursuer (race.chase)
+      drone_back: { path: "assets/img/drone_back.webp", res: 2 }, drone_front: { path: "assets/img/drone_front.webp", res: 2 }, start_gate: { path: "assets/img/start_gate.webp", res: 2 },   // the Escape pursuer (race.chase)
       rider_back_aqua: { path: "assets/img/rider_back_aqua.webp", res: 2 }, rider_back_amber: { path: "assets/img/rider_back_amber.webp", res: 2 },
       dust: "assets/img/dust.webp", dust_b: "assets/img/dust_b.webp", cloth: "assets/img/cloth.webp",
       want_dust: { path: "assets/img/want_dust.webp", res: 2 },
@@ -343,7 +343,7 @@ window.GAME = {
         { name: "Comet", sprite: "critter_back_amber", rider: "rider_back_aqua", riderTint: "#a98bff", color: "#a98bff" },
         { name: "Orbit", sprite: "critter_back_aqua", rider: "rider_back_amber", riderTint: "#ff8a66", color: "#ff8a66" },
       ],
-      scale: 6.5, hw: 0.3, skill: [0.82, 0.97], gridGap: 6, gridFirst: 4, lanes: [-0.62, 0.62],
+      scale: 6.5, hw: 0.3, skill: [0.82, 0.97], gridGap: 3, gridFirst: 5, startGate: "start_gate", startGateScale: 17, lanes: [-0.62, 0.62],
       rewards: [40, 25, 15, 8, 5, 3],
       placeMessages: ["{i:trophy} You won the Comet Race!", "{i:star} 2nd place, so close!", "{i:star} 3rd: you made the podium!", "You finished {place}. Overtake more riders next time!"],
       resultsTitle: "{i:flag} Results",

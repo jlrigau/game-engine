@@ -537,7 +537,7 @@ function keeperRide(name, pal) {
 // The keeper sits low on the back and holds the critter's two antennae like handlebars: both
 // layers read the antenna curves + grip points from cbAntenna(), so they always line up.
 const CB = { W: 200, H: 170, cx: 100, cy: 106, rx: 66, ry: 52 };   // ~1.18 like the front sheet
-const RIDER = { s: 0.8, y: 78 };   // seat on a saddle pad: head + shoulders clear the top contour   // keeper scale + frame y of its seat (local y 106)
+const RIDER = { s: 0.8, y: 78 };   // keeper scale + frame y of its seat (local y 106): head + shoulders clear the top contour
 const toLocal = ([x, y]) => [64 + (x - CB.cx) / RIDER.s, 106 + (y - RIDER.y) / RIDER.s];
 function cbAntenna(m) {    // m = -1 left, +1 right; quadratic stalk root → tip, pulled in by the grip
   const X = (dx) => CB.cx + m * dx;
@@ -1023,7 +1023,7 @@ function startGate() {
   for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) if ((i + j) % 2 === 0)
     g += `<rect x="${(x0 + 8 + i * cw).toFixed(1)}" y="${30 + j * 8}" width="${cw.toFixed(1)}" height="8" fill="#ffffff" opacity=".85"/>`;
   g += `<rect x="${x0 + 8}" y="30" width="${x1 - x0 - 16}" height="16" fill="none" stroke="#ffffff" stroke-width="1.5" opacity=".6"/>`;
-  [[y0, "#ff5db1"], [y1, "#3fe0e8"]].forEach(([y, c]) => { g += `<path d="M${x0} ${y} H${x1}" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="M${x0} ${y} H${x1}" stroke="${c}" stroke-width="3" stroke-linecap="round" filter="url(#${u}gl)"/>`; });
+  [[y0, "#ff5db1"], [y1, "#3fe0e8"]].forEach(([y, c]) => { g += `<path d="M${x0} ${y} H${x1}" stroke="${INK}" stroke-width="7.5" stroke-linecap="round"/><path d="M${x0} ${y} H${x1}" stroke="${c}" stroke-width="4.5" stroke-linecap="round" filter="url(#${u}gl)"/>`; });
   for (let i = 0; i < 9; i++) { const x = x0 + 18 + i * ((x1 - x0 - 36) / 8), y = i % 2 ? y0 - 1 : y1 + 1, c = i % 2 ? "#ff8fd0" : "#9ff7ff";
     g += `<circle cx="${x.toFixed(1)}" cy="${y}" r="3.5" fill="${c}" filter="url(#${u}gl)"/><circle cx="${x.toFixed(1)}" cy="${y}" r="1.4" fill="#fff"/>`; }
   [[60, 24], [200, 52], [340, 22]].forEach(([x, y], i) => { g += `<path d="${star(x, y, 6 - i % 2, 2.2, 4)}" fill="#fff6c8" filter="url(#${u}gl)"/>`; });
