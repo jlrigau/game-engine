@@ -32,7 +32,7 @@ window.GAME = {
     tagline: "Look after the little glowing critters!",
     saveKey: "nebula-nursery",
     audience: { minAge: 6, notes: "all-ages, gentle, cute, no violence" },
-    assetVersion: "v54",
+    assetVersion: "v55",
     theme: { home: "#120c34", play: "#0b1029", closeup: "#1b1150" },
     showCoins: true,
     coinIcon: "shard",                // the currency: star shards
@@ -58,7 +58,7 @@ window.GAME = {
     boughtDecorMessage: "{name} bought! Walk to a spot and tap Place here.",
     placedMessage: "{i:sparkle} {name} placed!",
     refundMessage: "Placement cancelled, shards refunded.",
-    noOnBuilding: "Not on a building!", noInHome: "Not inside the nursery!",
+    noOnBuilding: "Not on a building!", noInHome: "Not inside the nursery!", blocksPath: "Not here: it would block the way!",
     strings: {
       dismountFirst: "{i:ride} Hop off your critter first!",
       placeFirst: "{i:gift} Place your decoration first!",
@@ -330,19 +330,23 @@ window.GAME = {
     { type: "market", x: 1850, y: 610, sprite: "market", scale: 0.8, label: "Star Market", labelY: 34, glow: "#ffd24a",
       box: { dx: -86, dy: -50, w: 172, h: 52 }, action: "openShop", actionLabel: "Shop", icon: "shop", color: "#ffb43a", hint: "Nectar, decorations, new critters" },
     // a MENU station: paid restyle (also shakes off the drones) + a custom bubble bath
-    { type: "salon", x: 1000, y: 1190, sprite: "salon", scale: 0.8, label: "Glow Salon", labelY: 34, glow: "#ff5db1", whileRiding: true,
-      box: { dx: -86, dy: -50, w: 172, h: 52 }, action: "menu", actionLabel: "Visit the salon", icon: "palette", color: "#ff5db1", hint: "Glow makeovers and bubble baths",
+    { type: "salon", x: 1000, y: 1190, sprite: "salon", scale: 0.8, label: "Glow Salon", labelY: 34, glow: "#ff5db1",
+      requireMounted: true, needMountMessage: "{i:ride} Ride a critter into the Glow Salon to pamper it!",
+      box: { dx: -86, dy: -50, w: 172, h: 52 }, action: "menu", actionLabel: "Visit the salon", icon: "palette", color: "#ff5db1", hint: "Ride in: glow makeover or bubble bath",
       menu: { title: "{i:palette} Glow Salon", subtitle: "What would you like?",
         items: [
-          { label: "Glow makeover", sub: "A new glow colour for the critter you last rode (drones lose your trail!)", icon: "palette", price: 12, do: "restyle", highlight: "chase",
+          { label: "Glow makeover", sub: "A new glow colour for the critter you ride (drones lose your trail!)", icon: "palette", price: 12, do: "restyle", highlight: "chase",
             title: "{i:palette} Glow makeover", subtitle: "Pick a new glow for {name}:", clearsChase: true,
             message: "{i:palette} {name} now glows {v}!", chaseMessage: "{i:palette} {name} glows {v} — the drones lost your trail!",
             noneMessage: "Ride a critter first, then come back for a makeover." },
-          { label: "Bubble bath", sub: "Every critter gets a little sparkle (+25)", icon: "sparkle", price: 10, do: "custom",
+          { label: "Bubble bath", sub: "The critter you ride gets all sparkly (+40)", icon: "sparkle", price: 10, do: "custom",
             onPick: (state, api) => {
+              const c = api.ride;                                   // only the critter you came in on
+              if (!c) return;
+              if (c.shine >= 100) { api.message("{i:sparkle} " + c.name + " is already sparkling clean!"); return; }
               if (!api.spend(10)) return;
-              state.creatures.forEach((c) => { c.shine = Math.min(100, (c.shine || 0) + 25); });
-              api.message("{i:sparkle} Bubble bath! Everyone sparkles a little more.");
+              c.shine = Math.min(100, (c.shine || 0) + 40);
+              api.message("{i:sparkle} Bubble bath! " + c.name + " sparkles all over.");
               api.refreshHud(); api.save();
             } },
         ] } },
@@ -382,12 +386,12 @@ window.GAME = {
     fullMessage: "The nursery is full! Make it bigger first.",
   },
   decor: [
-    { id: "crystal", name: "Pink crystal", sprite: "crystal", price: 18, scale: 0.7, collision: { dx: -34, dy: -16, w: 68, h: 20 } },
-    { id: "crystal_b", name: "Blue crystal", sprite: "crystal_b", price: 18, scale: 0.7, collision: { dx: -34, dy: -16, w: 68, h: 20 } },
-    { id: "plant", name: "Glow plant", sprite: "alienplant", price: 12, scale: 0.75 },
-    { id: "lamp", name: "Orb lamp", sprite: "orblamp", price: 14, scale: 0.65, collision: { dx: -14, dy: -10, w: 28, h: 14 } },
-    { id: "ball", name: "Star ball", sprite: "starball", price: 8, scale: 0.6 },
-    { id: "fountain", name: "Stardust fountain", sprite: "fountain", price: 40, scale: 0.75, collision: { dx: -66, dy: -28, w: 132, h: 32 } },
+    { id: "crystal", name: "Pink crystal", sprite: "crystal", price: 18, scale: 0.7, allowInHome: true, collision: { dx: -34, dy: -16, w: 68, h: 20 } },
+    { id: "crystal_b", name: "Blue crystal", sprite: "crystal_b", price: 18, scale: 0.7, allowInHome: true, collision: { dx: -34, dy: -16, w: 68, h: 20 } },
+    { id: "plant", name: "Glow plant", sprite: "alienplant", price: 12, scale: 0.75, allowInHome: true },
+    { id: "lamp", name: "Orb lamp", sprite: "orblamp", price: 14, scale: 0.65, allowInHome: true, collision: { dx: -14, dy: -10, w: 28, h: 14 } },
+    { id: "ball", name: "Star ball", sprite: "starball", price: 8, scale: 0.6, allowInHome: true },
+    { id: "fountain", name: "Stardust fountain", sprite: "fountain", price: 40, scale: 0.75, allowInHome: true, collision: { dx: -66, dy: -28, w: 132, h: 32 } },
   ],
 
   /* ---- Gravity Park (arena with jump beams) + Star Ring (a road around the station, through an asteroid belt) ---- */
@@ -398,7 +402,7 @@ window.GAME = {
              obstacles: [{ x: 1950, y: 1300 }, { x: 2080, y: 1300 }, { x: 2210, y: 1300 }, { x: 1950, y: 1570 }, { x: 2080, y: 1570 }, { x: 2210, y: 1570 }] },
     // the "forest" rule scatters an asteroid belt in the void, with guard rails along the road
     forest: { tree: "rock", bush: "bollard", step: 60, hedgeMargin: 42, treeScale: [0.55, 0.95], bushScale: [0.8, 0.9], hedgeBox: { dx: -30, dy: -8, w: 60, h: 12 },
-              treeBox: { dx: -42, dy: -104, w: 84, h: 144 } },   // the asteroid belt is solid (box = the drawn rocks): no walking in space or through them
+              treeBox: "fit" },   // the asteroid belt is solid, each rock fitted to its drawing: no walking in space or through them
     path: { width: 160, sand: 12, inset: 90, tile: "road", label: "Star Ring", labelY: 170,
             openings: [{ x: 200, y: 1410, w: 440, h: 160 }, { x: 2160, y: 830, w: 440, h: 160 }],
             logs: { xs: [640, 1040, 1440, 1840, 2240], dec: 0, sprite: "comet_rock", scale: 1 } },
@@ -520,7 +524,7 @@ window.GAME = {
     "<b>Welcome to Nebula Station!</b> Look after your critters, ride them around the station and make deliveries. This demo shows everything the engine can do.",
     "{i:hand} <b>Move:</b> tap the floor — your keeper floats there, around obstacles (double-tap to run). Tap a critter or a building to use it. (Keyboard: arrows or WASD/ZQSD.)",
     "{i:heart} <b>Care:</b> {i:battery} Energy (Feed, costs {i:nectar} nectar), {i:ball} Fun (Play) and {i:sparkle} Sparkle (Polish — zoom in and rub the dust away). A full Fun makes a critter beam with happy eyes!",
-    "{i:crate} <b>Deliveries:</b> at the <b>Delivery Dock</b>, pick a job. Follow the arrow to the crate, pick it up, then drop it on the glowing target. Express and rare jobs pay more but {i:drone} drones chase you: outrun them, or get a makeover at the {i:palette} <b>Glow Salon</b>.",
+    "{i:crate} <b>Deliveries:</b> at the <b>Delivery Dock</b>, pick a job. Follow the arrow to the crate, pick it up, then drop it on the glowing target. Express and rare jobs pay more but {i:drone} drones chase you: outrun them, or ride into the {i:palette} <b>Glow Salon</b> for a makeover.",
     "{i:ride} <b>Ride:</b> hop on a grown critter, cruise the <b>Star Ring</b> road and {i:jump} jump the comet rocks and the beams of the <b>Gravity Park</b>. Riding uses Energy: recharge on the {i:pad} <b>Energy Pad</b>.",
     "{i:flag} <b>Race:</b> while riding, tap Race — steer left and right, dodge the asteroids and reach the finish in time.",
     "{i:shop} <b>Star Market:</b> nectar, a bigger nursery, decorations and new critters. {i:egg} <b>Hatchery:</b> rare, faster critters. {i:portal} <b>Wormhole:</b> call a wild critter.",
