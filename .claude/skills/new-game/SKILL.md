@@ -67,8 +67,9 @@ section by section:
 - `environment` (band + arena + trail loop + forest scatter) if used; else drop it
 - `objectives.levels` (gamification), `help`
 Use a fresh `meta.saveKey` so it doesn't collide with other games' saves.
-Delete the template's `landing/` folder (the engine's landing page + catalogue lives in the
-template only); instead, add the new game's card to the template's `landing/index.html` once it is live.
+Delete the template's `landing/` folder (the engine's landing page + catalogue belongs to the
+template; `deploy.yml` never publishes it from a game repo anyway). Once the game is live, add its
+card to the TEMPLATE's `landing/index.html` catalogue (+ 390×844 screenshots in `landing/shots/`).
 
 ## Step 3 — Assets
 - **Reuse** the generic environment assets already in `assets/` when they fit
