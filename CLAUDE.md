@@ -38,6 +38,9 @@ Whenever the engine gains a capability, **add it to Nebula too** (it must show e
 - `tools/art/<game>.cjs` — ALL the game's art as parametric SVG, rendered to PNG by
   `node .claude/skills/_shared/render-svg.cjs tools/art/<game>.cjs [--only key]`.
   Never hand-edit the PNGs: change the art module and re-render.
+- `landing/` — the engine's public landing page (French): principle, how to use it, catalogue of
+  the games built with it, game modes, features, skills. Static HTML + `landing/shots/*.webp`
+  (390×844 in-game screenshots). **When a game is added or gains a mode, update its catalogue card.**
 - `.github/workflows/deploy.yml` — GitHub Pages deploy.
 - Cache-busting: `assetVersion: "vN"` in `game.config.js` (used by `av()` for every
   image) **and** every `?v=vN` in `index.html`. **Bump both** when JS/CSS/images change

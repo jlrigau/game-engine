@@ -67,6 +67,8 @@ section by section:
 - `environment` (band + arena + trail loop + forest scatter) if used; else drop it
 - `objectives.levels` (gamification), `help`
 Use a fresh `meta.saveKey` so it doesn't collide with other games' saves.
+Delete the template's `landing/` folder (the engine's landing page + catalogue lives in the
+template only); instead, add the new game's card to the template's `landing/index.html` once it is live.
 
 ## Step 3 — Assets
 - **Reuse** the generic environment assets already in `assets/` when they fit
