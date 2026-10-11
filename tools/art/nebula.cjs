@@ -363,7 +363,7 @@ function closeup(v, done, wide) {
   const gcx = tx + 64 * s, gcy = ty + 56.875 * s;   // wide: glow on the critter centre
   if (done) g += `<circle cx="${gcx}" cy="${wide ? gcy : H * 0.55}" r="${wide ? H * 0.6 : W * 0.62}" fill="url(#doneglow)"/>`;
   g += `<g transform="translate(${tx} ${ty}) scale(${s})">${r.body}</g>`;
-  const sparkles = wide ? [[0.3, 0.2], [0.7, 0.18], [0.27, 0.74], [0.73, 0.76], [0.5, 0.06], [0.12, 0.5], [0.88, 0.48]]
+  const sparkles = wide ? [[0.31, 0.27], [0.69, 0.25], [0.28, 0.74], [0.72, 0.76], [0.16, 0.52], [0.84, 0.5]]
     : [[0.2, 0.3], [0.8, 0.26], [0.16, 0.7], [0.84, 0.72], [0.5, 0.12]];
   if (done) sparkles.forEach(([a, b], i) => { g += `<path d="${star(W * a, H * b, 34 - (i % 5) * 3, 11, 4)}" fill="#fff6c8" filter="url(#sg)"/>`; });
   const defs = skyDefs() + r.defs + glow("sg", 6) + rad("doneglow", [[0, c, 0.5], [1, c, 0]]) + (wide ? stationWingDefs() : "");

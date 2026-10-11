@@ -264,8 +264,8 @@ window.GAME = {
                           { x: 0.40, y: 0.385, w: 0.2, h: 0.02 }, { x: 0.40, y: 0.70, w: 0.2, h: 0.03 }] },
           // phone held sideways: a landscape backdrop (same 4 areas, same order — wideAreas() in nebula.cjs)
           wide: { bg: "critter_closeup_rose_wide", bgDone: "critter_closeup_rose_wide_done",
-                  area: [{ x: 0.3477, y: 0.4067, w: 0.0609, h: 0.313 }, { x: 0.5914, y: 0.4067, w: 0.0609, h: 0.313 },
-                         { x: 0.4391, y: 0.305, w: 0.1219, h: 0.0313 }, { x: 0.4391, y: 0.7979, w: 0.1219, h: 0.0469 }] },
+                  size: 98, area: [{ x: 0.3848, y: 0.4546, w: 0.0461, h: 0.2367 }, { x: 0.5691, y: 0.4546, w: 0.0461, h: 0.2367 },
+                         { x: 0.4539, y: 0.3777, w: 0.0922, h: 0.0237 }, { x: 0.4539, y: 0.7505, w: 0.0922, h: 0.0355 }] },
           finishParticles: ["star", "sparkle", "heart"],
           foam: { colors: ["#ffffff", "#e3f9ff", "#ffe3f4"] },
         },
