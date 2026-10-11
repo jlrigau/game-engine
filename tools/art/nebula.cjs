@@ -72,36 +72,17 @@ function robot(dir, phase, moving, pal, u, opt) {
   const tilt = moving ? (dir === "left" ? -5 : dir === "right" ? 5 : Math.sin(phase) * 2) : 0;
   const swing = moving ? Math.sin(phase) * 22 : 0;
   const B = pal.body, BD = shade(pal.body, -0.18), A = pal.accent;
-  const backSeat = seated && dir === "up";   // race rear view (riderBack)
-  const defs = rad(`${u}h`, [[0, "#ffffff"], [0.6, B], [1, BD]], backSeat ? 0.32 : 0.38, backSeat ? 0.26 : 0.3, 0.8) +
+  const defs = rad(`${u}h`, [[0, "#ffffff"], [0.6, B], [1, BD]], 0.38, 0.3, 0.8) +
     lin(`${u}v`, [[0, "#2b3370"], [1, "#11153a"]]) +
     rad(`${u}j`, [[0, A, 0.9], [1, A, 0]], 0.5, 0.5, 0.5) + glow(`${u}gl`, 2.5) + blur(`${u}bl`, 4);
   const side = dir === "left" || dir === "right";
   const flip = dir === "right" ? `translate(128,0) scale(-1,1)` : "";
   const armL = (x, y, ang, front) => `<g transform="rotate(${ang} ${x} ${y})"><rect x="${x - 6}" y="${y - 3}" width="12" height="26" rx="6" fill="${front ? B : BD}" stroke="${INK}" stroke-width="3"/><circle cx="${x}" cy="${y + 25}" r="6.5" fill="${A}" stroke="${INK}" stroke-width="2.5"/></g>`;
-  let g = "", armsLate = "";
+  let g = "";
   // hover glow + thruster
   if (!seated) g += `<ellipse cx="64" cy="118" rx="${22 - bob}" ry="6" fill="url(#${u}j)" filter="url(#${u}bl)"/>`;
   g += `<g transform="translate(0 ${bob}) rotate(${tilt} 64 96)">`;
-  if (dir === "up" && seated) {
-    // seen from behind while riding, SEATED astride: the thighs go FORWARD (foreshortened: a short stub
-    // down and out, the saddle covers their inner half), the knee is never above the hip, and the shins
-    // hang down OVER the mount's edge (feet on its silhouette). opt.afterLegs = the saddle (drawn over the
-    // thighs, under the torso). Arms are drawn AFTER the head (armsLate): shoulder → elbow out → up to the reins.
-    const sl = (m) => { const X = (x) => (m ? 128 - x : x);
-      const d = `M${X(50)} 104 L${X(24)} 110 Q${X(15)} 116 ${X(14)} 136`;   // fat thigh stub, wide knee, near-vertical shin
-      return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>` +
-        `<path d="${d}" fill="none" stroke="${BD}" stroke-width="13.5" stroke-linecap="round" stroke-linejoin="round"/>` +
-        `<circle cx="${X(24)}" cy="110" r="7" fill="${shade(BD, -0.08)}" stroke="${INK}" stroke-width="3"/>` +                       // knee
-        `<ellipse cx="${X(12)}" cy="141" rx="6" ry="8" fill="${shade(A, -0.25)}" stroke="${INK}" stroke-width="3" transform="rotate(${m ? -20 : 20} ${X(12)} 141)"/>`; };   // foot resting on the flank
-    g += sl(false) + sl(true) + ((opt && opt.afterLegs) || "");
-    const gp = (opt && opt.grip) || [[15, 42], [113, 42]];
-    [[40, 74, gp[0]], [88, 74, gp[1]]].forEach(([x0, y0, [x1, y1]]) => {
-      const ex = x1 < 64 ? -6 : 134, ey = 84;   // elbows bent DOWN and out (handlebar), the forearm meets the fist from outside
-      const d = `M${x0} ${y0} Q${ex} ${ey} ${x1} ${y1}`;
-      armsLate += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="14" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${BD}" stroke-width="8" stroke-linecap="round"/>`;
-    });
-  } else if (dir === "up") {
+  if (dir === "up") {
     g += armL(36, 70, 10 - swing * 0.6, true) + armL(92, 70, -10 + swing * 0.6, true);
   } else if (!side) {
     g += armL(36, 70, 12 + swing * 0.6, false) + armL(92, 70, -12 - swing * 0.6, false);
@@ -121,14 +102,6 @@ function robot(dir, phase, moving, pal, u, opt) {
   g += `<path d="M42 66 Q40 104 64 106 Q88 104 86 66 Z" fill="url(#${u}h)" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/>`;
   if (dir === "down") {
     g += `<rect x="54" y="78" width="20" height="14" rx="5" fill="#1a1f4a" stroke="${INK}" stroke-width="2.5"/><circle cx="60" cy="85" r="2.8" fill="${A}" filter="url(#${u}gl)"/><circle cx="68" cy="85" r="2.8" fill="#ff7ab8"/>`;
-  } else if (backSeat) {   // accent backpack (hardware: straps, exhaust): keeps the rider readable on a pale mount
-    const st = `M56 75 L45 68 M72 75 L83 68`;
-    g += `<path d="M44 99 Q64 104 84 99 L83 104 Q64 110 45 104 Z" fill="${B}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;   // hip band: head → torso → hips → legs
-    g += `<path d="${st}" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><path d="${st}" stroke="${shade(A, -0.3)}" stroke-width="3" stroke-linecap="round"/>`;
-    g += `<ellipse cx="64" cy="96" rx="6" ry="3.5" fill="url(#${u}j)" filter="url(#${u}bl)"/>`;
-    g += `<rect x="59" y="88" width="10" height="6" rx="2.5" fill="#5866b4" stroke="${INK}" stroke-width="2.5"/>`;
-    g += `<rect x="52" y="73" width="24" height="17" rx="7" fill="${A}" stroke="${INK}" stroke-width="3"/><path d="M57 79 H71 M57 84.5 H71" stroke="${shade(A, -0.3)}" stroke-width="2.5" stroke-linecap="round"/>`;
-    g += `<circle cx="40" cy="72" r="7" fill="${BD}" stroke="${INK}" stroke-width="3"/><circle cx="88" cy="72" r="7" fill="${BD}" stroke="${INK}" stroke-width="3"/>`;   // shoulder joints under the head rim
   } else if (dir === "up") {
     g += `<path d="M52 80 L76 80 M52 88 L76 88" stroke="${BD}" stroke-width="3" stroke-linecap="round"/>`;
   } else {
@@ -136,13 +109,8 @@ function robot(dir, phase, moving, pal, u, opt) {
   }
   if (seated && side) g += leg(0, 0, B);
   // head
-  if (backSeat) {   // race rear view: a short straight nub (never reads as a 3rd ball next to the mount's two)
-    g += `<path d="M68 22 L75 19" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M68 22 L75 19" fill="none" stroke="${A}" stroke-width="2" stroke-linecap="round"/>`;
-    g += `<circle cx="77" cy="18" r="4" fill="${A}" stroke="${INK}" stroke-width="2.5"/>`;
-  } else {
-    g += `<line x1="64" y1="22" x2="64" y2="9" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>`;
-    g += `<circle cx="64" cy="8" r="6.5" fill="${A}" stroke="${INK}" stroke-width="2.5" filter="url(#${u}gl)"/>`;
-  }
+  g += `<line x1="64" y1="22" x2="64" y2="9" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>`;
+  g += `<circle cx="64" cy="8" r="6.5" fill="${A}" stroke="${INK}" stroke-width="2.5" filter="url(#${u}gl)"/>`;
   g += `<ellipse cx="64" cy="46" rx="33" ry="27" fill="url(#${u}h)" stroke="${INK}" stroke-width="3.5"/>`;
   g += `<ellipse cx="52" cy="32" rx="9" ry="5" fill="#ffffff" opacity=".9" transform="rotate(-20 52 32)"/>`;
   if (dir === "down") {
@@ -154,12 +122,9 @@ function robot(dir, phase, moving, pal, u, opt) {
     g += `<g transform="${flip}"><rect x="30" y="40" width="30" height="22" rx="11" fill="url(#${u}v)" stroke="${INK}" stroke-width="3"/>`;
     g += `<ellipse cx="42" cy="51" rx="5.5" ry="7" fill="${A}" filter="url(#${u}gl)"/><circle cx="40" cy="48" r="2" fill="#fff"/>`;
     g += `<circle cx="80" cy="48" r="7" fill="${BD}" stroke="${INK}" stroke-width="2.5"/></g>`;
-  } else if (backSeat) {   // back of the head: a curved speaker grille high up (no dot below it: it read as a face)
-    g += `<path d="M52 29 Q64 24 76 29 M50 35 Q64 30 78 35 M51 41 Q64 36 77 41" fill="none" stroke="${BD}" stroke-width="3" stroke-linecap="round"/>`;
   } else {   // back of the head: little vents + a status light
     g += `<path d="M52 50 H76 M54 57 H74" stroke="${BD}" stroke-width="3.5" stroke-linecap="round"/><circle cx="64" cy="64" r="2.6" fill="${A}" filter="url(#${u}gl)"/>`;
   }
-  g += armsLate;
   if (dir === "up") { /* arms already behind */ } else if (side) {
     g += `<g transform="${flip}">${armL(58, 70, seated ? 54 : swing, true)}</g>`;
   }
@@ -512,19 +477,6 @@ function shardPath(x, base, h, w, lean, fill, sw = 3.5) {
 }
 
 /* ---------------- 1. Keeper seated (riding pose), one 128 frame ---------------- */
-// The rider's fists around the reins (local px): a dark cuff against the fist, an accent mitten (rounded
-// rect 15x12 rotated to the stalk tangent `tan`), and a knuckle line over the stalk. `from` = the shoulders.
-function robotGrip(pal, pts, from, tan) {
-  const A = pal.accent;
-  return pts.map(([x, y], i) => { const m = i ? -1 : 1, [sx, sy] = from[i];
-    const L = Math.hypot(x - sx, y - sy) || 1, ux = (x - sx) / L, uy = (y - sy) / L, px = -uy * 5, py = ux * 5;
-    const cx = x - ux * 7, cy = y - uy * 7;
-    const cuff = `M${cx + px} ${cy + py} L${cx - px} ${cy - py}`;
-    const [tx, ty] = tan[i], ang = Math.atan2(ty, tx) * 180 / Math.PI + 90;   // rect x-axis across the stalk
-    return `<path d="${cuff}" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="${cuff}" stroke="${shade(A, -0.35)}" stroke-width="4" stroke-linecap="round"/>` +
-      `<g transform="translate(${x} ${y}) rotate(${ang})"><rect x="-7.5" y="-6" width="15" height="12" rx="6" fill="${A}" stroke="${INK}" stroke-width="3"/>` +
-      `<path d="M${-4.5 * m} -3 L${-4.5 * m} 3" stroke="${INK}" stroke-width="2" stroke-linecap="round" opacity=".75"/><path d="M${-1 * m} -3.5 Q${2 * m} -4.5 ${4 * m} -3" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></g>`; }).join("");
-}
 function robotSeated(pal, u) { return robot("left", 0, false, pal, u, { seated: true }); }
 function keeperRide(name, pal) {
   const r = robotSeated(pal, "rs");
@@ -532,20 +484,21 @@ function keeperRide(name, pal) {
 }
 
 /* ---------------- 3. Critter seen from behind, keeper on its back (race sprite) ---------------- */
-// Race rear view: the critter alone (critterBack) + the keeper seen from behind (riderBack),
-// two layers in the SAME 200x170 frame — the engine draws character.raceRider over raceSprite.
-// The keeper sits low on the back and holds the critter's two antennae like handlebars: both
-// layers read the antenna curves + grip points from cbAntenna(), so they always line up.
+// Race rear view: the critter alone (critterBack) + the keeper seen from behind (riderBack), two layers
+// in the SAME 200x170 frame — the engine draws character.raceRider over raceSprite. Reference pose: a kid
+// on a SPACE HOPPER seen from behind/above: a round pod sitting on top of the ball, elbows out and down,
+// fists on the two "horns" (the critter's antennae), legs hanging down the ball. Both layers read the
+// antenna geometry from cbAntenna() and the rider joints from RB, so they always line up.
 const CB = { W: 200, H: 170, cx: 100, cy: 106, rx: 66, ry: 52 };   // ~1.18 like the front sheet
-const RIDER = { s: 0.8, y: 78 };   // keeper scale + frame y of its seat (local y 106): head + shoulders clear the top contour
-const toLocal = ([x, y]) => [64 + (x - CB.cx) / RIDER.s, 106 + (y - RIDER.y) / RIDER.s];
-function cbAntenna(m) {    // m = -1 left, +1 right; quadratic stalk root → tip, pulled in by the grip
-  const X = (dx) => CB.cx + m * dx;
-  // reins held forward: rooted BEHIND the rider (its layer hides the lower stalk), out to the fists, up to the balls
-  const root = [X(44), 66], tip = [X(50), 12], ctl = [X(50), 64];   // grows from the top contour just outside the shoulders
-  const q = (t) => [0, 1].map((k) => (1 - t) ** 2 * root[k] + 2 * (1 - t) * t * ctl[k] + t * t * tip[k]);
-  const dq = (t) => [0, 1].map((k) => 2 * (1 - t) * (ctl[k] - root[k]) + 2 * t * (tip[k] - ctl[k]));
-  return { root, tip, ctl, grip: q(0.5), tan: dq(0.5) };
+const RB = {   // rider joints, frame px (left side; mirrored about x 100)
+  head: { cx: 100, cy: 36, rx: 26, ry: 21 }, shoulder: [84, 60], elbow: [70, 70], fist: [64, 62],
+  hip: [88, 80], knee: [70, 90], foot: [73, 123],
+};
+function cbAntenna(m) {    // m = -1 left, +1 right: root hidden under the forearm → straight to the fist → up/out to the tip
+  const X = (x) => (m < 0 ? x : 200 - x);
+  const root = [X(70), 64], grip = [X(RB.fist[0]), RB.fist[1]], ctl = [X(52), 38], tip = [X(44), 19];
+  return { root, grip, ctl, tip, tan: [ctl[0] - grip[0], ctl[1] - grip[1]],
+    d: `M${root[0]} ${root[1]} L${grip[0]} ${grip[1]} Q${ctl[0]} ${ctl[1]} ${tip[0]} ${tip[1]}` };
 }
 function critterBack(v) {
   const c = VARIANTS[v], u = "cb", { W, H, cx, cy, rx, ry } = CB;
@@ -554,17 +507,16 @@ function critterBack(v) {
     rad(`${u}th`, [[0, "#ffffff"], [0.35, "#fff3b0"], [1, mix("#ffd24a", c, 0.5), 0]]) +
     rad(`${u}g`, [[0, c, 0.5], [1, c, 0]]) + rad(`${u}t`, [[0, "#ffffff"], [0.35, shade(c, 0.3)], [1, c]], 0.4, 0.35, 0.6) +
     rad(`${u}l`, [[0, "#ffffff"], [0.35, "#fff3b0"], [1, "#ffd24a", 0]]) + glow(`${u}gl`, 3) + blur(`${u}bl`, 3);
-  let g = `<ellipse cx="${cx}" cy="${cy}" rx="98" ry="74" fill="url(#${u}g)"/>`;
+  let g = `<ellipse cx="${cx}" cy="${cy}" rx="96" ry="60" fill="url(#${u}g)"/>`;   // halo stays inside the frame
   g += `<ellipse cx="${cx}" cy="164" rx="62" ry="3.5" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
   const foot = (x, y) => `<ellipse cx="${x}" cy="${y}" rx="15" ry="9" fill="${bodyD}" ${stk(3.5)}/>`;
   g += foot(62, 158) + foot(138, 158);
   g += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${u}b)" ${stk(4)}/>`;
-  // antennae = reins: they grow from the top contour beside the rider (base collar), the lower stalk stays
-  // visible up to the fist; light core so the stalk reads against the dark race sky, glowing ball on top
-  [-1, 1].forEach((m) => { const a = cbAntenna(m), d = `M${a.root[0]} ${a.root[1]} Q${a.ctl[0]} ${a.ctl[1]} ${a.tip[0]} ${a.tip[1]}`;
-    g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${bodyD}" stroke-width="2.6" stroke-linecap="round"/>`;
-    g += `<ellipse cx="${a.root[0]}" cy="${a.root[1] + 2}" rx="7" ry="4" fill="${shade(c, -0.1)}" opacity=".45" filter="url(#${u}bl)"/>`;   // soft tinted root glow
-    g += `<circle cx="${a.tip[0]}" cy="${a.tip[1] + 1}" r="8.5" fill="url(#${u}t)" ${stk(3)} filter="url(#${u}gl)"/>`; });
+  // antennae = the hopper's handle horns: an outward V from roots on the back (hidden by the rider's
+  // forearms), light core so the stalk reads against the dark race sky, glowing ball on top
+  [-1, 1].forEach((m) => { const a = cbAntenna(m);
+    g += `<path d="${a.d}" fill="none" stroke="${INK}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="${a.d}" fill="none" stroke="${bodyD}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+    g += `<circle cx="${a.tip[0]}" cy="${a.tip[1]}" r="8.5" fill="url(#${u}t)" ${stk(3)} filter="url(#${u}gl)"/>`; });
   // soft back shading (lower half) + rim light — no spots (they read as a face from behind)
   g += `<path d="M${cx - rx + 8} ${cy + 14} Q${cx} ${cy + 44} ${cx + rx - 8} ${cy + 14} Q${cx + rx - 14} ${cy + ry - 6} ${cx} ${cy + ry - 3} Q${cx - rx + 14} ${cy + ry - 6} ${cx - rx + 8} ${cy + 14} Z" fill="${c}" opacity=".3"/>`;
   g += `<path d="M44 108 Q44 86 54 72" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"/>`;
@@ -577,32 +529,65 @@ function critterBack(v) {
   });
   return job(`assets/img/critter_back_${v}.png`, W, H, g, defs);
 }
-// The keeper seen from BEHIND, seated on the critter: same robot() as the walk/ride sheets,
-// sitting on an accent saddle pad (contact + drop shadows clipped TO the body — never spill into the void),
-// legs down the flanks, fists gripping the antennae like reins (cbAntenna().grip / .tan). Nothing in this layer
-// is behind the critter, so no inverse-body mask is needed.
+// The keeper seen from BEHIND sitting on the critter like a kid on a space hopper, drawn in frame px with
+// the keeper's own shapes + palette (head = robot()'s 33x27 head scaled 0.79, torso = its pod scaled 0.8,
+// back of the head/pod = the walk sheet's back row: grey vents + a small status light). Accent colour only
+// on the fists, the boot bands and the head-antenna ball. Shadows are clipped TO the critter's body.
+function keeperBackSeated(pal, u) {
+  const B = pal.body, BD = shade(pal.body, -0.18), A = pal.accent, H = RB.head;
+  const L = (x) => x, R = (x) => 200 - x;
+  const defs = rad(`${u}h`, [[0, "#ffffff"], [0.6, B], [1, BD]], 0.38, 0.3, 0.8) + glow(`${u}gl`, 2);
+  let g = "";
+  // saddle: small, deep plum, mostly under the hips, with an accent stitch and a flap down each side
+  [L, R].forEach((X) => { g += `<path d="M${X(80)} 84 Q${X(75)} 92 ${X(78)} 99 L${X(85)} 98 Q${X(84)} 91 ${X(87)} 85 Z" fill="#3a2a6e" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`; });
+  g += `<ellipse cx="100" cy="85" rx="21" ry="5.5" fill="#3a2a6e" stroke="${INK}" stroke-width="2.5"/>`;
+  g += `<path d="M84 85 Q100 81 116 85" fill="none" stroke="${A}" stroke-width="1.2" stroke-dasharray="2 2" opacity=".85"/>`;
+  // legs: thighs ~29 deg down from the hip sides to a wide knee, shins hanging down the ball, heel-view boots
+  [L, R].forEach((X) => {
+    const [hx, hy] = RB.hip, [kx, ky] = RB.knee, [fx, fy] = RB.foot;
+    const d = `M${X(hx)} ${hy} L${X(kx)} ${ky} Q${X(kx - 2)} ${ky + 16} ${X(fx)} ${fy - 2}`;
+    g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${BD}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`;
+    g += `<circle cx="${X(kx)}" cy="${ky}" r="4.8" fill="${B}" stroke="${INK}" stroke-width="2.2"/>`;
+    g += `<rect x="${X(fx) - 6}" y="${fy - 5}" width="12" height="10" rx="4" fill="#2b3370" stroke="${INK}" stroke-width="2.5"/>`;
+    g += `<rect x="${X(fx) - 4.8}" y="${fy - 3.6}" width="9.6" height="2.4" rx="1.2" fill="${A}"/>`;
+  });
+  // the pod (torso) sitting on the saddle: wide hips, grey vent lines on the back
+  g += `<path d="M82.4 52 Q80.8 82 100 84 Q119.2 82 117.6 52 Z" fill="url(#${u}h)" stroke="${INK}" stroke-width="2.8" stroke-linejoin="round"/>`;
+  g += `<path d="M90.4 63 H109.6 M90.4 69.5 H109.6" stroke="${BD}" stroke-width="2.4" stroke-linecap="round"/>`;
+  // head (back): centred signature antenna, vents, status light
+  g += `<line x1="100" y1="16" x2="100" y2="11" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/>`;
+  g += `<circle cx="100" cy="9" r="4.5" fill="${A}" stroke="${INK}" stroke-width="2"/>`;
+  g += `<ellipse cx="${H.cx}" cy="${H.cy}" rx="${H.rx}" ry="${H.ry}" fill="url(#${u}h)" stroke="${INK}" stroke-width="2.8"/>`;
+  g += `<ellipse cx="90.5" cy="25" rx="7" ry="4" fill="#ffffff" opacity=".9" transform="rotate(-20 90.5 25)"/>`;
+  g += `<path d="M90.5 39 H109.5 M92 44.5 H108" stroke="${BD}" stroke-width="2.8" stroke-linecap="round"/>`;
+  g += `<circle cx="100" cy="50" r="2" fill="${A}" filter="url(#${u}gl)"/>`;
+  // arms: shoulder ball just under the head, elbow out + down, forearm forward/in to the fist on the horn
+  [[L, -1], [R, 1]].forEach(([X, m]) => {
+    const a = cbAntenna(m), [sx, sy] = RB.shoulder, [ex, ey] = RB.elbow, [gx, gy] = a.grip;
+    const d = `M${X(sx)} ${sy} L${X(ex)} ${ey} L${gx} ${gy}`;
+    g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${B}" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    g += `<circle cx="${X(sx)}" cy="${sy}" r="4.8" fill="${BD}" stroke="${INK}" stroke-width="2.2"/>`;
+    const ang = Math.atan2(a.tan[1], a.tan[0]) * 180 / Math.PI + 90;   // mitt across the horn
+    g += `<g transform="translate(${gx} ${gy}) rotate(${ang})"><rect x="-6" y="-5" width="12" height="10" rx="5" fill="${A}" stroke="${INK}" stroke-width="2.4"/>` +
+      `<path d="M${3 * m} -3 V3" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" opacity=".7"/><circle cx="${-2.5 * m}" cy="-2" r="1.3" fill="#fff" opacity=".75"/></g>`;
+  });
+  return { defs, body: g };
+}
 function riderBack(id, pal) {
-  const { W, H, cx, cy, rx, ry } = CB, u = `rb${id}`, A = pal.accent;
-  const ants = [cbAntenna(-1), cbAntenna(1)], grip = ants.map((a) => toLocal(a.grip)), tan = ants.map((a) => a.tan);
-  // draped saddle following the back's curvature (frame px), drawn by robot() over the thighs, under the torso
-  const saddle = `<path d="M68 86 Q100 74 132 86 Q134 96 126 98 Q100 90 74 98 Q66 96 68 86 Z" fill="${shade(A, -0.2)}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>` +
-    `<path d="M76 85 Q100 78 124 85" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".5"/>`;
-  const afterLegs = `<g transform="translate(64 106) scale(${1 / RIDER.s}) translate(${-CB.cx} ${-RIDER.y})">${saddle}</g>`;
-  const kr = robot("up", 0, false, pal, u, { seated: true, grip, afterLegs });
-  const shoulders = [[40, 72], [88, 72]];
+  const { W, H, cx, cy, rx, ry } = CB, u = `rb${id}`;
+  const kr = keeperBackSeated(pal, u);
   const defs = kr.defs + blur(`${u}sb`, 3) +
     `<clipPath id="${u}on"><ellipse cx="${cx}" cy="${cy}" rx="${rx - 2}" ry="${ry - 2}"/></clipPath>` +
     `<filter id="${u}ds" x="-20%" y="-20%" width="140%" height="140%"><feOffset in="SourceAlpha" dy="4" result="o"/><feGaussianBlur in="o" stdDeviation="2.5" result="b"/>` +
     `<feFlood flood-color="#1a1440" flood-opacity=".25"/><feComposite in2="b" operator="in"/></filter>`;
-  const body = kr.body + robotGrip(pal, grip, shoulders, tan);
-  const place = (b) => `<g transform="translate(${cx} ${RIDER.y}) scale(${RIDER.s}) translate(-64 -106)">${b}</g>`;
-  // contact shadow + the rider's drop shadow on the critter (both clipped to the body)
-  const shin = (m) => `<ellipse cx="${cx + m * 34}" cy="102" rx="4" ry="15" fill="#1a1440" opacity=".25" filter="url(#${u}sb)" transform="rotate(${m * -38} ${cx + m * 34} 102)"/>`;   // under each shin
-  let g = `<g clip-path="url(#${u}on)"><ellipse cx="${cx}" cy="93" rx="32" ry="7" fill="#1a1440" opacity=".35" filter="url(#${u}sb)"/>` +
-    shin(-1) + shin(1) + `<g filter="url(#${u}ds)">${place(body)}</g></g>`;
-  g += place(body);
-  return job(`assets/img/rider_back_${id}.png`, W, H, g, defs);
+  // contact shadow + the rider's drop shadow on the critter (clipped to the body)
+  let g = `<g clip-path="url(#${u}on)"><ellipse cx="${cx}" cy="89" rx="26" ry="6" fill="#1a1440" opacity=".3" filter="url(#${u}sb)"/>` +
+    `<g filter="url(#${u}ds)">${kr.body}</g></g>`;
+  g += kr.body;
+  return job(`assets/img/rider_${id}.png`, W, H, g, defs);
 }
+// Rival riders: the same keeper with other accent palettes (white head kept) — real colours, not a tint.
+const RIVALS = [["#ff8a3d"], ["#5fd36a"], ["#a06bff"], ["#ff5db1"], ["#ffd24a"]];
 /* ---------------- 4. Environment ---------------- */
 function pathTile() {   // moon-dust path, seamless 256 tile
   const S = 256, R = rng(21);
@@ -1018,10 +1003,10 @@ function startGate() {
   const x0 = 34, x1 = 366, y0 = 18, y1 = 58;
   g += `<rect x="${x0}" y="${y0 - 3}" width="${x1 - x0}" height="${y1 - y0 + 6}" rx="8" fill="url(#${u}b)" filter="url(#${u}bl)"/>`;
   g += `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="6" fill="#1b1f4a" opacity=".55"/>`;
-  const n = 26, cw = (x1 - x0 - 16) / n;
+  const n = 16, cw = (x1 - x0 - 16) / n;
   for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) if ((i + j) % 2 === 0)
-    g += `<rect x="${(x0 + 8 + i * cw).toFixed(1)}" y="${30 + j * 8}" width="${cw.toFixed(1)}" height="8" fill="#ffffff" opacity=".85"/>`;
-  g += `<rect x="${x0 + 8}" y="30" width="${x1 - x0 - 16}" height="16" fill="none" stroke="#ffffff" stroke-width="1.5" opacity=".6"/>`;
+    g += `<rect x="${(x0 + 8 + i * cw).toFixed(1)}" y="${28 + j * 10}" width="${cw.toFixed(1)}" height="10" fill="#ffffff" opacity=".85"/>`;
+  g += `<rect x="${x0 + 8}" y="28" width="${x1 - x0 - 16}" height="20" fill="none" stroke="#ffffff" stroke-width="1.5" opacity=".6"/>`;
   [[y0, "#ff5db1"], [y1, "#3fe0e8"]].forEach(([y, c]) => { g += `<rect x="${x0 - 3.75}" y="${y - 3.75}" width="${x1 - x0 + 7.5}" height="7.5" rx="3.75" fill="${INK}"/><rect x="${x0 - 2.25}" y="${y - 2.25}" width="${x1 - x0 + 4.5}" height="4.5" rx="2.25" fill="${c}" filter="url(#${u}gl)"/>`; });
   for (let i = 0; i < 9; i++) { const x = x0 + 18 + i * ((x1 - x0 - 36) / 8), y = i % 2 ? y0 - 1 : y1 + 1, c = i % 2 ? "#ff8fd0" : "#9ff7ff";
     g += `<circle cx="${x.toFixed(1)}" cy="${y}" r="3.5" fill="${c}" filter="url(#${u}gl)"/><circle cx="${x.toFixed(1)}" cy="${y}" r="1.4" fill="#fff"/>`; }
@@ -1460,7 +1445,8 @@ const HIDPI = [
 function build(jobs) {
   Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v), critterThumb(v), closeup(v, false), closeup(v, true), closeup(v, false, true), closeup(v, true, true)); });
   Object.keys(VARIANTS).forEach((v) => { jobs.push(critterSheet(v, true), critterBack(v)); });
-  jobs.push(riderBack("aqua", KEEPERS.keeper), riderBack("amber", KEEPERS.keeper_amber));
+  jobs.push(riderBack("back_aqua", KEEPERS.keeper), riderBack("back_amber", KEEPERS.keeper_amber));
+  RIVALS.forEach(([a], i) => jobs.push(riderBack(`rival_${i + 1}`, { body: "#eef2ff", accent: a })));
   Object.entries(KEEPERS).forEach(([n, p]) => jobs.push(keeperSheet(n, p), keeperThumb(n, p), keeperRide(n, p)));
   jobs.push(arenaFloor(), spire(), beamV(), cometRock(),
     market(), salon(), dock(), hatchery(), energyPad(), portal(),

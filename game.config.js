@@ -145,7 +145,12 @@ window.GAME = {
       critter_back_violet: { path: "assets/img/critter_back_violet.webp", res: 2 },
       // race: the keeper robot seen from behind, drawn over the critter (character.raceRider)
       drone_back: { path: "assets/img/drone_back.webp", res: 2 }, drone_front: { path: "assets/img/drone_front.webp", res: 2 }, start_gate: { path: "assets/img/start_gate.webp", res: 2 },   // the Escape pursuer (race.chase)
-      rider_back_aqua: { path: "assets/img/rider_back_aqua.webp", res: 2 }, rider_back_amber: { path: "assets/img/rider_back_amber.webp", res: 2 },
+      rider_back_aqua: { path: "assets/img/rider_back_aqua.webp", res: 2 },
+      rider_rival_1: { path: "assets/img/rider_rival_1.webp", res: 2 },
+      rider_rival_2: { path: "assets/img/rider_rival_2.webp", res: 2 },
+      rider_rival_3: { path: "assets/img/rider_rival_3.webp", res: 2 },
+      rider_rival_4: { path: "assets/img/rider_rival_4.webp", res: 2 },
+      rider_rival_5: { path: "assets/img/rider_rival_5.webp", res: 2 }, rider_back_amber: { path: "assets/img/rider_back_amber.webp", res: 2 },
       dust: "assets/img/dust.webp", dust_b: "assets/img/dust_b.webp", cloth: "assets/img/cloth.webp",
       want_dust: { path: "assets/img/want_dust.webp", res: 2 },
       // per-variant close-up backdrops (+ the happy "after" version revealed when clean)
@@ -319,8 +324,7 @@ window.GAME = {
       { sprite: "asteroid", every: 46, phase: 18, scale: 3.2, hw: 0.3, spread: 0.45 },
     ],
     // a REAL race: 5 rival riders to overtake (you start last), ranking, results with a reward per place.
-    // Rival robots reuse the keeper rear view, recoloured (riderTint) in a hue that contrasts with their mount,
-    // never white/cyan (the player's own look).
+    // Rival robots: the keeper's rear view in their own accent colour (rider_rival_N, pre-rendered palettes).
     horizon: 0.42,                           // tall phones: more road, less empty sky
     // CHASE variant ("Escape"): a security drone starts behind and closes in; obstacles slow you, it catches up
     chase: {
@@ -337,11 +341,11 @@ window.GAME = {
     },
     rivals: {
       list: [
-        { name: "Zip", sprite: "critter_back_rose", rider: "rider_back_aqua", riderTint: "#8fe36a", color: "#8fe36a" },
-        { name: "Nova", sprite: "critter_back_lime", rider: "rider_back_amber", riderTint: "#ff86c4", color: "#ff86c4" },
-        { name: "Pixel", sprite: "critter_back_violet", rider: "rider_back_amber", riderTint: "#ffc94a", color: "#ffc94a" },
-        { name: "Comet", sprite: "critter_back_amber", rider: "rider_back_aqua", riderTint: "#a98bff", color: "#a98bff" },
-        { name: "Orbit", sprite: "critter_back_aqua", rider: "rider_back_amber", riderTint: "#ff8a66", color: "#ff8a66" },
+        { name: "Zip", sprite: "critter_back_rose", rider: "rider_rival_1", color: "#ff8a3d" },
+        { name: "Nova", sprite: "critter_back_lime", rider: "rider_rival_2", color: "#5fd36a" },
+        { name: "Pixel", sprite: "critter_back_violet", rider: "rider_rival_3", color: "#a06bff" },
+        { name: "Comet", sprite: "critter_back_amber", rider: "rider_rival_4", color: "#ff5db1" },
+        { name: "Orbit", sprite: "critter_back_aqua", rider: "rider_rival_5", color: "#ffd24a" },
       ],
       scale: 6.5, hw: 0.3, skill: [0.82, 0.97], gridGap: 3, gridFirst: 5, startGate: "start_gate", startGateScale: 17, lanes: [-0.62, 0.62],
       rewards: [40, 25, 15, 8, 5, 3],
