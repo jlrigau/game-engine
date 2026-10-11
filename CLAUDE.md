@@ -181,11 +181,40 @@ like a game made by a studio — not a prototype. Concretely:
   look like its own universe.
 - New owner feedback → add it to this section (via **capitalize-learnings**).
 
-## 11. Ludea organisation + ludea.ai (in progress, step by step with the owner)
-- The owner created the GitHub org **`ludea-ai`** and linked the ludea.ai domain to it (Oct 2026).
-  Next: the owner transfers the 4 repos to the org; work then continues in a new session opened on the
-  `ludea-ai` repos (this jlrigau-scoped session loses access once the repos are renamed).
-- **No save migration**: the owner decided players' saves / home-screen icons may be lost in the move
-  (nobody but the owner plays yet) — do not build hand-over code.
-- After the move: update every hard-coded URL (landing links, QR codes, hreflang, README, CLAUDE.md,
-  skills), check Pages is enabled on each repo, and serve the landing at ludea.ai.
+## 11. Ludea organisation + ludea.ai — THE RESTRUCTURING TO DO (owner approved, Oct 2026)
+State when the jlrigau-scoped session handed over (2026-10-11):
+- Org **`ludea-ai`** created; ludea.ai verified in the org. Repos in the org: `ludea-ai.github.io`
+  (org site, custom domain **ludea.ai** set there ONLY — every other repo inherits ludea.ai/<repo>/,
+  never set a domain per repo) and `nebula` (empty). Both: Pages source = GitHub Actions.
+- DNS (Namecheap): 4 GitHub A records OK; still to clean by the owner: a leftover record pointing to
+  162.255.119.235 (parking/URL redirect, hidden under "Show more"), missing `www` CNAME →
+  ludea-ai.github.io, optional 4 AAAA (2606:50c0:800{0,1,2,3}::153). Then "Enforce HTTPS".
+- dr-smile / gta7 / my-little-stable: bilingual FR/EN on main (live). game-engine: Nebula's bilingual
+  work is on **`wip/new-features`, NOT merged into main** (main has the Ludea landing commits) —
+  merge it first (keep both sides), run the tour, then start the split.
+- No save migration (owner: losing saves is fine). Nobody else plays yet.
+
+Target layout in `ludea-ai`:
+- **`game-engine`** (stays the GitHub template; rename to `engine` only if the owner asks): engine.js,
+  engine.css, ENGINE.md, vendor/, .claude/skills (+ _shared), README, CLAUDE.md and a SMALL playable
+  starter game built from `.claude/skills/new-game/references/minimal-seed.config.js` (with its own
+  small generated art) — what "Use this template" gives. Publishes nothing (remove its Pages deploy, or
+  keep a deploy only if the owner wants the starter online). Drop `landing/`, `tools/art/brand.cjs`
+  and the template-only trick in deploy.yml.
+- **`nebula`**: the full showcase (game.config.js, style.css, index.html, manifest, assets/,
+  tools/art/nebula.cjs + the engine layer), deploy.yml like the other games → ludea.ai/nebula/.
+  Rule unchanged: every new engine capability is shown in Nebula; engine work is developed and
+  probe-tested in Nebula (it exercises every system), then synced to the template + games
+  (`sync-engine`).
+- **`ludea-ai.github.io`**: the site at ludea.ai — move `landing/` here at the ROOT (EN at /, FR at
+  /fr/, design system at /design/), plus `tools/art/brand.cjs` and the brand assets; its own small
+  deploy.yml; fix paths that pointed to ../ (game icons, fonts are already self-hosted).
+- Games: dr-smile, gta7, my-little-stable unchanged.
+
+Then: update every hard-coded URL (jlrigau.github.io/… → ludea.ai/…, github.com/jlrigau/… →
+github.com/ludea-ai/…) in the landing (cards, QR codes regenerated with python `qrcode`, hreflang,
+footer), READMEs, CLAUDE.md of every repo, skills (new-game / release-deploy mention Pages URLs),
+manifests if absolute. Add Nebula's card link to ludea.ai/nebula/. Verify each site live (tour probe on
+each game, landing EN/FR/design screenshots, no 404 on assets), confirm each deploy run is green.
+Update the README "Create a new game" steps for the new template location.
+Later (not now): load the engine from one place instead of copying it into every repo.
