@@ -523,6 +523,8 @@ race: { time, reward, stat:"raceWin", hitPenalty, sprite, roadside:[image keys],
   colors:{ sky:[top,mid,horizon], sun:[top,bottom]|false, skyline|false, ground, grass:[a,b], road:[a,b], rumble:[a,b], lane, finish:[a,b] },
   icons:{ time, distance, speed, quit, left, right }, speedUnit, distUnit, topSpeed, quitLabel, hint,
   startMessage, hitMessage("{n}"), winMessage("{r}"), loseMessage, quitMessage }
+// drain (per s, default 2.4): the ride's fatigue need burns while racing; at 0 the ride slows to tiredSpeed (0.5)
+// for the rest of the race (tiredMessage("{name}")), or to ride.emptySpeed with ride.empty:"slow".
 // showNeed (default true): the ride's fatigue need (e.g. fuel) as a gauge under the HUD chips — turns red and
 // pulses below 25 %, so a ride slowing down mid-race (empty tank, ride.empty:"slow") is understood. false hides it.
 ```

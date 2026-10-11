@@ -3568,7 +3568,7 @@ function startRace() {
   R3.pos = R3.prevPos = R3.playerX = R3.speed = 0;
   R3.grip = mounted.grip || 1;
   R3.baseMax = R3.segLen * 60 * (T.speed || 1) * (mounted.speedMul || 1);
-  R3.maxSpeed = R3.baseMax * rideEmptyMul(); R3.drainAcc = 0;
+  R3.maxSpeed = R3.baseMax * rideEmptyMul(); R3.drainAcc = 0; R3.tired = false;
   R3.time = RACE.time || 60; R3.over = false; R3.shake = R3.hitFlash = 0;
   R3.input = { left: false, right: false };
   const kd = (e) => r3Key(e, true), ku = (e) => r3Key(e, false);
@@ -3640,6 +3640,11 @@ function r3Update(dt) {
     R3.drainAcc += dt * (RACE.drain != null ? RACE.drain : 2.4) * (mounted.drainMul || 1);
     if (R3.drainAcc >= 1) { const dn = Math.floor(R3.drainAcc); R3.drainAcc -= dn; mounted[RD.fatigueNeed] = clamp01((mounted[RD.fatigueNeed] || 0) - dn); }
     if (rideEmpty(mounted)) { R3.maxSpeed = R3.baseMax * rideEmptyMul(); rideEmptyWarn(mounted); }
+    else if ((mounted[RD.fatigueNeed] || 0) <= 0 && !R3.tired) {
+      // a mount out of energy without ride.empty:"slow" (e.g. a tired horse): it slows down for the rest of the race
+      R3.tired = true; R3.maxSpeed = R3.baseMax * (RACE.tiredSpeed != null ? RACE.tiredSpeed : 0.5);
+      if (RACE.tiredMessage) message(RACE.tiredMessage.replace("{name}", mounted.name));
+    }
   }
   R3.speed += (R3.maxSpeed - R3.speed) * Math.min(1, dt * 0.8);
   if (Math.abs(R3.playerX) > 1) R3.speed *= (1 - dt * 1.1);              // off-road drag
