@@ -99,8 +99,19 @@ an arrow function inside `meta` (the separation audit rejects top-level function
 `meta.strings` overrides any **engine** UI label (each has an English fallback):
 `dismountFirst, placeFirst, closeLabel, soundLabel, coinsLabel, dayLabel, levelLabel, noSave, refreshLabel,
 goalComplete ("{name}"), goalsComplete ("{n}"), levelUp ("{n}"), goalsTitle, noGoals,
-allGoalsDone, goalsProgress ("{done}/{total}…{next}"), topLevel`. (For back-compat a key
+allGoalsDone, goalsProgress ("{done}/{total}…{next}"), topLevel, saveHandedOver`. (For back-compat a key
 set directly on `meta` also works.)
+
+### Moving a game to a new address (save hand-over)
+Saves (localStorage) and home-screen apps belong to the site ADDRESS: if a game moves (new domain,
+new GitHub owner), players would lose their progress. Built in, always on and safe:
+- The engine reads a save handed over in the URL fragment `#handover=<base64url JSON {v:1,keys:{…}}>`,
+  accepts only this game's keys (`saveKey`, `saveKey:muted`, `legacySave` keys), **never overwrites an
+  existing save**, removes the fragment from the address and shows `meta.strings.saveHandedOver`.
+- At the OLD address, publish the page made by `node .claude/skills/_shared/moved-stub.cjs` (see its
+  header): it reads the save there and opens the new address with it. In a browser it continues by
+  itself; in a home-screen app it explains how to add the new icon (iOS keeps a separate save per
+  home-screen app, so the hand-over must start from where the player actually plays).
 
 ### Icons (`GAME.icons`) — no emoji in the UI
 ```

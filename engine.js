@@ -374,6 +374,26 @@ function migrateLegacySave() {
   return null;
 }
 
+// Save hand-over (a game that moved to a new address): the old address serves a small page
+// (.claude/skills/_shared/moved-stub.cjs) that reads the player's save there and opens the new
+// address with it in the URL fragment: #handover=<base64url JSON {v:1, keys:{key:value}}>.
+// Only this game's own keys are accepted (save, legacy saves, sound setting), and a save that
+// already exists here is NEVER overwritten. The fragment is removed from the address right away.
+let saveHandedOver = false;
+(function importHandedOverSave() {
+  const m = /[#&]handover=([A-Za-z0-9_-]+)/.exec(location.hash || ""); if (!m) return;
+  try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+  let data = null;
+  try { const b = m[1].replace(/-/g, "+").replace(/_/g, "/"); data = JSON.parse(decodeURIComponent(escape(atob(b + "===".slice((b.length + 3) % 4))))); } catch (e) { return; }
+  if (!data || !data.keys) return;
+  const L = META.legacySave, ok = [SAVE_KEY, SAVE_KEY + ":muted"].concat(L ? [].concat(L.key || []) : []);
+  Object.keys(data.keys).forEach((k) => {
+    const v = data.keys[k];
+    if (ok.indexOf(k) < 0 || typeof v !== "string") return;
+    try { if (localStorage.getItem(k) == null) { localStorage.setItem(k, v); if (k !== SAVE_KEY + ":muted") saveHandedOver = true; } } catch (e) {}
+  });
+})();
+
 /* ===================== Sound (procedural WebAudio — no audio files) ===================== */
 // Config: GAME.audio = { volume, sfx:{name:false|{notes,type,vol,dur,gap}}, music:{...}|false }.
 // Every sound is synthesised, so a game needs no audio assets. Muted state persists.
@@ -665,6 +685,7 @@ function startGame() {
   refreshHud();
   startPhaser();
   Sound.startMusic();
+  if (saveHandedOver) { saveHandedOver = false; setTimeout(() => message(T("saveHandedOver", "{i:check} Your game came along — welcome to the new address!")), 900); }
 }
 
 /* ===================== HUD / messages ===================== */

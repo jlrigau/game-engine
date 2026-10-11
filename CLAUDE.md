@@ -102,7 +102,7 @@ screenshots + checklist — mandatory after any art/UI change). **capitalize-lea
 fold the learnings back into the engine/skills/docs and audit the separation).
 **sync-engine** (template-side: backport engine/skills/tooling FROM a game INTO the
 template). Shared tooling in `_shared/` (incl. `separation-audit.cjs`, `prune-assets.cjs`,
-`sync-engine.sh`, `art-check.cjs`, `icon-kit.cjs`, `contact-sheet.py`, `probes/tour.cjs`).
+`sync-engine.sh`, `art-check.cjs`, `icon-kit.cjs`, `contact-sheet.py`, `probes/tour.cjs`, `moved-stub.cjs`).
 
 ## 8. Conventions
 - Engine, config and skills are in **English**. Clear commit messages.
@@ -181,7 +181,12 @@ like a game made by a studio — not a prototype. Concretely:
   look like its own universe.
 - New owner feedback → add it to this section (via **capitalize-learnings**).
 
-## 11. Planned: Ludea organisation + ludea.ai (not started — wait for the owner)
+## 11. Planned: Ludea organisation + ludea.ai (in progress — step by step with the owner)
+- Org created by the owner: **`ludea-ai`** (Oct 2026). Waiting for the Claude GitHub App to be installed
+  on it. Save hand-over is ready: engine imports `#handover=` (ENGINE.md « Moving a game to a new
+  address »), `_shared/moved-stub.cjs` builds the old-address page; tested end-to-end locally (save
+  intact, never overwrites, fragment cleaned, home-screen app explains, foreign keys ignored). French
+  games must set `meta.strings.saveHandedOver` when the engine is synced into them.
 - The owner creates the GitHub org, then we decide the migration together. Never transfer a repo
   or change DNS / Pages settings without the owner's explicit go.
 - **Players' saves and home-screen icons are tied to the site address** (localStorage and installed
