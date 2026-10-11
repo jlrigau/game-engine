@@ -135,9 +135,9 @@ function robot(dir, phase, moving, pal, u, opt) {
 // Back of the keeper's head (local 128 px): a collar ring under the head + a small battery hatch with
 // vertical vents. No status dot below horizontal lines: that read as a sleepy FACE at phone size.
 function keeperBackCollar(BD) { return `<ellipse cx="64" cy="73" rx="15" ry="4.5" fill="${BD}" stroke="${INK}" stroke-width="3"/>`; }
-function keeperBackHatch(B, BD) {
-  return `<rect x="54" y="44" width="20" height="15" rx="5" fill="${shade(B, -0.06)}" stroke="${BD}" stroke-width="2.5"/>` +
-    `<path d="M59 48 V55 M64 48 V55 M69 48 V55" stroke="${BD}" stroke-width="2.5" stroke-linecap="round"/>`;
+function keeperBackHatch(B, BD) {   // small, low on the head, low contrast (it must never read as a mouth)
+  return `<rect x="57" y="54" width="14" height="10" rx="3.5" fill="${shade(B, -0.07)}"/>` +
+    `<path d="M61 57 V61 M64 57 V61 M67 57 V61" stroke="${BD}" stroke-width="2" stroke-linecap="round"/>`;
 }
 function keeperSheet(name, pal) {
   const dirs = ["up", "left", "down", "right"];
@@ -497,16 +497,18 @@ function keeperRide(name, pal) {
 // on a SPACE HOPPER seen from behind/above: a round pod sitting on top of the ball, elbows out and down,
 // fists on the two "horns" (the critter's antennae), legs hanging down the ball. Both layers read the
 // antenna geometry from cbAntenna() and the rider joints from RB, so they always line up.
-const CB = { W: 200, H: 170, cx: 100, cy: 106, rx: 66, ry: 52 };   // ~1.18 like the front sheet
+const CB = { W: 200, H: 170, cx: 100, cy: 106, rx: 54, ry: 52 };   // narrow "pony barrel": room for jockey legs
 const RB = {   // rider joints, frame px (left side; mirrored about x 100)
-  head: { cx: 100, cy: 36, rx: 26, ry: 21 }, shoulder: [84, 60], elbow: [64, 84], fist: [60, 74],
-  leg: [[40, 86], [34, 104], [34, 131]], foot: [36, 138],   // shin only: thighs go forward, hidden by the ball
+  head: { cx: 100, cy: 36, rx: 26, ry: 21 }, shoulder: [84, 60], elbow: [68, 76], fist: [58, 68],
+  hip: [71, 85], knee: [46, 102], shin: [[45, 104], [44, 128]], foot: [44, 134],   // thigh ~30 px at 35 deg   // horse-rider seat: thighs over the back, shins hug the flanks
 };
-function cbAntenna(m) {    // m = -1 left, +1 right: root on the back behind the rider's pod → rising into the fist → up/out to the tip
+function cbAntenna(m) {    // m = -1 left, +1 right: root hidden behind the rider's pod → through the fist → up/out to the tip
   const X = (x) => (m < 0 ? x : 200 - x);
-  const root = [X(84), 80], grip = [X(RB.fist[0]), RB.fist[1]], ctl = [X(50), 44], tip = [X(44), 19];
-  return { root, grip, ctl, tip, tan: [ctl[0] - grip[0], ctl[1] - grip[1]],
-    d: `M${root[0]} ${root[1]} L${grip[0]} ${grip[1]} Q${ctl[0]} ${ctl[1]} ${tip[0]} ${tip[1]}` };
+  // ONE smooth quadratic: root (behind the pod) → through the fist at t = 0.4 → tip; ctl solved from the 3 points
+  const t = 0.4, root = [X(88), 64], grip = [X(RB.fist[0]), RB.fist[1]], tip = [X(44), 19];
+  const ctl = [0, 1].map((k) => (grip[k] - (1 - t) ** 2 * root[k] - t * t * tip[k]) / (2 * t * (1 - t)));
+  const tan = [0, 1].map((k) => 2 * (1 - t) * (ctl[k] - root[k]) + 2 * t * (tip[k] - ctl[k]));
+  return { root, grip, ctl, tip, tan, d: `M${root[0]} ${root[1]} Q${ctl[0].toFixed(1)} ${ctl[1].toFixed(1)} ${tip[0]} ${tip[1]}` };
 }
 function critterBack(v) {
   const c = VARIANTS[v], u = "cb", { W, H, cx, cy, rx, ry } = CB;
@@ -515,11 +517,11 @@ function critterBack(v) {
     rad(`${u}th`, [[0, "#ffffff"], [0.35, "#fff3b0"], [1, mix("#ffd24a", c, 0.5), 0]]) +
     rad(`${u}g`, [[0, c, 0.5], [1, c, 0]]) + rad(`${u}t`, [[0, "#ffffff"], [0.35, shade(c, 0.3)], [1, c]], 0.4, 0.35, 0.6) +
     rad(`${u}l`, [[0, "#ffffff"], [0.35, "#fff3b0"], [1, "#ffd24a", 0]]) + glow(`${u}gl`, 3) + blur(`${u}bl`, 3);
-  let g = `<ellipse cx="${cx}" cy="${cy}" rx="96" ry="60" fill="url(#${u}g)"/>`;   // halo stays inside the frame
-  g += `<ellipse cx="${cx}" cy="164" rx="62" ry="3.5" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
+  let g = `<ellipse cx="${cx}" cy="${cy}" rx="84" ry="60" fill="url(#${u}g)"/>`;   // halo stays inside the frame
+  g += `<ellipse cx="${cx}" cy="164" rx="52" ry="3.5" fill="#0b1030" opacity=".45" filter="url(#${u}bl)"/>`;
   const foot = (x, y) => `<ellipse cx="${x}" cy="${y}" rx="15" ry="9" fill="${bodyD}" ${stk(3.5)}/>`;
   g += `<ellipse cx="${cx}" cy="161" rx="13" ry="7" fill="${shade(bodyD, -0.12)}" ${stk(3.5)}/>`;   // third foot, behind the body
-  g += foot(62, 158) + foot(138, 158);
+  g += foot(68, 158) + foot(132, 158);
   g += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#${u}b)" ${stk(4)}/>`;
   // antennae = the hopper's handle horns: an outward V from roots on the back (hidden by the rider's
   // forearms), light core so the stalk reads against the dark race sky, glowing ball on top
@@ -528,10 +530,7 @@ function critterBack(v) {
     g += `<circle cx="${a.tip[0]}" cy="${a.tip[1]}" r="8.5" fill="url(#${u}t)" ${stk(3)} filter="url(#${u}gl)"/>`; });
   // soft back shading (lower half) + rim light — no spots (they read as a face from behind)
   g += `<path d="M${cx - rx + 8} ${cy + 14} Q${cx} ${cy + 44} ${cx + rx - 8} ${cy + 14} Q${cx + rx - 14} ${cy + ry - 6} ${cx} ${cy + ry - 3} Q${cx - rx + 14} ${cy + ry - 6} ${cx - rx + 8} ${cy + 14} Z" fill="${c}" opacity=".3"/>`;
-  g += `<path d="M44 108 Q44 86 54 72" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"/>`;
-  // "this is the back": a small solid tail tuft low on the back (darker variant tone, no glow, no spots)
-  g += `<path d="M93 141 Q100 135 107 141 Q105 150 100 155 Q95 150 93 141 Z" fill="${shade(c, -0.12)}" ${stk(2.5)}/>`;
-  g += `<path d="M97 140 Q100 138 103 140" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".55"/>`;
+  g += `<path d="M55 108 Q55 87 64 73" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"/>`;
   return job(`assets/img/critter_back_${v}.png`, W, H, g, defs);
 }
 // The keeper seen from BEHIND sitting on the critter like a kid on a space hopper, drawn in frame px with
@@ -543,25 +542,41 @@ function keeperBackSeated(pal, u, stripe) {
   const L = (x) => x, R = (x) => 200 - x;
   const { cx, cy, rx, ry } = CB;
   const defs = rad(`${u}h`, [[0, "#ffffff"], [0.6, B], [1, BD]], 0.38, 0.3, 0.8) + glow(`${u}gl`, 2) +
-    // legs hang OUTSIDE the flanks like a horse rider's: anything inside the critter's silhouette is hidden
-    `<mask id="${u}out" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="170"><rect width="200" height="170" fill="#fff"/><ellipse cx="${cx}" cy="${cy}" rx="${rx - 1}" ry="${ry - 1}" fill="#000"/></mask>` +
+    // the shins hug the flanks like a horse rider's: only what is tucked behind the flank is hidden
+    `<mask id="${u}out" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="170"><rect width="200" height="170" fill="#fff"/><ellipse cx="${cx}" cy="${cy}" rx="${rx - 4}" ry="${ry - 4}" fill="#000"/></mask>` +
     `<clipPath id="${u}hc"><ellipse cx="64" cy="46" rx="33" ry="27"/></clipPath>`;
   let g = "";
-  // lower legs: emerge from behind the flank and hang straight down beside it, heel-view boots at the bottom
-  let legs = "";
+  const SEAT = "#6a52b8";
+  // shins hug the flanks (only the part tucked behind the flank is masked), heel-view boots
+  let shins = "";
   [L, R].forEach((X) => {
-    const d = `M${RB.leg.map(([x, y], i) => `${i ? "L" : ""}${X(x)} ${y}`).join(" ")}`, [fx, fy] = RB.foot;
-    legs += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${BD}" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>`;
-    legs += `<rect x="${X(fx) - 7}" y="${fy - 4.5}" width="14" height="9" rx="4" fill="#2b3370" stroke="${INK}" stroke-width="2.5"/>`;
-    legs += `<rect x="${X(fx) - 5}" y="${fy - 3}" width="10" height="2.6" rx="1.3" fill="${A}"/>`;
+    const [[ax, ay], [bx, by]] = RB.shin, d = `M${X(ax)} ${ay} L${X(bx)} ${by}`;
+    shins += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="12" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${BD}" stroke-width="7.5" stroke-linecap="round"/>`;
   });
-  g += `<g mask="url(#${u}out)">${legs}</g>`;
-  // saddle: one plum ellipse with an accent stitch, mostly under the pod
-  g += `<ellipse cx="100" cy="86" rx="26" ry="7" fill="#3a2a6e" stroke="${INK}" stroke-width="2.5"/>`;
-  g += `<path d="M80 86 Q100 81 120 86" fill="none" stroke="${A}" stroke-width="1.2" stroke-dasharray="2 2" opacity=".85"/>`;
-  // the pod (torso) sitting on the saddle, grey vent lines on the back
-  g += `<path d="M82.4 52 Q80.8 82 100 84 Q119.2 82 117.6 52 Z" fill="url(#${u}h)" stroke="${INK}" stroke-width="2.8" stroke-linejoin="round"/>`;
+  g += shins;   // drawn over the flank edge: the shin hugs the barrel
+  [[L, 1], [R, -1]].forEach(([X, m]) => {
+    const [fx, fy] = RB.foot, x = X(fx);
+    g += `<g transform="rotate(${m * 8} ${x} ${fy})"><path d="M${x - 7} ${fy - 6} L${x + 7} ${fy - 6} Q${x + 10} ${fy + 1} ${x + 10} ${fy + 5} Q${x} ${fy + 8} ${x - 10} ${fy + 5} Q${x - 10} ${fy + 1} ${x - 7} ${fy - 6} Z" fill="#2b3370" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>` +
+      `<path d="M${x - 6} ${fy - 3} Q${x} ${fy - 4.5} ${x + 6} ${fy - 3}" fill="none" stroke="#8592d6" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>` +
+      `<path d="M${x - 8.5} ${fy + 4.5} Q${x} ${fy + 7} ${x + 8.5} ${fy + 4.5}" fill="none" stroke="${A}" stroke-width="1.4" stroke-linecap="round"/></g>`;
+  });
+  g += `<ellipse cx="100" cy="86" rx="26" ry="7" fill="${SEAT}" stroke="${INK}" stroke-width="2.5"/>`;
+  // the pod (torso) with wider hips, grey vent lines on the back
+  g += `<path d="M82.4 52 Q76.5 84 100 85 Q123.5 84 117.6 52 Z" fill="url(#${u}h)" stroke="${INK}" stroke-width="2.8" stroke-linejoin="round"/>`;
   g += `<path d="M90.4 63 H109.6 M90.4 69.5 H109.6" stroke="${BD}" stroke-width="2.4" stroke-linecap="round"/>`;
+  // thighs ON TOP of the critter's back outline (hip → knee on the flank), then the cantle over the pod's bottom
+  [L, R].forEach((X) => {
+    const [hx, hy] = RB.hip, [kx, ky] = RB.knee, d = `M${X(hx)} ${hy} L${X(kx)} ${ky}`;
+    g += `<path d="${d}" fill="none" stroke="${INK}" stroke-width="10" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${B}" stroke-width="5.5" stroke-linecap="round"/>`;
+  });
+  // seat + two flaps draping down the flanks over the inner thighs (the outer thigh + knee stay visible)
+    [L, R].forEach((X) => {
+    g += `<path d="M${X(74)} 83 Q${X(62)} 90 ${X(59)} 104 L${X(70)} 106 Q${X(71)} 95 ${X(80)} 87 Z" fill="${SEAT}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    g += `<path d="M${X(72.5)} 88 Q${X(65)} 95 ${X(63)} 103" fill="none" stroke="${shade(SEAT, 0.4)}" stroke-width="1" stroke-dasharray="2 2"/>`;
+  });
+  g += `<path d="M78 80 Q100 88 122 80 Q124 85 121 88.5 Q100 96 79 88.5 Q76 85 78 80 Z" fill="${SEAT}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  g += `<path d="M81 82.5 Q100 89.5 119 82.5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>`;
+  [L, R].forEach((X) => { const [kx, ky] = RB.knee; g += `<circle cx="${X(kx)}" cy="${ky}" r="5" fill="${BD}" stroke="${INK}" stroke-width="2.2"/><circle cx="${X(kx)}" cy="${ky}" r="1.8" fill="${A}"/>`; });
   // head: the keeper's head (local 128 px space, scaled), collar ring, battery hatch, rival stripe, antenna
   g += `<line x1="100" y1="16" x2="100" y2="11" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/>`;
   g += `<circle cx="100" cy="9" r="4.5" fill="${A}" stroke="${INK}" stroke-width="2"/>`;

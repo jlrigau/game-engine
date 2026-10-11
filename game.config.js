@@ -341,11 +341,11 @@ window.GAME = {
     },
     rivals: {
       list: [
-        { name: "Zip", sprite: "critter_back_rose", rider: "rider_rival_1", color: "#ff8a3d" },
-        { name: "Nova", sprite: "critter_back_lime", rider: "rider_rival_2", color: "#5fd36a" },
-        { name: "Pixel", sprite: "critter_back_violet", rider: "rider_rival_3", color: "#a06bff" },
-        { name: "Comet", sprite: "critter_back_amber", rider: "rider_rival_4", color: "#ff5db1" },
-        { name: "Orbit", sprite: "critter_back_aqua", rider: "rider_rival_5", color: "#ffd24a" },
+        { name: "Zip", sprite: "critter_back_aqua", rider: "rider_rival_1", color: "#ff8a3d" },
+        { name: "Nova", sprite: "critter_back_violet", rider: "rider_rival_2", color: "#5fd36a" },
+        { name: "Pixel", sprite: "critter_back_lime", rider: "rider_rival_3", color: "#a06bff" },
+        { name: "Comet", sprite: "critter_back_aqua", rider: "rider_rival_4", color: "#ff5db1" },
+        { name: "Orbit", sprite: "critter_back_violet", rider: "rider_rival_5", color: "#ffd24a" },
       ],
       scale: 6.5, hw: 0.3, skill: [0.82, 0.97], gridGap: 3, gridFirst: 5, startGate: "start_gate", startGateScale: 17, lanes: [-0.62, 0.62],
       rewards: [40, 25, 15, 8, 5, 3],
