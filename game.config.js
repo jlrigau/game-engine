@@ -144,6 +144,7 @@ window.GAME = {
       critter_back_aqua: { path: "assets/img/critter_back_aqua.webp", res: 2 }, critter_back_lime: { path: "assets/img/critter_back_lime.webp", res: 2 },
       critter_back_violet: { path: "assets/img/critter_back_violet.webp", res: 2 },
       // race: the keeper robot seen from behind, drawn over the critter (character.raceRider)
+      drone_back: { path: "assets/img/drone_back.webp", res: 2 },   // the Escape pursuer (race.chase)
       rider_back_aqua: { path: "assets/img/rider_back_aqua.webp", res: 2 }, rider_back_amber: { path: "assets/img/rider_back_amber.webp", res: 2 },
       dust: "assets/img/dust.webp", dust_b: "assets/img/dust_b.webp", cloth: "assets/img/cloth.webp",
       want_dust: { path: "assets/img/want_dust.webp", res: 2 },
@@ -277,6 +278,8 @@ window.GAME = {
       { id: "ride", type: "ride", label: "Ride", icon: "ride", color: "#3fe0e8", dismountLabel: "Hop off", dismountIcon: "close" },
       { id: "jump", type: "jump", label: "Jump", icon: "jump", color: "#ffd24a" },
       { id: "race", type: "race", label: "Race", icon: "flag", color: "#ff5db1" },
+      // race variant: the station's security drone chases you to the finish (race.chase)
+      { id: "escape", type: "race", mode: "chase", label: "Escape", icon: "drone", color: "#3fe0e8" },
       // open the customize menu (recolour the glow / rename) — no effect on needs
       { id: "style", type: "customize", label: "Style", icon: "palette", color: "#a97bff" },
     ],
@@ -319,6 +322,19 @@ window.GAME = {
     // Rival robots reuse the keeper rear view, recoloured (riderTint) in a hue that contrasts with their mount,
     // never white/cyan (the player's own look).
     horizon: 0.42,                           // tall phones: more road, less empty sky
+    // CHASE variant ("Escape"): a security drone starts behind and closes in; obstacles slow you, it catches up
+    chase: {
+      name: "the drone", sprite: "drone_back", scale: 5.5, icon: "drone",
+      startGap: 28, skill: [0.9, 1.05], catchGap: 0.8,
+      reward: 35, caughtReward: 3, stat: "chaseEscape",
+      startMessage: "{i:drone} A security drone is after you! Reach the finish before it catches you!",
+      hitMessage: "Bump! The drone is closing in…",
+      caughtMessage: "{i:drone} Caught by {name}!",
+      resultsTitle: "{i:drone} Escape",
+      escapeMessage: "{i:trophy} You outran the drone!", escapeHint: "Finished in {t} s without being caught.",
+      caughtTitle: "{i:drone} The drone caught you!", caughtHint: "Dodge the asteroids: every bump slows you down.",
+      goLabel: "GO!",
+    },
     rivals: {
       list: [
         { name: "Zip", sprite: "critter_back_rose", rider: "rider_back_aqua", riderTint: "#8fe36a", color: "#8fe36a" },
@@ -546,6 +562,7 @@ window.GAME = {
         { id: "egg1", name: "A new hatchling", desc: "Have an egg hatch {i:egg}", check: (s) => (s.stats.births || 0) >= 1 },
         { id: "job8", name: "Star courier", desc: "Make 8 deliveries {i:crate}", check: (s) => (s.stats.jobs || 0) >= 8 },
         { id: "race3", name: "Champion", desc: "Win 3 races {i:flag}", check: (s) => (s.stats.raceWin || 0) >= 3 },
+        { id: "escape1", name: "Slippery", desc: "Outrun the drone in an Escape {i:drone}", check: (s) => (s.stats.chaseEscape || 0) >= 1 },
       ] },
     ],
   },
@@ -557,7 +574,7 @@ window.GAME = {
     "{i:heart} <b>Care:</b> {i:battery} Energy (Feed, costs {i:nectar} nectar), {i:ball} Fun (Play) and {i:sparkle} Sparkle (Polish — zoom in and rub the dust away). A full Fun makes a critter beam with happy eyes!",
     "{i:crate} <b>Deliveries:</b> at the <b>Delivery Dock</b>, pick a job. Follow the arrow to the crate, pick it up, then drop it on the glowing target. Express and rare jobs pay more but {i:drone} drones chase you: outrun them, or ride into the {i:palette} <b>Glow Salon</b> for a makeover.",
     "{i:ride} <b>Ride:</b> hop on a grown critter, cruise the <b>Star Ring</b> road and {i:jump} jump the comet rocks and the beams of the <b>Gravity Park</b>. Riding uses Energy: recharge on the {i:pad} <b>Energy Pad</b>.",
-    "{i:flag} <b>Race:</b> while riding, tap Race. You start behind 5 rival riders: steer left and right to overtake them and dodge the asteroids. The higher you finish, the more you win!",
+    "{i:flag} <b>Race:</b> while riding, tap Race. You start behind 5 rival riders: steer left and right to overtake them and dodge the asteroids. The higher you finish, the more you win! {i:drone} <b>Escape:</b> a security drone starts behind you, reach the finish before it catches you.",
     "{i:shop} <b>Star Market:</b> nectar, a bigger nursery, decorations and new critters. {i:egg} <b>Hatchery:</b> rare, faster critters. {i:portal} <b>Wormhole:</b> call a wild critter.",
     "{i:moon} <b>Recharge Pod:</b> rest to reach the next cycle. Two happy grown critters may lay an egg overnight!",
     "{i:goals} <b>Goals:</b> four levels to complete. The game saves automatically.",
