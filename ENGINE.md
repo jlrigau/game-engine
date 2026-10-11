@@ -521,7 +521,7 @@ runs out while dodging obstacles (hit where they reach the car on screen, not at
 A variant with its own `raceSprite` (e.g. creatures drawn as separate sheets) uses it instead of the tinted `race.sprite`. The ride's `speedMul` / `grip` change top speed / steering.
 The HUD (timer, distance, speed, quit, steering hints) is DOM with the game's icons.
 ```
-race: { time, reward, stat:"raceWin", hitPenalty, sprite, roadside:[image keys], roadsideScale:3.4, spriteZoom,   // sprite width = road half-width × scale × spriteZoom
+race: { time, reward, stat:"raceWin", hitPenalty, sprite, rideWidth:0.32 /* ride frame width / screen width (capped at 55 % of the height) */, roadside:[image keys], roadsideScale:3.4, spriteZoom,   // sprite width = road half-width × scale × spriteZoom
                                          // (≈0.13 makes an obstacle car the size of yours when it reaches you)
   track:{ segments, speed, steer, centrifugal, curveEvery, seed },
   obstacles:[{ sprite, every, phase, scale, hw, spread }],

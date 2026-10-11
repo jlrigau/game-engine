@@ -298,7 +298,7 @@ window.GAME = {
     time: 60, reward: 40, stat: "raceWin", hitPenalty: 3,
     sprite: "critter_back_aqua",          // fallback; each variant has its own rear view (variant.raceSprite)
     roadside: ["spire", "crystal", "crystal_b", "orblamp"], roadsideScale: 5,
-    spriteZoom: 0.13,
+    spriteZoom: 0.13, rideWidth: 0.34,     // ride frame width / screen width (a narrow drawing needs more)
     track: { segments: 900, speed: 0.9, steer: 2.4, centrifugal: 0.55 },
     obstacles: [
       { sprite: "beacon", every: 30, phase: 0, scale: 2.2, hw: 0.2, spread: 0.6 },

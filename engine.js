@@ -3723,7 +3723,9 @@ function r3Render() {
   }
   for (let n = drawn.length - 1; n >= 0; n--) { const s = drawn[n]; s.sprites.forEach((sp) => r3Billboard(s, sp)); s.obstacles.forEach((o) => { if (!o.dead) r3Billboard(s, o); }); }
   if (R3.car) {
-    const w = W * 0.32, h = w * (R3.car.height / R3.car.width), bob = Math.sin(R3.pos * 0.05) * 2;
+    // race.rideWidth: the ride's FRAME width as a fraction of the screen (0.32); a narrow drawing (e.g. a horse
+    // from behind) needs a larger frame. Capped so the ride never exceeds 55 % of the height (landscape).
+    const asp = R3.car.height / R3.car.width, w = Math.min(W * (RACE.rideWidth || 0.32), H * 0.55 / asp), h = w * asp, bob = Math.sin(R3.pos * 0.05) * 2;
     // the depth (world units ahead of the camera) whose road row is under the car's wheels
     const carY = H - Math.max(90, H * 0.12) - h * 0.12;
     R3.carDepth = carY > H / 2 + 1 ? R3.camD * R3.camH * (H / 2) / (carY - H / 2) : 0;
