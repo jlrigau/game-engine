@@ -102,7 +102,7 @@ screenshots + checklist — mandatory after any art/UI change). **capitalize-lea
 fold the learnings back into the engine/skills/docs and audit the separation).
 **sync-engine** (template-side: backport engine/skills/tooling FROM a game INTO the
 template). Shared tooling in `_shared/` (incl. `separation-audit.cjs`, `prune-assets.cjs`,
-`sync-engine.sh`, `art-check.cjs`, `icon-kit.cjs`, `contact-sheet.py`, `probes/tour.cjs`, `moved-stub.cjs`).
+`sync-engine.sh`, `art-check.cjs`, `icon-kit.cjs`, `contact-sheet.py`, `probes/tour.cjs`).
 
 ## 8. Conventions
 - Engine, config and skills are in **English**. Clear commit messages.
@@ -181,20 +181,11 @@ like a game made by a studio — not a prototype. Concretely:
   look like its own universe.
 - New owner feedback → add it to this section (via **capitalize-learnings**).
 
-## 11. Planned: Ludea organisation + ludea.ai (in progress — step by step with the owner)
-- Org created by the owner: **`ludea-ai`** (Oct 2026). Waiting for the Claude GitHub App to be installed
-  on it. Save hand-over is ready: engine imports `#handover=` (ENGINE.md « Moving a game to a new
-  address »), `_shared/moved-stub.cjs` builds the old-address page; tested end-to-end locally (save
-  intact, never overwrites, fragment cleaned, home-screen app explains, foreign keys ignored). French
-  games must set `meta.strings.saveHandedOver` when the engine is synced into them.
-- The owner creates the GitHub org, then we decide the migration together. Never transfer a repo
-  or change DNS / Pages settings without the owner's explicit go.
-- **Players' saves and home-screen icons are tied to the site address** (localStorage and installed
-  apps are per origin). Moving a game from jlrigau.github.io to another address loses them unless the
-  old address keeps a small page that reads the save and hands it to the new address (needs a generic
-  engine "import save" feature + one stub repo per game left under jlrigau). Plan this BEFORE moving
-  Dr Smile / Mon Centre Équestre (the owner's daughter plays them).
-- GitHub redirects git URLs of transferred repos, but NOT GitHub Pages URLs.
-- After a move: update every hard-coded URL (landing links, QR codes, hreflang, README, CLAUDE.md,
-  skills), re-enable Pages, install the Claude GitHub App on the org, verify the domain in the org.
-
+## 11. Ludea organisation + ludea.ai (in progress, step by step with the owner)
+- The owner created the GitHub org **`ludea-ai`** and linked the ludea.ai domain to it (Oct 2026).
+  Next: the owner transfers the 4 repos to the org; work then continues in a new session opened on the
+  `ludea-ai` repos (this jlrigau-scoped session loses access once the repos are renamed).
+- **No save migration**: the owner decided players' saves / home-screen icons may be lost in the move
+  (nobody but the owner plays yet) — do not build hand-over code.
+- After the move: update every hard-coded URL (landing links, QR codes, hreflang, README, CLAUDE.md,
+  skills), check Pages is enabled on each repo, and serve the landing at ludea.ai.
