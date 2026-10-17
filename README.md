@@ -24,8 +24,9 @@ This repo is a **GitHub template** — each game lives in its **own repository**
 engine stays clean and you can make as many games as you like.
 
 1. **Use this template → Create a new repository.** Click the green **“Use this
-   template”** button on the repo home and name your game (e.g. `my-space-game`). You get
-   a fresh, independent repo containing the whole engine + a game that already runs.
+   template”** button on the repo home, name your game (e.g. `my-space-game`) and choose
+   **Public** (GitHub Pages publishes public repositories for free). You get a fresh,
+   independent repo containing the whole engine + a game that already runs.
 2. **Open it in Claude Code, on the `main` branch** (see the warning below).
 3. **Run `/new-game`.** It interviews you — **theme, target age/audience, art style,
    language, core loop** — then writes your `game.config.js`, creates/sources the assets,
